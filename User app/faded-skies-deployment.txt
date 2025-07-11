@@ -1,0 +1,1250 @@
+# ===================================
+# Dockerfile
+# ===================================
+
+FROM node:18-alpine AS base
+WORKDIR /app
+
+# Install system dependencies
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    postgresql-client
+
+# Copy package files
+COPY package*.json ./
+RUN npm ci --only=production && npm cache clean --force
+
+# Copy source code
+COPY . .
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodeuser -u 1001
+
+# Create necessary directories and set permissions
+RUN mkdir -p /app/logs /app/uploads && \
+    chown -R nodeuser:nodejs /app
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD node scripts/healthcheck.js
+
+USER nodeuser
+EXPOSE 3000
+
+CMD ["npm", "start"]
+
+# ===================================
+# docker-compose.yml
+# ===================================
+
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@postgres:5432/faded_skies
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - app_logs:/app/logs
+    networks:
+      - faded_skies_network
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: faded_skies
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - faded_skies_network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./config/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - faded_skies_network
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/sites-available:/etc/nginx/sites-available:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - app
+    restart: unless-stopped
+    networks:
+      - faded_skies_network
+
+  # Optional: Redis monitoring
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    hostname: redis-commander
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    depends_on:
+      - redis
+    profiles:
+      - monitoring
+    networks:
+      - faded_skies_network
+
+volumes:
+  postgres_data:
+  redis_data:
+  app_logs:
+  nginx_logs:
+
+networks:
+  faded_skies_network:
+    driver: bridge
+
+# ===================================
+# .github/workflows/deploy.yml
+# ===================================
+
+name: Deploy Faded Skies API
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '18'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: faded-skies/api
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: faded_skies_test
+          POSTGRES_USER: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run linting
+      run: npm run lint
+    
+    - name: Run database migrations
+      run: npm run db:migrate
+      env:
+        NODE_ENV: test
+        DATABASE_URL: postgresql://postgres:test_password@localhost:5432/faded_skies_test
+        REDIS_URL: redis://localhost:6379
+    
+    - name: Run tests
+      run: npm test
+      env:
+        NODE_ENV: test
+        DATABASE_URL: postgresql://postgres:test_password@localhost:5432/faded_skies_test
+        REDIS_URL: redis://localhost:6379
+        JWT_SECRET: test-jwt-secret-for-testing-only
+    
+    - name: Upload test coverage
+      uses: codecov/codecov-action@v3
+      if: success()
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Run security audit
+      run: npm audit --audit-level high
+    
+    - name: Run Snyk security scan
+      uses: snyk/actions/node@master
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+  build:
+    needs: [test, security]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  deploy-staging:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    
+    steps:
+    - name: Deploy to staging
+      run: |
+        echo "Deploying to staging environment"
+        # Add staging deployment commands here
+
+  deploy-production:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+    
+    - name: Deploy to EKS
+      run: |
+        aws eks update-kubeconfig --name faded-skies-cluster
+        kubectl set image deployment/faded-skies-api api=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        kubectl rollout status deployment/faded-skies-api --timeout=300s
+    
+    - name: Verify deployment
+      run: |
+        kubectl get pods -l app=faded-skies-api
+        curl -f ${{ secrets.PRODUCTION_API_URL }}/api/health || exit 1
+
+# ===================================
+# k8s/namespace.yaml
+# ===================================
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: faded-skies
+  labels:
+    name: faded-skies
+
+---
+# ===================================
+# k8s/configmap.yaml
+# ===================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: faded-skies-config
+  namespace: faded-skies
+data:
+  NODE_ENV: "production"
+  API_URL: "https://api.fadedskies.com"
+  CLIENT_URL: "https://app.fadedskies.com"
+  JWT_EXPIRES_IN: "24h"
+  BCRYPT_ROUNDS: "12"
+  AWS_REGION: "us-west-2"
+  AWS_S3_BUCKET: "faded-skies-uploads"
+
+---
+# ===================================
+# k8s/secrets.yaml
+# ===================================
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: faded-skies-secrets
+  namespace: faded-skies
+type: Opaque
+data:
+  database-url: <base64-encoded-database-url>
+  redis-url: <base64-encoded-redis-url>
+  jwt-secret: <base64-encoded-jwt-secret>
+  stripe-secret-key: <base64-encoded-stripe-key>
+  aws-access-key-id: <base64-encoded-aws-key>
+  aws-secret-access-key: <base64-encoded-aws-secret>
+  google-maps-api-key: <base64-encoded-maps-key>
+
+---
+# ===================================
+# k8s/deployment.yaml
+# ===================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: faded-skies-api
+  namespace: faded-skies
+  labels:
+    app: faded-skies-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: faded-skies-api
+  template:
+    metadata:
+      labels:
+        app: faded-skies-api
+    spec:
+      containers:
+      - name: api
+        image: ghcr.io/faded-skies/api:latest
+        ports:
+        - containerPort: 3000
+          name: http
+        env:
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: faded-skies-config
+              key: NODE_ENV
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: faded-skies-secrets
+              key: database-url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: faded-skies-secrets
+              key: redis-url
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: faded-skies-secrets
+              key: jwt-secret
+        - name: STRIPE_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: faded-skies-secrets
+              key: stripe-secret-key
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: faded-skies-secrets
+              key: aws-access-key-id
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: faded-skies-secrets
+              key: aws-secret-access-key
+        - name: GOOGLE_MAPS_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: faded-skies-secrets
+              key: google-maps-api-key
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        volumeMounts:
+        - name: app-logs
+          mountPath: /app/logs
+      volumes:
+      - name: app-logs
+        emptyDir: {}
+      restartPolicy: Always
+
+---
+# ===================================
+# k8s/service.yaml
+# ===================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: faded-skies-api-service
+  namespace: faded-skies
+  labels:
+    app: faded-skies-api
+spec:
+  selector:
+    app: faded-skies-api
+  ports:
+  - name: http
+    protocol: TCP
+    port: 80
+    targetPort: 3000
+  type: ClusterIP
+
+---
+# ===================================
+# k8s/ingress.yaml
+# ===================================
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: faded-skies-api-ingress
+  namespace: faded-skies
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  tls:
+  - hosts:
+    - api.fadedskies.com
+    secretName: faded-skies-api-tls
+  rules:
+  - host: api.fadedskies.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: faded-skies-api-service
+            port:
+              number: 80
+
+---
+# ===================================
+# k8s/hpa.yaml
+# ===================================
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: faded-skies-api-hpa
+  namespace: faded-skies
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: faded-skies-api
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+
+---
+# ===================================
+# nginx/nginx.conf
+# ===================================
+
+user nginx;
+worker_processes auto;
+error_log /var/log/nginx/error.log warn;
+pid /var/run/nginx.pid;
+
+events {
+    worker_connections 1024;
+    use epoll;
+    multi_accept on;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    # Logging
+    log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                    '$status $body_bytes_sent "$http_referer" '
+                    '"$http_user_agent" "$http_x_forwarded_for"';
+    
+    access_log /var/log/nginx/access.log main;
+
+    # Basic settings
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+    types_hash_max_size 2048;
+    client_max_body_size 10M;
+
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_types
+        text/plain
+        text/css
+        text/xml
+        text/javascript
+        application/json
+        application/javascript
+        application/xml+rss
+        application/atom+xml
+        image/svg+xml;
+
+    # Rate limiting
+    limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+    limit_req_zone $binary_remote_addr zone=auth:10m rate=5r/s;
+
+    # SSL settings
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256;
+    ssl_prefer_server_ciphers off;
+
+    # Security headers
+    add_header X-Frame-Options DENY;
+    add_header X-Content-Type-Options nosniff;
+    add_header X-XSS-Protection "1; mode=block";
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    upstream api_backend {
+        least_conn;
+        server app:3000 max_fails=3 fail_timeout=30s;
+    }
+
+    server {
+        listen 80;
+        server_name api.fadedskies.com;
+        return 301 https://$server_name$request_uri;
+    }
+
+    server {
+        listen 443 ssl http2;
+        server_name api.fadedskies.com;
+
+        ssl_certificate /etc/nginx/ssl/fullchain.pem;
+        ssl_certificate_key /etc/nginx/ssl/privkey.pem;
+
+        # Rate limiting
+        limit_req zone=api burst=20 nodelay;
+
+        # Proxy settings
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+
+        # API routes
+        location /api/ {
+            proxy_pass http://api_backend;
+        }
+
+        # WebSocket support
+        location /socket.io/ {
+            proxy_pass http://api_backend;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+            proxy_cache_bypass $http_upgrade;
+        }
+
+        # Health check
+        location /health {
+            proxy_pass http://api_backend/api/health;
+        }
+
+        # Stricter rate limiting for auth endpoints
+        location /api/auth/ {
+            limit_req zone=auth burst=10 nodelay;
+            proxy_pass http://api_backend;
+        }
+
+        # Block common attack patterns
+        location ~ /\. {
+            deny all;
+        }
+
+        location ~ \.(env|git|svn)$ {
+            deny all;
+        }
+    }
+}
+
+---
+# ===================================
+# scripts/healthcheck.js
+# ===================================
+
+#!/usr/bin/env node
+
+const http = require('http');
+
+const options = {
+  hostname: 'localhost',
+  port: process.env.PORT || 3000,
+  path: '/api/health',
+  method: 'GET',
+  timeout: 3000
+};
+
+const request = http.request(options, (response) => {
+  if (response.statusCode === 200) {
+    console.log('Health check passed');
+    process.exit(0);
+  } else {
+    console.error(`Health check failed with status: ${response.statusCode}`);
+    process.exit(1);
+  }
+});
+
+request.on('error', (error) => {
+  console.error('Health check failed:', error.message);
+  process.exit(1);
+});
+
+request.on('timeout', () => {
+  console.error('Health check timed out');
+  request.destroy();
+  process.exit(1);
+});
+
+request.end();
+
+---
+# ===================================
+# scripts/deploy.sh
+# ===================================
+
+#!/bin/bash
+
+set -e
+
+# Configuration
+NAMESPACE="faded-skies"
+DEPLOYMENT="faded-skies-api"
+IMAGE_TAG=${1:-latest}
+TIMEOUT=300
+
+echo "🚀 Starting deployment of Faded Skies API..."
+echo "📦 Image tag: $IMAGE_TAG"
+echo "🎯 Namespace: $NAMESPACE"
+
+# Check if kubectl is configured
+if ! kubectl cluster-info &> /dev/null; then
+    echo "❌ kubectl is not configured or cluster is not accessible"
+    exit 1
+fi
+
+# Check if namespace exists
+if ! kubectl get namespace $NAMESPACE &> /dev/null; then
+    echo "📁 Creating namespace $NAMESPACE..."
+    kubectl create namespace $NAMESPACE
+fi
+
+# Apply Kubernetes manifests
+echo "📋 Applying Kubernetes manifests..."
+kubectl apply -f k8s/configmap.yaml
+kubectl apply -f k8s/secrets.yaml
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
+kubectl apply -f k8s/ingress.yaml
+kubectl apply -f k8s/hpa.yaml
+
+# Update deployment image
+echo "🔄 Updating deployment image..."
+kubectl set image deployment/$DEPLOYMENT api=ghcr.io/faded-skies/api:$IMAGE_TAG -n $NAMESPACE
+
+# Wait for deployment to complete
+echo "⏳ Waiting for deployment to complete..."
+if kubectl rollout status deployment/$DEPLOYMENT -n $NAMESPACE --timeout=${TIMEOUT}s; then
+    echo "✅ Deployment completed successfully!"
+else
+    echo "❌ Deployment failed or timed out"
+    echo "📋 Recent events:"
+    kubectl get events -n $NAMESPACE --sort-by='.lastTimestamp' | tail -10
+    exit 1
+fi
+
+# Verify deployment
+echo "🔍 Verifying deployment..."
+REPLICAS=$(kubectl get deployment $DEPLOYMENT -n $NAMESPACE -o jsonpath='{.status.readyReplicas}')
+echo "📊 Ready replicas: $REPLICAS"
+
+# Test health endpoint
+echo "🏥 Testing health endpoint..."
+if kubectl port-forward service/faded-skies-api-service 8080:80 -n $NAMESPACE &
+then
+    PORT_FORWARD_PID=$!
+    sleep 5
+    
+    if curl -f http://localhost:8080/api/health > /dev/null 2>&1; then
+        echo "✅ Health check passed!"
+    else
+        echo "❌ Health check failed"
+    fi
+    
+    kill $PORT_FORWARD_PID 2>/dev/null || true
+fi
+
+echo "🎉 Deployment completed successfully!"
+echo "🌐 API should be available at: https://api.fadedskies.com"
+
+---
+# ===================================
+# scripts/setup-dev.sh
+# ===================================
+
+#!/bin/bash
+
+set -e
+
+echo "🌿 Setting up Faded Skies development environment..."
+
+# Check if Node.js is installed
+if ! command -v node &> /dev/null; then
+    echo "❌ Node.js is not installed. Please install Node.js 18+ first."
+    exit 1
+fi
+
+# Check Node.js version
+NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
+if [ "$NODE_VERSION" -lt 18 ]; then
+    echo "❌ Node.js version 18 or higher is required. Current version: $(node -v)"
+    exit 1
+fi
+
+# Check if PostgreSQL is available
+if ! command -v psql &> /dev/null; then
+    echo "⚠️  PostgreSQL client not found. Please install PostgreSQL."
+    read -p "Continue anyway? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
+fi
+
+# Check if Redis is available
+if ! command -v redis-cli &> /dev/null; then
+    echo "⚠️  Redis client not found. Please install Redis."
+    read -p "Continue anyway? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
+fi
+
+# Install dependencies
+echo "📦 Installing dependencies..."
+npm install
+
+# Copy environment file
+if [ ! -f .env.development ]; then
+    echo "📝 Creating environment file..."
+    cat > .env.development << EOF
+NODE_ENV=development
+PORT=3000
+API_URL=http://localhost:3000
+CLIENT_URL=http://localhost:3001
+
+# Database
+DATABASE_URL=postgresql://postgres:password@localhost:5432/faded_skies_dev
+REDIS_URL=redis://localhost:6379
+
+# Security
+JWT_SECRET=$(openssl rand -base64 32)
+JWT_EXPIRES_IN=24h
+BCRYPT_ROUNDS=10
+
+# External APIs (Add your keys)
+STRIPE_SECRET_KEY=sk_test_your_stripe_key
+GOOGLE_MAPS_API_KEY=your_google_maps_key
+FIREBASE_PROJECT_ID=your_firebase_project
+
+# Email (Optional for development)
+SMTP_HOST=smtp.mailtrap.io
+SMTP_PORT=2525
+SMTP_USER=your_mailtrap_user
+SMTP_PASS=your_mailtrap_pass
+FROM_EMAIL=dev@fadedskies.com
+
+# File Upload
+AWS_ACCESS_KEY_ID=your_aws_key
+AWS_SECRET_ACCESS_KEY=your_aws_secret
+AWS_REGION=us-west-2
+AWS_S3_BUCKET=faded-skies-dev
+
+# Monitoring (Optional)
+SENTRY_DSN=your_sentry_dsn
+EOF
+    echo "✅ Environment file created at .env.development"
+    echo "⚠️  Please update the configuration with your actual API keys"
+else
+    echo "✅ Environment file already exists"
+fi
+
+# Setup database
+echo "🗄️  Setting up database..."
+if command -v psql &> /dev/null; then
+    # Try to create database
+    createdb faded_skies_dev 2>/dev/null || echo "Database may already exist"
+    
+    # Run migrations
+    echo "🔄 Running database migrations..."
+    npm run db:migrate
+    
+    # Seed database
+    echo "🌱 Seeding database..."
+    npm run db:seed
+else
+    echo "⚠️  Skipping database setup - PostgreSQL not available"
+fi
+
+# Start Redis if available
+if command -v redis-server &> /dev/null; then
+    if ! pgrep -x "redis-server" > /dev/null; then
+        echo "🔴 Starting Redis server..."
+        redis-server --daemonize yes --port 6379
+    else
+        echo "✅ Redis server already running"
+    fi
+else
+    echo "⚠️  Redis not available - some features may not work"
+fi
+
+# Create necessary directories
+echo "📁 Creating directories..."
+mkdir -p logs uploads temp
+
+echo ""
+echo "🎉 Development environment setup complete!"
+echo ""
+echo "📋 Next steps:"
+echo "   1. Update .env.development with your API keys"
+echo "   2. Run 'npm run dev' to start the development server"
+echo "   3. Visit http://localhost:3000 to test the API"
+echo ""
+echo "🔧 Available commands:"
+echo "   npm run dev          - Start development server"
+echo "   npm run test         - Run tests"
+echo "   npm run db:migrate   - Run database migrations"
+echo "   npm run db:seed      - Seed database with sample data"
+echo "   npm run db:reset     - Reset database"
+echo ""
+
+---
+# ===================================
+# .env.example
+# ===================================
+
+# Application Configuration
+NODE_ENV=production
+PORT=3000
+APP_VERSION=1.0.0
+API_URL=https://api.fadedskies.com
+CLIENT_URL=https://app.fadedskies.com
+
+# Database Configuration
+DATABASE_URL=postgresql://username:password@host:5432/faded_skies_prod
+REDIS_URL=redis://username:password@host:6379
+
+# Security Configuration
+JWT_SECRET=your-super-secure-jwt-secret-minimum-32-characters
+JWT_REFRESH_SECRET=your-refresh-token-secret
+JWT_EXPIRES_IN=24h
+BCRYPT_ROUNDS=12
+
+# Payment Processing
+STRIPE_SECRET_KEY=sk_live_your_stripe_secret_key
+STRIPE_PUBLISHABLE_KEY=pk_live_your_stripe_publishable_key
+STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
+
+# AWS Services
+AWS_ACCESS_KEY_ID=your_aws_access_key
+AWS_SECRET_ACCESS_KEY=your_aws_secret_key
+AWS_REGION=us-west-2
+AWS_S3_BUCKET=faded-skies-uploads
+
+# External APIs
+GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+FIREBASE_PROJECT_ID=your_firebase_project_id
+
+# Email Configuration
+SMTP_HOST=smtp.sendgrid.net
+SMTP_PORT=587
+SMTP_USER=apikey
+SMTP_PASS=your_sendgrid_api_key
+FROM_EMAIL=noreply@fadedskies.com
+
+# Monitoring & Analytics
+SENTRY_DSN=your_sentry_dsn
+NEW_RELIC_LICENSE_KEY=your_newrelic_license_key
+GOOGLE_ANALYTICS_ID=your_ga_tracking_id
+
+# Cannabis Compliance
+METRC_API_KEY=your_metrc_api_key
+METRC_USER_KEY=your_metrc_user_key
+
+# ID Verification
+JUMIO_API_TOKEN=your_jumio_api_token
+JUMIO_API_SECRET=your_jumio_api_secret
+
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+AUTH_RATE_LIMIT_MAX=5
+
+# Session Configuration
+SESSION_SECRET=your_session_secret
+SESSION_COOKIE_SECURE=true
+SESSION_COOKIE_MAX_AGE=86400000
+
+# Feature Flags
+ENABLE_LIVE_CHAT=true
+ENABLE_REAL_TIME_TRACKING=true
+ENABLE_PUSH_NOTIFICATIONS=true
+ENABLE_EMAIL_NOTIFICATIONS=true
+
+# Development Only
+DEBUG=faded-skies:*
+LOG_LEVEL=info
+
+---
+# ===================================
+# terraform/main.tf
+# ===================================
+
+terraform {
+  required_version = ">= 1.0"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.23"
+    }
+  }
+  
+  backend "s3" {
+    bucket = "faded-skies-terraform-state"
+    key    = "infrastructure/terraform.tfstate"
+    region = "us-west-2"
+  }
+}
+
+provider "aws" {
+  region = var.aws_region
+  
+  default_tags {
+    tags = {
+      Project     = "faded-skies"
+      Environment = var.environment
+      ManagedBy   = "terraform"
+    }
+  }
+}
+
+# VPC Configuration
+module "vpc" {
+  source = "terraform-aws-modules/vpc/aws"
+  
+  name = "faded-skies-vpc"
+  cidr = "10.0.0.0/16"
+  
+  azs             = ["${var.aws_region}a", "${var.aws_region}b", "${var.aws_region}c"]
+  private_subnets = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
+  
+  enable_nat_gateway = true
+  enable_vpn_gateway = false
+  enable_dns_hostnames = true
+  enable_dns_support = true
+  
+  tags = {
+    Name = "faded-skies-vpc"
+  }
+}
+
+# EKS Cluster
+module "eks" {
+  source = "terraform-aws-modules/eks/aws"
+  
+  cluster_name    = "faded-skies-cluster"
+  cluster_version = "1.28"
+  
+  vpc_id     = module.vpc.vpc_id
+  subnet_ids = module.vpc.private_subnets
+  
+  # Enable IRSA
+  enable_irsa = true
+  
+  # Cluster endpoint access
+  cluster_endpoint_private_access = true
+  cluster_endpoint_public_access  = true
+  cluster_endpoint_public_access_cidrs = ["0.0.0.0/0"]
+  
+  # Node groups
+  eks_managed_node_groups = {
+    main = {
+      min_size       = 2
+      max_size       = 10
+      desired_size   = 3
+      instance_types = ["t3.medium"]
+      
+      k8s_labels = {
+        Environment = var.environment
+        Application = "faded-skies"
+      }
+    }
+  }
+  
+  tags = {
+    Name = "faded-skies-eks-cluster"
+  }
+}
+
+# RDS PostgreSQL
+resource "aws_db_instance" "postgresql" {
+  identifier     = "faded-skies-postgres"
+  engine         = "postgres"
+  engine_version = "15.4"
+  instance_class = "db.t3.micro"
+  
+  allocated_storage     = 20
+  max_allocated_storage = 100
+  storage_type          = "gp2"
+  storage_encrypted     = true
+  
+  db_name  = "faded_skies"
+  username = "postgres"
+  password = var.db_password
+  
+  vpc_security_group_ids = [aws_security_group.rds.id]
+  db_subnet_group_name   = aws_db_subnet_group.postgresql.name
+  
+  backup_retention_period = 7
+  backup_window          = "03:00-04:00"
+  maintenance_window     = "sun:04:00-sun:05:00"
+  
+  skip_final_snapshot = var.environment != "production"
+  deletion_protection = var.environment == "production"
+  
+  tags = {
+    Name = "faded-skies-postgresql"
+  }
+}
+
+# ElastiCache Redis
+resource "aws_elasticache_subnet_group" "redis" {
+  name       = "faded-skies-redis"
+  subnet_ids = module.vpc.private_subnets
+}
+
+resource "aws_elasticache_replication_group" "redis" {
+  replication_group_id       = "faded-skies-redis"
+  description                = "Redis cluster for Faded Skies"
+  
+  node_type            = "cache.t3.micro"
+  port                 = 6379
+  parameter_group_name = "default.redis7"
+  
+  num_cache_clusters = 2
+  
+  subnet_group_name  = aws_elasticache_subnet_group.redis.name
+  security_group_ids = [aws_security_group.redis.id]
+  
+  at_rest_encryption_enabled = true
+  transit_encryption_enabled = true
+  
+  tags = {
+    Name = "faded-skies-redis"
+  }
+}
+
+# S3 Bucket for file uploads
+resource "aws_s3_bucket" "uploads" {
+  bucket = "faded-skies-uploads-${var.environment}"
+  
+  tags = {
+    Name = "faded-skies-uploads"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "uploads" {
+  bucket = aws_s3_bucket.uploads.id
+  
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "uploads" {
+  bucket = aws_s3_bucket.uploads.id
+  
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+# Variables
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+  default     = "us-west-2"
+}
+
+variable "environment" {
+  description = "Environment name"
+  type        = string
+  default     = "production"
+}
+
+variable "db_password" {
+  description = "Database password"
+  type        = string
+  sensitive   = true
+}
+
+# Outputs
+output "cluster_endpoint" {
+  description = "EKS cluster endpoint"
+  value       = module.eks.cluster_endpoint
+}
+
+output "database_endpoint" {
+  description = "RDS instance endpoint"
+  value       = aws_db_instance.postgresql.endpoint
+  sensitive   = true
+}
+
+output "redis_endpoint" {
+  description = "Redis cluster endpoint"
+  value       = aws_elasticache_replication_group.redis.primary_endpoint_address
+  sensitive   = true
+}

@@ -1,0 +1,672 @@
+# Faded Skies Backend API Documentation
+
+## Overview
+
+This is the backend API for the Faded Skies cannabis delivery platform, supporting customer apps, driver apps, and admin portals with real-time features.
+
+## Features
+
+- **Multi-app Authentication** (Customer, Driver, Admin)
+- **Real-time Order Tracking** via Socket.io
+- **Geolocation Services** for driver matching and routing
+- **File Upload Management** for documents and photos
+- **Payment Processing** integration ready
+- **Comprehensive Analytics** and monitoring
+- **Automated Notifications** (Email/SMS)
+- **Scalable Architecture** with Docker support
+
+## Tech Stack
+
+- **Runtime**: Node.js 18+
+- **Framework**: Express.js
+- **Database**: MongoDB with Mongoose ODM
+- **Real-time**: Socket.io
+- **Authentication**: JWT
+- **File Storage**: Cloudinary
+- **Testing**: Jest + Supertest
+- **Containerization**: Docker + Docker Compose
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 18+
+- MongoDB 6.0+
+- Redis (optional, for caching)
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/your-org/faded-skies-backend.git
+cd faded-skies-backend
+
+# Install dependencies
+npm install
+
+# Copy environment file
+cp .env.example .env
+# Edit .env with your configuration
+
+# Seed the database
+npm run seed
+
+# Start development server
+npm run dev
+```
+
+### Docker Setup
+
+```bash
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f backend
+
+# Stop services
+docker-compose down
+```
+
+## API Endpoints
+
+### Authentication
+
+#### Customer Registration
+```http
+POST /api/auth/register/customer
+Content-Type: application/json
+
+{
+  "email": "customer@example.com",
+  "password": "password123",
+  "phone": "(555) 123-4567",
+  "firstName": "John",
+  "lastName": "Doe",
+  "dateOfBirth": "1990-01-01"
+}
+```
+
+#### Customer Login
+```http
+POST /api/auth/login/customer
+Content-Type: application/json
+
+{
+  "email": "customer@example.com",
+  "password": "password123"
+}
+```
+
+#### Driver Registration
+```http
+POST /api/auth/register/driver
+Content-Type: application/json
+
+{
+  "email": "driver@example.com",
+  "password": "password123",
+  "phone": "(555) 987-6543",
+  "firstName": "Jane",
+  "lastName": "Smith",
+  "dateOfBirth": "1985-05-15",
+  "driversLicense": {
+    "number": "DL123456789",
+    "state": "TX",
+    "expiryDate": "2026-05-15"
+  },
+  "vehicle": {
+    "make": "Toyota",
+    "model": "Prius",
+    "year": 2020,
+    "color": "Blue",
+    "licensePlate": "ABC123"
+  }
+}
+```
+
+#### Driver Login
+```http
+POST /api/auth/login/driver
+Content-Type: application/json
+
+{
+  "email": "driver@example.com",
+  "password": "password123"
+}
+```
+
+### Customer Endpoints
+
+#### Get Products
+```http
+GET /api/customers/products?category=flower&page=1&limit=20
+Authorization: Bearer {token}
+```
+
+#### Place Order
+```http
+POST /api/customers/orders
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "productId": "507f1f77bcf86cd799439011",
+      "quantity": 1,
+      "unit": "gram"
+    }
+  ],
+  "deliveryAddress": {
+    "street": "123 Main St",
+    "city": "Austin",
+    "state": "TX",
+    "zipCode": "78701",
+    "coordinates": {
+      "lat": 30.2672,
+      "lng": -97.7431
+    }
+  },
+  "paymentMethod": {
+    "type": "card",
+    "last4": "4242"
+  },
+  "specialInstructions": "Leave at door"
+}
+```
+
+#### Track Order
+```http
+GET /api/customers/orders/{orderId}/track
+Authorization: Bearer {token}
+```
+
+### Driver Endpoints
+
+#### Get Available Orders
+```http
+GET /api/drivers/orders/available
+Authorization: Bearer {token}
+```
+
+#### Accept Order
+```http
+POST /api/drivers/orders/{orderId}/accept
+Authorization: Bearer {token}
+```
+
+#### Update Order Status
+```http
+PUT /api/drivers/orders/{orderId}/status
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "status": "picked_up"
+}
+```
+
+#### Update Location
+```http
+POST /api/drivers/location
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "lat": 30.2672,
+  "lng": -97.7431,
+  "heading": 45,
+  "speed": 25
+}
+```
+
+#### Toggle Online Status
+```http
+POST /api/drivers/status
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "isOnline": true
+}
+```
+
+### Admin Endpoints
+
+#### Dashboard Stats
+```http
+GET /api/admin/dashboard
+Authorization: Bearer {token}
+```
+
+#### Get All Orders
+```http
+GET /api/admin/orders?status=pending&page=1&limit=50
+Authorization: Bearer {token}
+```
+
+#### Approve Driver
+```http
+PUT /api/admin/drivers/{driverId}/status
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "status": "approved",
+  "notes": "Background check passed"
+}
+```
+
+#### Analytics Report
+```http
+GET /api/admin/analytics?period=7d
+Authorization: Bearer {token}
+```
+
+### File Upload Endpoints
+
+#### Driver Profile Photo
+```http
+POST /api/files/driver/profile-photo
+Authorization: Bearer {token}
+Content-Type: multipart/form-data
+
+photo: [file]
+```
+
+#### Delivery Photo
+```http
+POST /api/files/orders/{orderId}/delivery-photo
+Authorization: Bearer {token}
+Content-Type: multipart/form-data
+
+photo: [file]
+```
+
+## Socket.io Events
+
+### Client → Server Events
+
+#### Driver Connection
+```javascript
+socket.emit('driver_connect', {
+  driverId: 'driver_001',
+  location: { lat: 30.2672, lng: -97.7431 }
+});
+```
+
+#### Location Update
+```javascript
+socket.emit('driver_location_update', {
+  driverId: 'driver_001',
+  location: { lat: 30.2672, lng: -97.7431 },
+  speed: 25,
+  heading: 45
+});
+```
+
+#### Order Status Update
+```javascript
+socket.emit('order_status_update', {
+  orderId: 'order_123',
+  status: 'in_transit',
+  driverId: 'driver_001'
+});
+```
+
+#### Accept Order
+```javascript
+socket.emit('accept_order', {
+  orderId: 'order_123',
+  driverId: 'driver_001'
+});
+```
+
+### Server → Client Events
+
+#### New Order Available (to drivers)
+```javascript
+socket.on('new_order_available', (data) => {
+  console.log('New order:', data.orderId);
+  // Show order notification in driver app
+});
+```
+
+#### Order Status Update (to customers)
+```javascript
+socket.on('order_status_update', (data) => {
+  console.log('Order status:', data.status);
+  // Update order tracking in customer app
+});
+```
+
+#### Driver Location Update (to customers)
+```javascript
+socket.on('driver_location_update', (data) => {
+  console.log('Driver location:', data.location);
+  // Update map in customer app
+});
+```
+
+#### System Status (to admins)
+```javascript
+socket.on('system_status', (data) => {
+  console.log('System metrics:', data);
+  // Update admin dashboard
+});
+```
+
+## Database Models
+
+### User (Customer)
+```javascript
+{
+  email: String,
+  password: String, // hashed
+  phone: String,
+  firstName: String,
+  lastName: String,
+  dateOfBirth: Date,
+  addresses: [AddressSchema],
+  paymentMethods: [PaymentMethodSchema],
+  orderHistory: [ObjectId],
+  medicalRecommendation: {
+    hasRecommendation: Boolean,
+    verificationStatus: String
+  },
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+### Driver
+```javascript
+{
+  email: String,
+  password: String, // hashed
+  phone: String,
+  firstName: String,
+  lastName: String,
+  dateOfBirth: Date,
+  driversLicense: {
+    number: String,
+    state: String,
+    expiryDate: Date,
+    isVerified: Boolean
+  },
+  vehicle: VehicleSchema,
+  rating: Number,
+  totalDeliveries: Number,
+  isOnline: Boolean,
+  currentLocation: {
+    lat: Number,
+    lng: Number
+  },
+  earnings: EarningsSchema,
+  status: String, // pending, approved, suspended
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+### Order
+```javascript
+{
+  orderNumber: String, // auto-generated
+  customerId: ObjectId,
+  driverId: ObjectId,
+  items: [OrderItemSchema],
+  subtotal: Number,
+  taxes: Number,
+  deliveryFee: Number,
+  tip: Number,
+  total: Number,
+  deliveryAddress: AddressSchema,
+  paymentMethod: PaymentMethodSchema,
+  status: String, // pending, accepted, picked_up, in_transit, delivered
+  placedAt: Date,
+  acceptedAt: Date,
+  pickedUpAt: Date,
+  deliveredAt: Date,
+  driverCompensation: {
+    basePay: Number,
+    mileagePay: Number,
+    tip: Number,
+    total: Number
+  },
+  tracking: {
+    driverLocation: LocationSchema,
+    estimatedArrival: Date,
+    deliveryPhotos: [String]
+  },
+  messages: [MessageSchema],
+  customerRating: RatingSchema
+}
+```
+
+## Environment Variables
+
+```bash
+# Server
+NODE_ENV=development
+PORT=5000
+
+# Database
+MONGODB_URI=mongodb://localhost:27017/faded_skies
+
+# Authentication
+JWT_SECRET=your_super_secret_jwt_key
+
+# External Services
+STRIPE_SECRET_KEY=sk_test_...
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+
+# Notifications
+EMAIL_SERVICE=gmail
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASS=your_app_password
+TWILIO_ACCOUNT_SID=your_twilio_sid
+TWILIO_AUTH_TOKEN=your_twilio_token
+TWILIO_PHONE_NUMBER=+1234567890
+
+# Google Services
+GOOGLE_MAPS_API_KEY=your_google_maps_key
+
+# Security
+CORS_ORIGIN=http://localhost:3000,http://localhost:3001
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX=100
+```
+
+## Error Handling
+
+The API uses consistent error response format:
+
+```json
+{
+  "message": "Error description",
+  "errors": [
+    {
+      "field": "email",
+      "message": "Email is required"
+    }
+  ],
+  "code": "VALIDATION_ERROR"
+}
+```
+
+### HTTP Status Codes
+
+- `200` - Success
+- `201` - Created
+- `400` - Bad Request (validation errors)
+- `401` - Unauthorized (invalid/missing token)
+- `403` - Forbidden (insufficient permissions)
+- `404` - Not Found
+- `429` - Too Many Requests (rate limited)
+- `500` - Internal Server Error
+
+## Testing
+
+```bash
+# Run all tests
+npm test
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run specific test file
+npm test tests/auth.test.js
+
+# Run tests in watch mode
+npm test -- --watch
+```
+
+### Test Structure
+
+```
+tests/
+├── setup.js          # Test configuration
+├── auth.test.js       # Authentication tests
+├── orders.test.js     # Order management tests
+├── drivers.test.js    # Driver functionality tests
+├── admin.test.js      # Admin portal tests
+└── integration/       # End-to-end tests
+```
+
+## Deployment
+
+### Production Environment
+
+```bash
+# Build and start with Docker
+docker-compose -f docker-compose.prod.yml up -d
+
+# Or deploy with PM2
+npm install -g pm2
+pm2 start ecosystem.config.js --env production
+```
+
+### Environment Setup
+
+1. **Database**: MongoDB Atlas or self-hosted
+2. **File Storage**: Cloudinary account
+3. **Email Service**: Gmail or SendGrid
+4. **SMS Service**: Twilio account
+5. **Maps**: Google Maps API key
+6. **SSL Certificate**: Let's Encrypt or CloudFlare
+
+### Monitoring
+
+The API includes health checks and monitoring:
+
+```http
+GET /api/health          # Basic health check
+GET /api/health/detailed # Detailed system information
+```
+
+### Performance Considerations
+
+- **Database Indexing**: Geospatial indexes for location queries
+- **Connection Pooling**: MongoDB connection optimization
+- **Rate Limiting**: API endpoint protection
+- **Caching**: Redis for session management
+- **Load Balancing**: Nginx reverse proxy
+- **File Optimization**: Cloudinary automatic optimization
+
+## Security Features
+
+- **JWT Authentication** with secure token handling
+- **Password Hashing** with bcrypt
+- **Input Validation** with express-validator
+- **Rate Limiting** to prevent abuse
+- **CORS Configuration** for cross-origin requests
+- **Security Headers** via Helmet.js
+- **File Upload Validation** for document security
+
+## Integration Examples
+
+### Customer App Integration
+
+```javascript
+// Customer app socket connection
+import io from 'socket.io-client';
+
+const socket = io('http://localhost:5000');
+
+socket.emit('customer_connect', { customerId: user.id });
+
+socket.on('order_status_update', (data) => {
+  updateOrderStatus(data.status);
+});
+
+socket.on('driver_location_update', (data) => {
+  updateDriverLocation(data.location);
+});
+```
+
+### Driver App Integration
+
+```javascript
+// Driver app with location tracking
+const socket = io('http://localhost:5000');
+
+socket.emit('driver_connect', {
+  driverId: driver.id,
+  location: { lat: 30.2672, lng: -97.7431 }
+});
+
+// Send location updates every 10 seconds
+setInterval(() => {
+  navigator.geolocation.getCurrentPosition((position) => {
+    socket.emit('driver_location_update', {
+      driverId: driver.id,
+      location: {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude
+      },
+      speed: position.coords.speed,
+      heading: position.coords.heading
+    });
+  });
+}, 10000);
+```
+
+### Admin Portal Integration
+
+```javascript
+// Admin real-time dashboard
+const socket = io('http://localhost:5000');
+
+socket.emit('admin_connect', { adminId: admin.id });
+
+socket.on('metrics_update', (metrics) => {
+  updateDashboard(metrics);
+});
+
+socket.on('new_order_placed', (order) => {
+  addOrderToQueue(order);
+});
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Write tests for new functionality
+4. Ensure all tests pass
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License.
+
+## Support
+
+For technical support or questions:
+- Email: dev@fadedskies.com
+- Documentation: https://docs.fadedskies.com
+- Issues: https://github.com/your-org/faded-skies-backend/issues
