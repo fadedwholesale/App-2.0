@@ -2,6 +2,7 @@
   "name": "faded-skies-cannabis-delivery",
   "version": "1.0.0",
   "description": "Cannabis delivery platform with user, driver, and admin applications",
+  "type": "module",
   "private": true,
   "scripts": {
     "dev": "vite",
