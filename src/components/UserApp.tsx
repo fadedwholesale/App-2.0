@@ -1354,6 +1354,173 @@ const FadedSkiesApp = () => {
             </div>
           )}
 
+          {currentView === 'support' && (
+            <div className="pb-24 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+              <div className="bg-gradient-to-r from-emerald-500 to-green-600 text-white p-6 rounded-b-3xl shadow-xl">
+                <h1 className="text-3xl font-bold mb-2">Support Center</h1>
+                <p className="text-green-100 text-lg">We're here to help 24/7</p>
+              </div>
+
+              <div className="p-6 space-y-6">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-3xl p-6 border border-blue-100">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <MessageCircle className="w-8 h-8 text-blue-600" />
+                    <div>
+                      <h3 className="font-bold text-xl text-blue-900">Live Chat</h3>
+                      <p className="text-blue-700">Get instant help from our team</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => alert('Live chat would open here')}
+                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-bold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl"
+                  >
+                    Start Chat
+                  </button>
+                </div>
+
+                <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100">
+                  <h3 className="font-bold text-xl text-gray-900 mb-4">Quick Help</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    {[
+                      { title: 'Order Status', icon: '📦', color: 'from-green-400 to-emerald-500' },
+                      { title: 'Payment Issues', icon: '💳', color: 'from-blue-400 to-cyan-500' },
+                      { title: 'Product Info', icon: '🌿', color: 'from-purple-400 to-violet-500' },
+                      { title: 'Account Help', icon: '👤', color: 'from-orange-400 to-amber-500' }
+                    ].map((item, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => alert(`${item.title} help would be shown here`)}
+                        className={`bg-gradient-to-r ${item.color} text-white p-4 rounded-2xl text-center hover:scale-105 transition-all shadow-lg hover:shadow-xl`}
+                      >
+                        <div className="text-2xl mb-2">{item.icon}</div>
+                        <div className="font-bold text-sm">{item.title}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100">
+                  <h3 className="font-bold text-xl text-gray-900 mb-4">Frequently Asked Questions</h3>
+                  <div className="space-y-4">
+                    {[
+                      {
+                        question: 'How long does delivery take?',
+                        answer: 'Most orders arrive within 1-2 hours. Same-day delivery available until 10 PM.'
+                      },
+                      {
+                        question: 'What payment methods do you accept?',
+                        answer: 'We accept cash, debit cards, Apple Pay, Google Pay, and FS Coins.'
+                      },
+                      {
+                        question: 'Do I need to show ID upon delivery?',
+                        answer: 'Yes, valid government-issued ID is required for all deliveries to verify age (21+).'
+                      },
+                      {
+                        question: 'Can I track my order?',
+                        answer: 'Yes! You can track your order in real-time in the Orders tab.'
+                      }
+                    ].map((faq, index) => (
+                      <div key={index} className="border border-gray-200 rounded-2xl p-4 hover:bg-gray-50 transition-colors">
+                        <h4 className="font-bold text-gray-900 mb-2">{faq.question}</h4>
+                        <p className="text-gray-600 text-sm leading-relaxed">{faq.answer}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100">
+                  <h3 className="font-bold text-xl text-gray-900 mb-4">Contact Options</h3>
+                  <div className="space-y-3">
+                    {[
+                      { label: 'Call Support', icon: '📞', subtitle: '(555) 420-FADED' },
+                      { label: 'Email Us', icon: '✉️', subtitle: 'support@fadedskies.com' },
+                      { label: 'Report Issue', icon: '⚠️', subtitle: 'Something went wrong?' },
+                      { label: 'Feedback', icon: '💬', subtitle: 'Help us improve' }
+                    ].map((contact, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => alert(`${contact.label} would be implemented here`)}
+                        className="w-full flex items-center space-x-4 p-4 rounded-xl hover:bg-gray-50 transition-colors text-left"
+                      >
+                        <span className="text-2xl">{contact.icon}</span>
+                        <div className="flex-1">
+                          <div className="font-bold text-gray-900">{contact.label}</div>
+                          <div className="text-sm text-gray-600">{contact.subtitle}</div>
+                        </div>
+                        <span className="text-gray-400">→</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-3xl p-6 border border-emerald-100">
+                  <h3 className="font-bold text-xl text-emerald-900 mb-4">Submit a Ticket</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-emerald-800 mb-2">Subject</label>
+                      <input
+                        type="text"
+                        placeholder="Brief description of your issue..."
+                        className="w-full px-4 py-3 border border-emerald-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-emerald-800 mb-2">Category</label>
+                      <select className="w-full px-4 py-3 border border-emerald-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors bg-white">
+                        <option>Order Issue</option>
+                        <option>Payment Problem</option>
+                        <option>Product Question</option>
+                        <option>Account Issue</option>
+                        <option>Technical Problem</option>
+                        <option>Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-emerald-800 mb-2">Description</label>
+                      <textarea
+                        placeholder="Please describe your issue in detail..."
+                        rows={4}
+                        className="w-full px-4 py-3 border border-emerald-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors bg-white resize-none"
+                      ></textarea>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => alert('Support ticket would be submitted here')}
+                      className="w-full bg-gradient-to-r from-emerald-600 to-green-600 text-white py-4 rounded-xl font-bold hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl"
+                    >
+                      Submit Ticket
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100">
+                  <h3 className="font-bold text-xl text-gray-900 mb-4">Hours & Information</h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                      <span className="font-medium text-gray-700">Support Hours</span>
+                      <span className="font-semibold text-gray-900">24/7</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                      <span className="font-medium text-gray-700">Live Chat</span>
+                      <span className="font-semibold text-green-600">Online</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                      <span className="font-medium text-gray-700">Response Time</span>
+                      <span className="font-semibold text-gray-900">Under 5 minutes</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2">
+                      <span className="font-medium text-gray-700">Languages</span>
+                      <span className="font-semibold text-gray-900">English, Spanish</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Bottom Navigation */}
           <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-200 p-4 flex justify-around shadow-xl">
             {[
