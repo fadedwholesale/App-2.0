@@ -1207,6 +1207,153 @@ const FadedSkiesApp = () => {
             </div>
           )}
 
+          {currentView === 'profile' && (
+            <div className="pb-24 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+              <div className="bg-gradient-to-r from-emerald-500 to-green-600 text-white p-6 rounded-b-3xl shadow-xl">
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+                    <User className="w-10 h-10 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-bold">{user.name}</h1>
+                    <p className="text-green-100 text-lg font-medium">{user.email}</p>
+                    {user.idVerified && (
+                      <div className="flex items-center space-x-1 text-sm bg-green-700/80 backdrop-blur-sm px-3 py-1 rounded-full mt-2">
+                        <CheckCircle className="w-4 h-4" />
+                        <span className="font-semibold">Verified Member</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-6">
+                <div className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-3xl p-6 border border-emerald-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-bold text-xl text-gray-900">FS Rewards</h3>
+                    <span className="font-black text-3xl text-emerald-600">{user.rewards}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white rounded-2xl p-4 text-center shadow-sm">
+                      <div className="text-2xl mb-1">🪙</div>
+                      <p className="text-sm font-semibold text-gray-600">Total Coins</p>
+                      <p className="font-bold text-lg text-gray-900">{user.rewards}</p>
+                    </div>
+                    <div className="bg-white rounded-2xl p-4 text-center shadow-sm">
+                      <div className="text-2xl mb-1">📦</div>
+                      <p className="text-sm font-semibold text-gray-600">Orders</p>
+                      <p className="font-bold text-lg text-gray-900">{orders.length}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => alert('Rewards program details would be shown here')}
+                    className="w-full mt-4 bg-gradient-to-r from-emerald-600 to-green-600 text-white py-3 rounded-xl font-bold hover:from-emerald-700 hover:to-green-700 transition-all"
+                  >
+                    View Rewards Program
+                  </button>
+                </div>
+
+                <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100">
+                  <h3 className="font-bold text-xl text-gray-900 mb-4">Account Information</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                      <span className="font-medium text-gray-700">Full Name</span>
+                      <span className="font-semibold text-gray-900">{user.name}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                      <span className="font-medium text-gray-700">Email</span>
+                      <span className="font-semibold text-gray-900">{user.email}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                      <span className="font-medium text-gray-700">Address</span>
+                      <span className="font-semibold text-gray-900">{user.address}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                      <span className="font-medium text-gray-700">Age</span>
+                      <span className="font-semibold text-gray-900">{user.age} years old</span>
+                    </div>
+                    <div className="flex items-center justify-between py-3">
+                      <span className="font-medium text-gray-700">ID Verification</span>
+                      <span className={`font-semibold ${user.idVerified ? 'text-green-600' : 'text-amber-600'}`}>
+                        {user.idVerified ? '✅ Verified' : '⏳ Pending'}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => alert('Edit profile functionality would be implemented here')}
+                    className="w-full mt-6 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <Edit3 className="w-5 h-5" />
+                    <span>Edit Profile</span>
+                  </button>
+                </div>
+
+                <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100">
+                  <h3 className="font-bold text-xl text-gray-900 mb-4">Preferences</h3>
+                  <div className="space-y-4">
+                    {[
+                      { label: 'Push Notifications', icon: Bell, enabled: true },
+                      { label: 'Email Updates', icon: Bell, enabled: false },
+                      { label: 'SMS Alerts', icon: MessageCircle, enabled: true },
+                      { label: 'Marketing Communications', icon: Bell, enabled: false }
+                    ].map((pref, index) => (
+                      <div key={index} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
+                        <div className="flex items-center space-x-3">
+                          <pref.icon className="w-5 h-5 text-gray-500" />
+                          <span className="font-medium text-gray-700">{pref.label}</span>
+                        </div>
+                        <div className={`w-12 h-6 rounded-full relative transition-colors ${
+                          pref.enabled ? 'bg-emerald-600' : 'bg-gray-300'
+                        }`}>
+                          <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                            pref.enabled ? 'translate-x-7' : 'translate-x-1'
+                          }`}></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100">
+                  <h3 className="font-bold text-xl text-gray-900 mb-4">Security & Privacy</h3>
+                  <div className="space-y-3">
+                    {[
+                      { label: 'Change Password', icon: Shield },
+                      { label: 'Two-Factor Authentication', icon: Shield },
+                      { label: 'Privacy Settings', icon: Shield },
+                      { label: 'Data & Privacy', icon: Shield }
+                    ].map((item, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => alert(`${item.label} would be implemented here`)}
+                        className="w-full flex items-center justify-between py-3 px-4 rounded-xl hover:bg-gray-50 transition-colors text-left"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <item.icon className="w-5 h-5 text-gray-500" />
+                          <span className="font-medium text-gray-700">{item.label}</span>
+                        </div>
+                        <span className="text-gray-400">→</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100">
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="w-full bg-red-500 text-white py-4 rounded-xl font-bold hover:bg-red-600 transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Bottom Navigation */}
           <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-200 p-4 flex justify-around shadow-xl">
             {[
