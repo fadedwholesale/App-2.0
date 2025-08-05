@@ -1094,6 +1094,119 @@ const FadedSkiesApp = () => {
             </div>
           )}
 
+          {currentView === 'orders' && (
+            <div className="pb-24 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+              <div className="bg-gradient-to-r from-emerald-500 to-green-600 text-white p-6 rounded-b-3xl shadow-xl">
+                <h1 className="text-3xl font-bold mb-2">Your Orders</h1>
+                <p className="text-green-100 text-lg">{orders.length} order{orders.length !== 1 ? 's' : ''} total</p>
+              </div>
+
+              <div className="p-6">
+                {orders.length === 0 ? (
+                  <div className="text-center py-16">
+                    <div className="w-32 h-32 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
+                      <Truck className="w-16 h-16 text-gray-400" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-3">No orders yet</h3>
+                    <p className="text-gray-600 mb-8 text-lg">Start shopping to see your orders here</p>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentView('home')}
+                      className="bg-gradient-to-r from-emerald-600 to-green-600 text-white px-10 py-5 rounded-2xl font-bold text-lg hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
+                    >
+                      🌿 Start Shopping
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {orders.map(order => (
+                      <div key={order.id} className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all">
+                        <div className="flex items-start justify-between mb-4">
+                          <div>
+                            <h3 className="font-bold text-xl text-gray-900 mb-1">{order.id}</h3>
+                            <p className="text-gray-600 font-medium">{order.date}</p>
+                          </div>
+                          <div className="text-right">
+                            <div className={`px-4 py-2 rounded-full text-sm font-bold mb-2 ${
+                              order.status === 'delivered'
+                                ? 'bg-green-100 text-green-800'
+                                : order.status === 'in-transit'
+                                ? 'bg-blue-100 text-blue-800'
+                                : order.status === 'preparing'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {order.status === 'delivered' && '✅ Delivered'}
+                              {order.status === 'in-transit' && '🚚 In Transit'}
+                              {order.status === 'preparing' && '📦 Preparing'}
+                              {order.status === 'cancelled' && '❌ Cancelled'}
+                            </div>
+                            <p className="font-black text-xl text-gray-900">${order.total.toFixed(2)}</p>
+                          </div>
+                        </div>
+
+                        <div className="mb-4">
+                          <h4 className="font-semibold text-gray-900 mb-2">Items:</h4>
+                          <div className="space-y-1">
+                            {order.items.map((item, index) => (
+                              <p key={index} className="text-gray-600 text-sm">• {item}</p>
+                            ))}
+                          </div>
+                        </div>
+
+                        {order.status === 'in-transit' && order.currentLocation && (
+                          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 mb-4 border border-blue-100">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+                              <div>
+                                <p className="font-semibold text-blue-900">Driver is {order.currentLocation}</p>
+                                <p className="text-blue-700 text-sm">ETA: {order.estimatedDelivery}</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="bg-gray-50 rounded-2xl p-4 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-gray-700">Driver:</span>
+                            <span className="font-semibold text-gray-900">{order.driver}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-gray-700">Vehicle:</span>
+                            <span className="font-semibold text-gray-900">{order.vehicle}</span>
+                          </div>
+                          {order.deliveredAt && (
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium text-gray-700">Delivered:</span>
+                              <span className="font-semibold text-green-600">{order.deliveredAt}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex space-x-3 mt-4">
+                          <button
+                            type="button"
+                            onClick={() => alert('Reorder functionality would be implemented here')}
+                            className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 text-white py-3 rounded-xl font-bold hover:from-emerald-700 hover:to-green-700 transition-all"
+                          >
+                            Reorder
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => alert('Order details would be shown here')}
+                            className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+                          >
+                            View Details
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Bottom Navigation */}
           <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-200 p-4 flex justify-around shadow-xl">
             {[
