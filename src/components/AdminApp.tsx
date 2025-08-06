@@ -869,13 +869,7 @@ const FadedSkiesTrackingAdmin = () => {
       case 'analytics':
         return <AnalyticsView />;
       case 'settings':
-        return (
-          <div className="text-center py-16">
-            <Settings className="w-24 h-24 text-gray-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">System Settings</h2>
-            <p className="text-gray-600">Configuration options coming soon</p>
-          </div>
-        );
+        return <SettingsView />;
       default:
         return <DashboardView />;
     }
