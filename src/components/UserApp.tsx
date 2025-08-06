@@ -1043,6 +1043,181 @@ const LiveChatModal = React.memo(({
   );
 });
 
+// Quick Help Modal Component
+const QuickHelpModal = React.memo(({
+  isOpen,
+  onClose,
+  helpType
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  helpType: string;
+}) => {
+  const getHelpContent = () => {
+    switch (helpType) {
+      case 'Order Status':
+        return {
+          title: 'Order Status Help',
+          icon: '📦',
+          content: [
+            {
+              question: 'How do I track my order?',
+              answer: 'Go to the Orders tab to see real-time tracking of your delivery. You\'ll see your driver\'s location and estimated arrival time.'
+            },
+            {
+              question: 'What do the different statuses mean?',
+              answer: 'Preparing: Your order is being packed\nIn Transit: Driver is on the way\nDelivered: Order has been completed'
+            },
+            {
+              question: 'My order is taking longer than expected',
+              answer: 'Delivery times may vary due to traffic or high demand. If your order is significantly delayed, contact support for updates.'
+            },
+            {
+              question: 'Can I change my delivery address?',
+              answer: 'Address changes are only possible before your order enters "In Transit" status. Contact support immediately if needed.'
+            }
+          ]
+        };
+
+      case 'Payment Issues':
+        return {
+          title: 'Payment Issues Help',
+          icon: '💳',
+          content: [
+            {
+              question: 'What payment methods do you accept?',
+              answer: 'We accept cash on delivery, debit cards, Apple Pay, Google Pay, Aeropay, and FS Coins (rewards).'
+            },
+            {
+              question: 'My payment was declined',
+              answer: 'Check that your card details are correct and you have sufficient funds. Some banks block cannabis purchases - contact your bank if needed.'
+            },
+            {
+              question: 'Can I pay with credit cards?',
+              answer: 'Due to federal banking regulations, we cannot accept credit cards for cannabis purchases. Debit cards and other methods are available.'
+            },
+            {
+              question: 'How do I use FS Coins?',
+              answer: 'FS Coins can be applied at checkout. 100 FS Coins = $1. You earn coins with every purchase and through our rewards program.'
+            }
+          ]
+        };
+
+      case 'Product Info':
+        return {
+          title: 'Product Information Help',
+          icon: '🌿',
+          content: [
+            {
+              question: 'How do I know if a product is right for me?',
+              answer: 'Check the THC/CBD levels, strain type (Sativa/Indica/Hybrid), and effects listed. Start with lower doses if you\'re new to cannabis.'
+            },
+            {
+              question: 'What does "Lab Tested" mean?',
+              answer: 'Lab tested products have been analyzed for potency, pesticides, heavy metals, and other contaminants to ensure safety and quality.'
+            },
+            {
+              question: 'What\'s the difference between Sativa, Indica, and Hybrid?',
+              answer: 'Sativa: Energizing, creative effects\nIndica: Relaxing, sedating effects\nHybrid: Balanced combination of both'
+            },
+            {
+              question: 'How should I store cannabis products?',
+              answer: 'Keep in a cool, dry place away from children and pets. Edibles should be refrigerated. Flower should be in airtight containers.'
+            }
+          ]
+        };
+
+      case 'Account Help':
+        return {
+          title: 'Account Help',
+          icon: '👤',
+          content: [
+            {
+              question: 'How do I verify my age/ID?',
+              answer: 'Upload a clear photo of your government-issued ID through the verification process. You must be 21+ to use our service.'
+            },
+            {
+              question: 'I forgot my password',
+              answer: 'Use the "Forgot Password" link on the login screen to reset your password via email.'
+            },
+            {
+              question: 'How do I update my delivery address?',
+              answer: 'Go to Profile > Edit Profile to update your delivery address. Make sure it\'s within our delivery zone.'
+            },
+            {
+              question: 'How do I delete my account?',
+              answer: 'Contact support to request account deletion. This will permanently remove all your data and cannot be undone.'
+            }
+          ]
+        };
+
+      default:
+        return {
+          title: 'Help',
+          icon: '❓',
+          content: []
+        };
+    }
+  };
+
+  const helpContent = getHelpContent();
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title={helpContent.title}>
+      <div className="space-y-6">
+        <div className="text-center">
+          <div className="text-6xl mb-4">{helpContent.icon}</div>
+          <p className="text-gray-600">Find answers to common questions about {helpType.toLowerCase()}</p>
+        </div>
+
+        <div className="space-y-4">
+          {helpContent.content.map((item, index) => (
+            <div key={index} className="border border-gray-200 rounded-2xl p-4 hover:bg-gray-50 transition-colors">
+              <h4 className="font-bold text-gray-900 mb-2">{item.question}</h4>
+              <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{item.answer}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="bg-blue-50 rounded-xl p-4">
+          <h4 className="font-semibold text-blue-900 mb-2">Still need help?</h4>
+          <p className="text-blue-800 text-sm mb-3">If you couldn\'t find the answer you\'re looking for, our support team is here to help.</p>
+          <div className="flex space-x-3">
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                // This would open live chat
+              }}
+              className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-sm"
+            >
+              Start Live Chat
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                // This would open ticket form
+              }}
+              className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-200 transition-colors text-sm"
+            >
+              Submit Ticket
+            </button>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+        >
+          Close
+        </button>
+      </div>
+    </Modal>
+  );
+});
+
 // ProductCard component - moved outside
 const ProductCard = React.memo(({ product, addToCart, addingToCart }: { 
   product: Product; 
@@ -2018,7 +2193,7 @@ const FadedSkiesApp = () => {
                     <div className="grid grid-cols-2 gap-4">
                       {[
                         { name: "Driver's License", icon: "🚗" },
-                        { name: "State ID Card", icon: "���" },
+                        { name: "State ID Card", icon: "🆔" },
                         { name: "Passport", icon: "📘" },
                         { name: "Military ID", icon: "🎖️" }
                       ].map(idType => (
@@ -2446,7 +2621,7 @@ const FadedSkiesApp = () => {
                   <h3 className="font-bold text-xl text-gray-900 mb-4">Contact Options</h3>
                   <div className="space-y-3">
                     {[
-                      { label: 'Call Support', icon: '📞', subtitle: '(555) 420-FADED' },
+                      { label: 'Call Support', icon: '����', subtitle: '(555) 420-FADED' },
                       { label: 'Email Us', icon: '✉️', subtitle: 'support@fadedskies.com' },
                       { label: 'Report Issue', icon: '⚠️', subtitle: 'Something went wrong?' },
                       { label: 'Feedback', icon: '💬', subtitle: 'Help us improve' }
