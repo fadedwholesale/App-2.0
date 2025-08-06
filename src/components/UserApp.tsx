@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 import { 
   ShoppingCart, 
   User, 
@@ -2186,6 +2188,253 @@ const ReorderModal = React.memo(({
         </div>
       </div>
     </Modal>
+  );
+});
+
+// Live Order Tracking Modal Component
+const LiveTrackingModal = React.memo(({
+  isOpen,
+  onClose,
+  order
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  order: Order | null;
+}) => {
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
+  const driverMarker = useRef<mapboxgl.Marker | null>(null);
+  const destinationMarker = useRef<mapboxgl.Marker | null>(null);
+  const [driverLocation, setDriverLocation] = useState(order?.driverLocation || null);
+  const [eta, setEta] = useState(order?.estimatedDelivery || 'Calculating...');
+  const [distance, setDistance] = useState('Calculating...');
+
+  // Simulated live updates
+  useEffect(() => {
+    if (!isOpen || !order?.driverLocation) return;
+
+    const interval = setInterval(() => {
+      // Simulate driver movement (small random changes)
+      setDriverLocation(prev => {
+        if (!prev) return null;
+
+        const deltaLat = (Math.random() - 0.5) * 0.001; // ~100m max change
+        const deltaLng = (Math.random() - 0.5) * 0.001;
+
+        return {
+          lat: prev.lat + deltaLat,
+          lng: prev.lng + deltaLng,
+          lastUpdated: new Date()
+        };
+      });
+
+      // Update ETA simulation
+      const etas = ['5-8 minutes', '8-12 minutes', '12-15 minutes', '3-5 minutes'];
+      setEta(etas[Math.floor(Math.random() * etas.length)]);
+
+      // Update distance simulation
+      const distances = ['0.3 miles', '0.5 miles', '0.7 miles', '0.2 miles'];
+      setDistance(distances[Math.floor(Math.random() * distances.length)]);
+    }, 5000); // Update every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [isOpen, order]);
+
+  // Initialize Mapbox
+  useEffect(() => {
+    if (!isOpen || !mapContainer.current || !order?.driverLocation) return;
+
+    // Set your Mapbox access token here
+    mapboxgl.accessToken = 'pk.eyJ1IjoiZmFkZWQtc2tpZXMiLCJhIjoiY2xkZW1vY2RtMDQzNDNycWxpbWVkb201NSJ9.demo_token'; // Replace with actual token
+
+    // Initialize map
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [order.driverLocation.lng, order.driverLocation.lat],
+      zoom: 14
+    });
+
+    // Add navigation controls
+    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+    // Add destination marker (user's location)
+    const destinationEl = document.createElement('div');
+    destinationEl.className = 'destination-marker';
+    destinationEl.innerHTML = '🏠';
+    destinationEl.style.fontSize = '24px';
+
+    destinationMarker.current = new mapboxgl.Marker(destinationEl)
+      .setLngLat([order.driverLocation.lng + 0.005, order.driverLocation.lat + 0.005]) // Simulate destination
+      .addTo(map.current);
+
+    // Add driver marker
+    const driverEl = document.createElement('div');
+    driverEl.className = 'driver-marker';
+    driverEl.innerHTML = '🚚';
+    driverEl.style.fontSize = '24px';
+
+    driverMarker.current = new mapboxgl.Marker(driverEl)
+      .setLngLat([order.driverLocation.lng, order.driverLocation.lat])
+      .addTo(map.current);
+
+    return () => {
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+    };
+  }, [isOpen, order]);
+
+  // Update driver marker position
+  useEffect(() => {
+    if (driverMarker.current && driverLocation) {
+      driverMarker.current.setLngLat([driverLocation.lng, driverLocation.lat]);
+
+      // Center map on driver if visible
+      if (map.current) {
+        map.current.easeTo({
+          center: [driverLocation.lng, driverLocation.lat],
+          duration: 1000
+        });
+      }
+    }
+  }, [driverLocation]);
+
+  if (!order || !order.driverLocation) {
+    return (
+      <Modal isOpen={isOpen} onClose={onClose} title="Order Tracking">
+        <div className="text-center py-8">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <MapPin className="w-8 h-8 text-gray-400" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">Tracking Not Available</h3>
+          <p className="text-gray-600">Live tracking is only available for orders in transit.</p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="mt-6 bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </Modal>
+    );
+  }
+
+  return (
+    <div className={`fixed inset-0 z-50 ${isOpen ? '' : 'hidden'}`}>
+      <div className="flex flex-col h-full bg-white">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold">Live Tracking</h2>
+            <p className="text-blue-100">{order.id} • {order.driver}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 hover:bg-white/20 rounded-full transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Map Container */}
+        <div className="flex-1 relative">
+          <div ref={mapContainer} className="w-full h-full" />
+
+          {/* Map Overlay - Status */}
+          <div className="absolute top-4 left-4 right-4">
+            <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-gray-200">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="font-bold text-gray-900">Driver en route</span>
+                </div>
+                <span className="text-sm text-gray-500">
+                  Updated {driverLocation?.lastUpdated.toLocaleTimeString()}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-600">ETA</p>
+                  <p className="font-bold text-lg text-gray-900">{eta}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Distance</p>
+                  <p className="font-bold text-lg text-gray-900">{distance}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Map Overlay - Driver Info */}
+          <div className="absolute bottom-4 left-4 right-4">
+            <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-gray-200">
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                  <User className="w-6 h-6 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-bold text-gray-900">{order.driver}</h4>
+                  <p className="text-sm text-gray-600">{order.vehicle}</p>
+                  {order.driverPhone && (
+                    <p className="text-sm text-blue-600">{order.driverPhone}</p>
+                  )}
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => window.open(`tel:${order.driverPhone}`, '_self')}
+                    className="bg-green-500 text-white p-3 rounded-full hover:bg-green-600 transition-colors"
+                  >
+                    <span className="text-lg">📞</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => alert('SMS functionality would open here')}
+                    className="bg-blue-500 text-white p-3 rounded-full hover:bg-blue-600 transition-colors"
+                  >
+                    <MessageCircle className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Actions */}
+        <div className="p-4 bg-gray-50 border-t border-gray-200">
+          <div className="flex space-x-3">
+            <button
+              type="button"
+              onClick={() => {
+                if (map.current && driverLocation) {
+                  map.current.flyTo({
+                    center: [driverLocation.lng, driverLocation.lat],
+                    zoom: 16,
+                    duration: 2000
+                  });
+                }
+              }}
+              className="flex-1 bg-blue-100 text-blue-700 py-3 rounded-xl font-bold hover:bg-blue-200 transition-colors flex items-center justify-center space-x-2"
+            >
+              <MapPin className="w-5 h-5" />
+              <span>Center on Driver</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 });
 
