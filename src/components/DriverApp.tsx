@@ -1764,7 +1764,7 @@ const FadedSkiesDriverApp = () => {
                   </div>
                   <button
                     type="button"
-                    onClick={() => alert('Schedule management would be implemented here')}
+                    onClick={() => openModal('manageSchedule')}
                     className="w-full mt-6 bg-blue-100 text-blue-700 py-3 rounded-xl font-bold hover:bg-blue-200 transition-colors flex items-center justify-center space-x-2"
                   >
                     <Calendar className="w-5 h-5" />
