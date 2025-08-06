@@ -1176,6 +1176,334 @@ const FadedSkiesDriverApp = () => {
     );
   };
 
+  // Change Bank Account Modal
+  const ChangeBankAccountModal = () => {
+    const [bankData, setBankData] = useState({
+      accountType: 'checking',
+      bankName: '',
+      routingNumber: '',
+      accountNumber: '',
+      confirmAccountNumber: '',
+      accountHolderName: driver.name,
+      bankAddress: '',
+      swiftCode: ''
+    });
+
+    const [step, setStep] = useState(1);
+    const [errors, setErrors] = useState<{[key: string]: string}>({});
+
+    const validateStep1 = () => {
+      const newErrors: {[key: string]: string} = {};
+
+      if (!bankData.bankName.trim()) {
+        newErrors.bankName = 'Bank name is required';
+      }
+
+      if (!bankData.routingNumber.trim()) {
+        newErrors.routingNumber = 'Routing number is required';
+      } else if (bankData.routingNumber.length !== 9) {
+        newErrors.routingNumber = 'Routing number must be 9 digits';
+      }
+
+      if (!bankData.accountNumber.trim()) {
+        newErrors.accountNumber = 'Account number is required';
+      } else if (bankData.accountNumber.length < 4) {
+        newErrors.accountNumber = 'Account number too short';
+      }
+
+      if (bankData.accountNumber !== bankData.confirmAccountNumber) {
+        newErrors.confirmAccountNumber = 'Account numbers do not match';
+      }
+
+      if (!bankData.accountHolderName.trim()) {
+        newErrors.accountHolderName = 'Account holder name is required';
+      }
+
+      setErrors(newErrors);
+      return Object.keys(newErrors).length === 0;
+    };
+
+    const handleNext = () => {
+      if (validateStep1()) {
+        setStep(2);
+      }
+    };
+
+    const handleSave = () => {
+      // Mask account number for display
+      const maskedAccount = `••••${bankData.accountNumber.slice(-4)}`;
+      const bankDisplay = `${bankData.bankName} ${maskedAccount}`;
+
+      setDriver(prev => ({
+        ...prev,
+        payoutSettings: {
+          ...prev.payoutSettings,
+          primaryAccount: bankDisplay
+        }
+      }));
+
+      closeModal('changeBankAccount');
+      closeModal('payoutSettings'); // Also close the parent modal
+      showToastMessage('Bank account updated successfully!', 'success');
+    };
+
+    const resetModal = () => {
+      setStep(1);
+      setErrors({});
+      setBankData({
+        accountType: 'checking',
+        bankName: '',
+        routingNumber: '',
+        accountNumber: '',
+        confirmAccountNumber: '',
+        accountHolderName: driver.name,
+        bankAddress: '',
+        swiftCode: ''
+      });
+    };
+
+    const handleClose = () => {
+      resetModal();
+      closeModal('changeBankAccount');
+    };
+
+    return (
+      <Modal
+        isOpen={modals.changeBankAccount}
+        onClose={handleClose}
+        title={`Change Bank Account - Step ${step} of 2`}
+        size="lg"
+      >
+        <div className="space-y-6">
+          {/* Progress Steps */}
+          <div className="flex items-center space-x-4 mb-6">
+            <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${
+              step >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+            }`}>
+              1
+            </div>
+            <div className={`flex-1 h-1 rounded ${step >= 2 ? 'bg-blue-600' : 'bg-gray-200'}`}></div>
+            <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${
+              step >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+            }`}>
+              2
+            </div>
+          </div>
+
+          {step === 1 && (
+            <div className="space-y-6">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                <div className="flex items-start space-x-3">
+                  <Shield className="w-5 h-5 text-yellow-600 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-yellow-800">Secure Bank Information</h4>
+                    <p className="text-sm text-yellow-700">
+                      Your banking information is encrypted and secure. We use bank-level security to protect your data.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Account Type */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">Account Type</label>
+                <div className="grid grid-cols-2 gap-3">
+                  {['checking', 'savings'].map((type) => (
+                    <label key={type} className={`flex items-center p-4 border rounded-xl cursor-pointer transition-colors ${
+                      bankData.accountType === type ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="accountType"
+                        value={type}
+                        checked={bankData.accountType === type}
+                        onChange={(e) => setBankData({...bankData, accountType: e.target.value})}
+                        className="w-4 h-4 text-blue-600 mr-3"
+                      />
+                      <span className="font-medium text-gray-900 capitalize">{type} Account</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bank Name */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Bank Name</label>
+                <input
+                  type="text"
+                  value={bankData.bankName}
+                  onChange={(e) => setBankData({...bankData, bankName: e.target.value})}
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.bankName ? 'border-red-300' : 'border-gray-200'
+                  }`}
+                  placeholder="e.g., Chase Bank, Wells Fargo, Bank of America"
+                />
+                {errors.bankName && <p className="text-red-600 text-sm mt-1">{errors.bankName}</p>}
+              </div>
+
+              {/* Routing Number */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Routing Number</label>
+                <input
+                  type="text"
+                  value={bankData.routingNumber}
+                  onChange={(e) => setBankData({...bankData, routingNumber: e.target.value.replace(/\D/g, '').slice(0, 9)})}
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.routingNumber ? 'border-red-300' : 'border-gray-200'
+                  }`}
+                  placeholder="9-digit routing number"
+                  maxLength={9}
+                />
+                {errors.routingNumber && <p className="text-red-600 text-sm mt-1">{errors.routingNumber}</p>}
+                <p className="text-xs text-gray-500 mt-1">Found on the bottom left of your checks</p>
+              </div>
+
+              {/* Account Number */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Account Number</label>
+                <input
+                  type="text"
+                  value={bankData.accountNumber}
+                  onChange={(e) => setBankData({...bankData, accountNumber: e.target.value.replace(/\D/g, '')})}
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.accountNumber ? 'border-red-300' : 'border-gray-200'
+                  }`}
+                  placeholder="Account number"
+                />
+                {errors.accountNumber && <p className="text-red-600 text-sm mt-1">{errors.accountNumber}</p>}
+              </div>
+
+              {/* Confirm Account Number */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Confirm Account Number</label>
+                <input
+                  type="text"
+                  value={bankData.confirmAccountNumber}
+                  onChange={(e) => setBankData({...bankData, confirmAccountNumber: e.target.value.replace(/\D/g, '')})}
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.confirmAccountNumber ? 'border-red-300' : 'border-gray-200'
+                  }`}
+                  placeholder="Re-enter account number"
+                />
+                {errors.confirmAccountNumber && <p className="text-red-600 text-sm mt-1">{errors.confirmAccountNumber}</p>}
+              </div>
+
+              {/* Account Holder Name */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Account Holder Name</label>
+                <input
+                  type="text"
+                  value={bankData.accountHolderName}
+                  onChange={(e) => setBankData({...bankData, accountHolderName: e.target.value})}
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.accountHolderName ? 'border-red-300' : 'border-gray-200'
+                  }`}
+                  placeholder="Full name as it appears on the account"
+                />
+                {errors.accountHolderName && <p className="text-red-600 text-sm mt-1">{errors.accountHolderName}</p>}
+              </div>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="space-y-6">
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                <div className="flex items-start space-x-3">
+                  <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-green-800">Review Your Information</h4>
+                    <p className="text-sm text-green-700">
+                      Please verify all details are correct before saving. This account will be used for all future payouts.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Review Information */}
+              <div className="bg-gray-50 rounded-xl p-6 space-y-4">
+                <h4 className="font-semibold text-gray-900 mb-4">Account Summary</h4>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-sm text-gray-600">Account Type:</span>
+                    <p className="font-semibold capitalize">{bankData.accountType} Account</p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-gray-600">Bank Name:</span>
+                    <p className="font-semibold">{bankData.bankName}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-gray-600">Routing Number:</span>
+                    <p className="font-semibold">{bankData.routingNumber}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-gray-600">Account Number:</span>
+                    <p className="font-semibold">••••••{bankData.accountNumber.slice(-4)}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-sm text-gray-600">Account Holder:</span>
+                    <p className="font-semibold">{bankData.accountHolderName}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Legal Notice */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <div className="flex items-start space-x-3">
+                  <Shield className="w-5 h-5 text-blue-600 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-blue-800">Important Notice</h4>
+                    <p className="text-sm text-blue-700">
+                      By adding this bank account, you authorize Faded Skies to deposit your earnings to this account.
+                      You can change your bank account information at any time in your payout settings.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex items-center justify-between pt-6 border-t border-gray-200">
+            <button
+              onClick={handleClose}
+              className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+
+            <div className="flex space-x-3">
+              {step === 2 && (
+                <button
+                  onClick={() => setStep(1)}
+                  className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+                >
+                  Back
+                </button>
+              )}
+
+              {step === 1 ? (
+                <button
+                  onClick={handleNext}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+                >
+                  Continue
+                </button>
+              ) : (
+                <button
+                  onClick={handleSave}
+                  className="px-6 py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition-colors"
+                >
+                  Save Bank Account
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </Modal>
+    );
+  };
+
   return (
     <div className="max-w-md mx-auto bg-gray-50 min-h-screen">
       <Toast showToast={showToast} toastMessage={toastMessage} type={toastType} />
