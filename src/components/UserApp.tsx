@@ -2153,21 +2153,24 @@ const FadedSkiesApp = () => {
                   <h3 className="font-bold text-xl text-gray-900 mb-4">Preferences</h3>
                   <div className="space-y-4">
                     {[
-                      { label: 'Push Notifications', icon: Bell, enabled: true },
-                      { label: 'Email Updates', icon: Bell, enabled: false },
-                      { label: 'SMS Alerts', icon: MessageCircle, enabled: true },
-                      { label: 'Marketing Communications', icon: Bell, enabled: false }
+                      { label: 'Push Notifications', icon: Bell, key: 'pushNotifications' },
+                      { label: 'Email Updates', icon: Bell, key: 'emailUpdates' },
+                      { label: 'SMS Alerts', icon: MessageCircle, key: 'smsAlerts' },
+                      { label: 'Marketing Communications', icon: Bell, key: 'marketingCommunications' }
                     ].map((pref, index) => (
                       <div key={index} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
                         <div className="flex items-center space-x-3">
                           <pref.icon className="w-5 h-5 text-gray-500" />
                           <span className="font-medium text-gray-700">{pref.label}</span>
                         </div>
-                        <div className={`w-12 h-6 rounded-full relative transition-colors ${
-                          pref.enabled ? 'bg-emerald-600' : 'bg-gray-300'
-                        }`}>
+                        <div
+                          className={`w-12 h-6 rounded-full relative transition-colors cursor-pointer ${
+                            preferences[pref.key as keyof typeof preferences] ? 'bg-emerald-600' : 'bg-gray-300'
+                          }`}
+                          onClick={() => togglePreference(pref.key)}
+                        >
                           <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                            pref.enabled ? 'translate-x-7' : 'translate-x-1'
+                            preferences[pref.key as keyof typeof preferences] ? 'translate-x-7' : 'translate-x-1'
                           }`}></div>
                         </div>
                       </div>
@@ -2179,15 +2182,15 @@ const FadedSkiesApp = () => {
                   <h3 className="font-bold text-xl text-gray-900 mb-4">Security & Privacy</h3>
                   <div className="space-y-3">
                     {[
-                      { label: 'Change Password', icon: Shield },
-                      { label: 'Two-Factor Authentication', icon: Shield },
-                      { label: 'Privacy Settings', icon: Shield },
-                      { label: 'Data & Privacy', icon: Shield }
+                      { label: 'Change Password', icon: Shield, modal: 'changePassword' },
+                      { label: 'Two-Factor Authentication', icon: Shield, modal: 'twoFactor' },
+                      { label: 'Privacy Settings', icon: Shield, modal: 'privacySettings' },
+                      { label: 'Data & Privacy', icon: Shield, modal: 'dataPrivacy' }
                     ].map((item, index) => (
                       <button
                         key={index}
                         type="button"
-                        onClick={() => alert(`${item.label} would be implemented here`)}
+                        onClick={() => openModal(item.modal)}
                         className="w-full flex items-center justify-between py-3 px-4 rounded-xl hover:bg-gray-50 transition-colors text-left"
                       >
                         <div className="flex items-center space-x-3">
