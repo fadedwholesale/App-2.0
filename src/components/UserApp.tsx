@@ -1973,6 +1973,222 @@ const OrderDetailsModal = React.memo(({
   );
 });
 
+// Reorder Modal Component
+const ReorderModal = React.memo(({
+  isOpen,
+  onClose,
+  order,
+  reorderItems,
+  setReorderItems,
+  onAddToCart,
+  onSuccess
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  order: Order | null;
+  reorderItems: OrderItem[];
+  setReorderItems: (items: OrderItem[]) => void;
+  onAddToCart: (items: OrderItem[]) => void;
+  onSuccess: (message: string) => void;
+}) => {
+  const [selectedItems, setSelectedItems] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (isOpen && order?.itemDetails) {
+      // Initialize with all items selected
+      const initialSelection: Record<string, boolean> = {};
+      order.itemDetails.forEach((item, index) => {
+        initialSelection[`${item.name}-${index}`] = true;
+      });
+      setSelectedItems(initialSelection);
+      setReorderItems(order.itemDetails);
+    }
+  }, [isOpen, order, setReorderItems]);
+
+  const toggleItemSelection = (item: OrderItem, index: number) => {
+    const key = `${item.name}-${index}`;
+    const newSelection = {
+      ...selectedItems,
+      [key]: !selectedItems[key]
+    };
+    setSelectedItems(newSelection);
+
+    // Update reorder items based on selection
+    if (!selectedItems[key]) {
+      setReorderItems([...reorderItems, item]);
+    } else {
+      setReorderItems(reorderItems.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateItemQuantity = (index: number, newQuantity: number) => {
+    if (newQuantity < 1) return;
+
+    const updatedItems = reorderItems.map((item, i) =>
+      i === index ? { ...item, quantity: newQuantity } : item
+    );
+    setReorderItems(updatedItems);
+  };
+
+  const getSelectedItems = () => {
+    if (!order?.itemDetails) return [];
+
+    return order.itemDetails.filter((item, index) =>
+      selectedItems[`${item.name}-${index}`]
+    ).map((item, originalIndex) => {
+      const reorderItem = reorderItems.find((r, i) => r.name === item.name);
+      return reorderItem || item;
+    });
+  };
+
+  const handleReorder = () => {
+    const itemsToAdd = getSelectedItems();
+    if (itemsToAdd.length === 0) {
+      onSuccess('Please select at least one item to reorder.');
+      return;
+    }
+
+    onAddToCart(itemsToAdd);
+    onSuccess(`${itemsToAdd.length} item${itemsToAdd.length > 1 ? 's' : ''} added to cart!`);
+    onClose();
+  };
+
+  const calculateTotal = () => {
+    return getSelectedItems().reduce((total, item) => total + (item.price * item.quantity), 0);
+  };
+
+  if (!order) return null;
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title={`Reorder from ${order.id}`}>
+      <div className="space-y-6">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <ShoppingCart className="w-8 h-8 text-green-600" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">Reorder Items</h3>
+          <p className="text-gray-600">Select items you'd like to add to your cart</p>
+        </div>
+
+        {/* Items Selection */}
+        <div className="space-y-3">
+          {order.itemDetails?.map((item, index) => {
+            const key = `${item.name}-${index}`;
+            const isSelected = selectedItems[key];
+            const reorderItem = reorderItems.find(r => r.name === item.name) || item;
+
+            return (
+              <div key={key} className={`border-2 rounded-xl p-4 transition-all ${
+                isSelected ? 'border-emerald-300 bg-emerald-50' : 'border-gray-200 bg-white'
+              }`}>
+                <div className="flex items-start space-x-3">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleItemSelection(item, index)}
+                    className="mt-1 w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500"
+                  />
+
+                  <div className="flex-1">
+                    <h4 className="font-bold text-gray-900 mb-1">{item.name}</h4>
+                    <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
+                      {item.strain && <span>Strain: {item.strain}</span>}
+                      {item.thc && <span>THC: {item.thc}</span>}
+                      {item.cbd && <span>CBD: {item.cbd}</span>}
+                    </div>
+
+                    {isSelected && (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <span className="text-sm font-medium text-gray-700">Quantity:</span>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              type="button"
+                              onClick={() => updateItemQuantity(index, reorderItem.quantity - 1)}
+                              disabled={reorderItem.quantity <= 1}
+                              className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <Minus className="w-4 h-4" />
+                            </button>
+                            <span className="w-8 text-center font-semibold">{reorderItem.quantity}</span>
+                            <button
+                              type="button"
+                              onClick={() => updateItemQuantity(index, reorderItem.quantity + 1)}
+                              className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-gray-900">${(item.price * reorderItem.quantity).toFixed(2)}</div>
+                          <div className="text-sm text-gray-500">${item.price.toFixed(2)} each</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {!isSelected && (
+                      <div className="text-right">
+                        <div className="font-bold text-gray-500">${item.price.toFixed(2)}</div>
+                        <div className="text-sm text-gray-400">Original quantity: {item.quantity}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          }) || (
+            <div className="text-center py-8 text-gray-500">
+              <p>No detailed item information available for this order.</p>
+              <p className="text-sm mt-2">Items: {order.items.join(', ')}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Order Summary */}
+        {getSelectedItems().length > 0 && (
+          <div className="bg-green-50 rounded-xl p-4 border border-green-200">
+            <h4 className="font-bold text-green-900 mb-3">Reorder Summary</h4>
+            <div className="space-y-2">
+              <div className="flex justify-between text-green-800">
+                <span>Items selected:</span>
+                <span className="font-semibold">{getSelectedItems().length}</span>
+              </div>
+              <div className="flex justify-between text-green-800">
+                <span>Total quantity:</span>
+                <span className="font-semibold">{getSelectedItems().reduce((sum, item) => sum + item.quantity, 0)}</span>
+              </div>
+              <div className="border-t border-green-200 pt-2 flex justify-between">
+                <span className="font-bold text-green-900">Total:</span>
+                <span className="font-bold text-xl text-green-900">${calculateTotal().toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex space-x-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleReorder}
+            disabled={getSelectedItems().length === 0}
+            className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 text-white py-3 rounded-xl font-bold hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Add to Cart ({getSelectedItems().length})
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+});
+
 // ProductCard component - moved outside
 const ProductCard = React.memo(({ product, addToCart, addingToCart }: { 
   product: Product; 
