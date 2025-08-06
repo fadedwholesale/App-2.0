@@ -979,7 +979,10 @@ const FadedSkiesTrackingAdmin = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Product Management</h1>
-        <button className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-emerald-700 transition-colors">
+        <button
+          onClick={() => openModal('addProduct')}
+          className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-emerald-700 transition-colors"
+        >
           Add Product
         </button>
       </div>
