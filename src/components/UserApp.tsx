@@ -48,17 +48,44 @@ interface CartItem extends Product {
   quantity: number;
 }
 
+interface OrderItem {
+  name: string;
+  quantity: number;
+  price: number;
+  strain?: string;
+  thc?: string;
+  cbd?: string;
+}
+
 interface Order {
   id: string;
   status: string;
   items: string[];
+  itemDetails?: OrderItem[];
   total: number;
+  subtotal?: number;
+  tax?: number;
+  deliveryFee?: number;
   date: string;
   estimatedDelivery: string;
   deliveredAt?: string;
   driver: string;
   vehicle: string;
   currentLocation?: string;
+  driverPhone?: string;
+  deliveryAddress?: string;
+  paymentMethod?: string;
+  orderNotes?: string;
+  trackingSteps?: Array<{
+    step: string;
+    time: string;
+    completed: boolean;
+  }>;
+  driverLocation?: {
+    lat: number;
+    lng: number;
+    lastUpdated: Date;
+  };
 }
 
 interface User {
@@ -1909,6 +1936,10 @@ const FadedSkiesApp = () => {
   ]);
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+
+  // Order modal state
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [reorderItems, setReorderItems] = useState<OrderItem[]>([]);
 
   const categories = [
     { id: 'all', name: 'All Products', icon: '🌿', gradient: 'from-green-400 to-emerald-500' },
