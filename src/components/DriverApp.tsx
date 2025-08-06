@@ -1529,7 +1529,7 @@ const FadedSkiesDriverApp = () => {
                   </div>
                   <button
                     type="button"
-                    onClick={() => alert('Payout settings would be managed here')}
+                    onClick={() => openModal('payoutSettings')}
                     className="w-full mt-4 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors"
                   >
                     ⚙️ Manage Payout Settings
