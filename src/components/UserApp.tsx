@@ -2208,6 +2208,7 @@ const LiveTrackingModal = React.memo(({
   const [driverLocation, setDriverLocation] = useState(order?.driverLocation || null);
   const [eta, setEta] = useState(order?.estimatedDelivery || 'Calculating...');
   const [distance, setDistance] = useState('Calculating...');
+  const [mapError, setMapError] = useState(false);
 
   // Simulated live updates
   useEffect(() => {
@@ -2244,16 +2245,17 @@ const LiveTrackingModal = React.memo(({
   useEffect(() => {
     if (!isOpen || !mapContainer.current || !order?.driverLocation) return;
 
-    // For demo purposes - in production, use environment variable
-    mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN || 'pk.eyJ1IjoidGVzdCIsImEiOiJkZW1vLXRva2VuIn0.demo';
+    try {
+      // For demo purposes - in production, use environment variable
+      mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN || 'pk.eyJ1IjoidGVzdCIsImEiOiJkZW1vLXRva2VuIn0.demo';
 
-    // Initialize map
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v11', // Use v11 for better compatibility
-      center: [order.driverLocation.lng, order.driverLocation.lat],
-      zoom: 14
-    });
+      // Initialize map
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: 'mapbox://styles/mapbox/streets-v11', // Use v11 for better compatibility
+        center: [order.driverLocation.lng, order.driverLocation.lat],
+        zoom: 14
+      });
 
     // Add navigation controls
     map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
@@ -2277,6 +2279,11 @@ const LiveTrackingModal = React.memo(({
     driverMarker.current = new mapboxgl.Marker(driverEl)
       .setLngLat([order.driverLocation.lng, order.driverLocation.lat])
       .addTo(map.current);
+
+    } catch (error) {
+      console.warn('Mapbox failed to load, using demo mode:', error);
+      setMapError(true);
+    }
 
     return () => {
       if (map.current) {
