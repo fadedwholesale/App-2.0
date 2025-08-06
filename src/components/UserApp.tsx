@@ -1525,6 +1525,215 @@ const ContactModal = React.memo(({
   );
 });
 
+// Submit Ticket Modal Component
+const SubmitTicketModal = React.memo(({
+  isOpen,
+  onClose,
+  onSuccess,
+  ticketForm,
+  setTicketForm
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: (message: string) => void;
+  ticketForm: {subject: string; category: string; description: string};
+  setTicketForm: (form: {subject: string; category: string; description: string}) => void;
+}) => {
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [priority, setPriority] = useState('medium');
+  const [attachments, setAttachments] = useState<string[]>([]);
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!ticketForm.subject.trim()) {
+      newErrors.subject = 'Subject is required';
+    }
+
+    if (!ticketForm.description.trim()) {
+      newErrors.description = 'Description is required';
+    } else if (ticketForm.description.trim().length < 10) {
+      newErrors.description = 'Please provide more details (at least 10 characters)';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = () => {
+    if (validateForm()) {
+      const ticketId = `FS-${Date.now()}`;
+      onSuccess(`Support ticket ${ticketId} created successfully! We\'ll respond within 24 hours.`);
+      setTicketForm({ subject: '', category: 'Order Issue', description: '' });
+      setPriority('medium');
+      setAttachments([]);
+      setErrors({});
+      onClose();
+    }
+  };
+
+  const addAttachment = () => {
+    // Simulate file attachment
+    const fakeFiles = [
+      'screenshot.png',
+      'receipt.pdf',
+      'order_confirmation.jpg',
+      'error_log.txt'
+    ];
+    const randomFile = fakeFiles[Math.floor(Math.random() * fakeFiles.length)];
+    if (!attachments.includes(randomFile)) {
+      setAttachments(prev => [...prev, randomFile]);
+    }
+  };
+
+  const removeAttachment = (file: string) => {
+    setAttachments(prev => prev.filter(f => f !== file));
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Submit Support Ticket">
+      <div className="space-y-6">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <MessageCircle className="w-8 h-8 text-blue-600" />
+          </div>
+          <p className="text-gray-600">Describe your issue and we\'ll help you resolve it quickly</p>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Subject *</label>
+            <input
+              type="text"
+              value={ticketForm.subject}
+              onChange={(e) => setTicketForm({ ...ticketForm, subject: e.target.value })}
+              className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                errors.subject ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50 focus:bg-white'
+              }`}
+              placeholder="Brief description of your issue..."
+            />
+            {errors.subject && <p className="text-red-500 text-sm mt-1">{errors.subject}</p>}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Category</label>
+              <select
+                value={ticketForm.category}
+                onChange={(e) => setTicketForm({ ...ticketForm, category: e.target.value })}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors bg-gray-50 focus:bg-white"
+              >
+                <option value="Order Issue">Order Issue</option>
+                <option value="Payment Problem">Payment Problem</option>
+                <option value="Product Question">Product Question</option>
+                <option value="Account Issue">Account Issue</option>
+                <option value="Technical Problem">Technical Problem</option>
+                <option value="Delivery Issue">Delivery Issue</option>
+                <option value="Billing Question">Billing Question</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Priority</label>
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors bg-gray-50 focus:bg-white"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Description *</label>
+            <textarea
+              value={ticketForm.description}
+              onChange={(e) => setTicketForm({ ...ticketForm, description: e.target.value })}
+              className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors resize-none ${
+                errors.description ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50 focus:bg-white'
+              }`}
+              rows={5}
+              placeholder="Please provide detailed information about your issue. Include order numbers, error messages, or any other relevant details..."
+            />
+            {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
+            <p className="text-xs text-gray-500 mt-1">{ticketForm.description.length} characters</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Attachments (Optional)</label>
+            <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:border-emerald-300 transition-colors">
+              {attachments.length > 0 ? (
+                <div className="space-y-2">
+                  {attachments.map((file, index) => (
+                    <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded-lg">
+                      <span className="text-sm text-gray-700 flex items-center">
+                        <span className="mr-2">📄</span>
+                        {file}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeAttachment(file)}
+                        className="text-red-500 hover:text-red-700 p-1"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-gray-500">
+                  <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                  <p className="text-sm">No files attached</p>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={addAttachment}
+                className="mt-3 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-200 transition-colors text-sm"
+              >
+                + Add File (Demo)
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Supported: Images, PDFs, text files (Max 10MB each)</p>
+          </div>
+        </div>
+
+        <div className="bg-blue-50 rounded-xl p-4">
+          <h4 className="font-semibold text-blue-900 mb-2">What happens next?</h4>
+          <ul className="text-sm text-blue-800 space-y-1">
+            <li>• You\'ll receive a confirmation email with your ticket number</li>
+            <li>• Our team will review your issue within 2-4 hours</li>
+            <li>• We\'ll respond with a solution or follow-up questions</li>
+            <li>• You can track your ticket status in your account</li>
+          </ul>
+        </div>
+
+        <div className="flex space-x-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 text-white py-3 rounded-xl font-bold hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl"
+          >
+            Submit Ticket
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+});
+
 // ProductCard component - moved outside
 const ProductCard = React.memo(({ product, addToCart, addingToCart }: { 
   product: Product; 
