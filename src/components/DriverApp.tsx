@@ -1855,6 +1855,16 @@ const FadedSkiesDriverApp = () => {
           </div>
         </>
       )}
+
+      {/* Modal Components */}
+      {isAuthenticated && (
+        <>
+          <EditProfileModal />
+          <EditVehicleModal />
+          <WithdrawEarningsModal />
+          <ScheduleModal />
+        </>
+      )}
     </div>
   );
 };
