@@ -1884,23 +1884,61 @@ const FadedSkiesApp = () => {
       id: '#FS2025001',
       status: 'delivered',
       items: ['Purple Haze Live Resin Cart', 'Midnight Mint Indica Gummies'],
+      itemDetails: [
+        { name: 'Purple Haze Live Resin Cart', quantity: 1, price: 65.00, strain: 'Sativa', thc: '89.2%', cbd: '0.1%' },
+        { name: 'Midnight Mint Indica Gummies', quantity: 1, price: 28.00, strain: 'Indica', thc: '10mg each', cbd: '2mg each' }
+      ],
       total: 89.50,
+      subtotal: 93.00,
+      tax: 8.50,
+      deliveryFee: 0,
       date: '2025-06-10',
       estimatedDelivery: '2-4 hours',
       deliveredAt: '3:10 PM',
       driver: 'Marcus Chen',
-      vehicle: 'Blue Toyota Prius - ABC789'
+      vehicle: 'Blue Toyota Prius - ABC789',
+      driverPhone: '+1 (555) 123-4567',
+      deliveryAddress: '123 Main St, Austin, TX 78701',
+      paymentMethod: 'Apple Pay',
+      orderNotes: 'Please ring doorbell twice',
+      trackingSteps: [
+        { step: 'Order confirmed', time: '12:15 PM', completed: true },
+        { step: 'In preparation', time: '12:30 PM', completed: true },
+        { step: 'Out for delivery', time: '2:45 PM', completed: true },
+        { step: 'Delivered', time: '3:10 PM', completed: true }
+      ]
     },
     {
       id: '#FS2025002',
       status: 'in-transit',
       items: ['OG Kush Premium Flower', 'Sunset Sherbet Pre-roll 3-Pack'],
+      itemDetails: [
+        { name: 'OG Kush Premium Flower', quantity: 1, price: 45.00, strain: 'Indica', thc: '24.3%', cbd: '0.2%' },
+        { name: 'Sunset Sherbet Pre-roll 3-Pack', quantity: 1, price: 35.00, strain: 'Hybrid', thc: '21.7%', cbd: '0.3%' }
+      ],
       total: 124.75,
+      subtotal: 80.00,
+      tax: 7.25,
+      deliveryFee: 5.00,
       date: '2025-06-12',
       estimatedDelivery: '1-2 hours',
       driver: 'Alex Rodriguez',
       vehicle: 'Green Honda Civic - XYZ123',
-      currentLocation: '0.8 miles away'
+      driverPhone: '+1 (555) 987-6543',
+      deliveryAddress: '123 Main St, Austin, TX 78701',
+      paymentMethod: 'Debit Card ending in 4321',
+      currentLocation: '0.8 miles away',
+      trackingSteps: [
+        { step: 'Order confirmed', time: '1:15 PM', completed: true },
+        { step: 'In preparation', time: '1:30 PM', completed: true },
+        { step: 'Out for delivery', time: '2:15 PM', completed: true },
+        { step: 'Delivered', time: 'ETA 3:30 PM', completed: false }
+      ],
+      driverLocation: {
+        lat: 30.2672,
+        lng: -97.7431,
+        lastUpdated: new Date()
+      }
     }
   ]);
 
