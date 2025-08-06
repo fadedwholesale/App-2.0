@@ -3038,6 +3038,39 @@ const FadedSkiesApp = () => {
     }
   };
 
+  // Order modal handlers
+  const handleViewOrderDetails = useCallback((order: Order) => {
+    setSelectedOrder(order);
+    openModal('orderDetails');
+  }, [openModal]);
+
+  const handleReorderItems = useCallback((order: Order) => {
+    setSelectedOrder(order);
+    if (order.itemDetails) {
+      setReorderItems(order.itemDetails);
+    }
+    openModal('reorder');
+  }, [openModal]);
+
+  const handleTrackOrder = useCallback((order: Order) => {
+    setSelectedOrder(order);
+    openModal('liveTracking');
+  }, [openModal]);
+
+  const handleAddReorderToCart = useCallback((items: OrderItem[]) => {
+    items.forEach(item => {
+      for (let i = 0; i < item.quantity; i++) {
+        // Find matching product in products array
+        const matchingProduct = products.find(p =>
+          p.name.toLowerCase().includes(item.name.toLowerCase().split(' ')[0])
+        );
+        if (matchingProduct) {
+          addToCart(matchingProduct);
+        }
+      }
+    });
+  }, [addToCart, products]);
+
   return (
     <div className="max-w-md mx-auto bg-gray-50 min-h-screen">
       <Toast showToast={showToast} toastMessage={toastMessage} />
@@ -3437,7 +3470,7 @@ const FadedSkiesApp = () => {
                         </div>
                         {cartTotal < 100 && (
                           <p className="text-sm text-amber-700 mt-3 text-center bg-amber-50 p-3 rounded-xl">
-                            Add ${(100 - cartTotal).toFixed(2)} more for free delivery! 🚚
+                            Add ${(100 - cartTotal).toFixed(2)} more for free delivery! ����
                           </p>
                         )}
                       </div>
