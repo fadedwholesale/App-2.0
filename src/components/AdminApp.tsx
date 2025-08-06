@@ -552,14 +552,14 @@ const FadedSkiesTrackingAdmin = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {selectedOrder.items.map((item, index) => (
+                    {selectedOrder?.items?.map((item, index) => (
                       <tr key={index}>
                         <td className="px-4 py-3 font-semibold text-gray-900">{item.name}</td>
                         <td className="px-4 py-3 text-gray-700">{item.quantity}</td>
                         <td className="px-4 py-3 text-gray-700">${item.price}</td>
                         <td className="px-4 py-3 font-semibold text-gray-900">${(item.quantity * item.price).toFixed(2)}</td>
                       </tr>
-                    ))}
+                    )) || []}
                   </tbody>
                 </table>
               </div>
