@@ -1021,10 +1021,18 @@ const FadedSkiesTrackingAdmin = () => {
                   <td className="px-6 py-4 text-sm text-gray-700">{product.thc} / {product.cbd}</td>
                   <td className="px-6 py-4">
                     <div className="flex space-x-2">
-                      <button className="text-blue-600 hover:text-blue-700 p-1">
+                      <button
+                        onClick={() => openModal('editProduct', product)}
+                        className="text-blue-600 hover:text-blue-700 p-1"
+                        title="Edit Product"
+                      >
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button className="text-red-600 hover:text-red-700 p-1">
+                      <button
+                        onClick={() => openModal('confirmDelete', { type: 'product', id: product.id, name: product.name })}
+                        className="text-red-600 hover:text-red-700 p-1"
+                        title="Delete Product"
+                      >
                         <X className="w-4 h-4" />
                       </button>
                     </div>
