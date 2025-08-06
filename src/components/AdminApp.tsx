@@ -290,12 +290,6 @@ const FadedSkiesTrackingAdmin = () => {
   // Add/Edit Product Modal
   const ProductModal = () => {
     const isEdit = modals.editProduct;
-
-    // Don't render if modal is not open
-    if (!modals.addProduct && !modals.editProduct) {
-      return null;
-    }
-
     const [formData, setFormData] = useState({
       name: selectedProduct?.name || '',
       category: selectedProduct?.category || 'Flower',
