@@ -92,6 +92,42 @@ const Toast = React.memo(({ showToast, toastMessage }: { showToast: boolean; toa
   )
 ));
 
+// Base Modal component
+const Modal = React.memo(({ isOpen, onClose, children, title }: {
+  isOpen: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+  title: string;
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+        <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose}></div>
+        </div>
+
+        <div className="relative inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full max-w-md w-full">
+          <div className="bg-white px-6 pt-6 pb-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-2xl font-bold text-gray-900">{title}</h3>
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="w-6 h-6 text-gray-500" />
+              </button>
+            </div>
+            {children}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 // ProductCard component - moved outside
 const ProductCard = React.memo(({ product, addToCart, addingToCart }: { 
   product: Product; 
@@ -539,7 +575,7 @@ const FadedSkiesApp = () => {
       setCurrentView('id-verification');
     } else {
       alert('Order placed successfully!');
-      
+
       const newOrder: Order = {
         id: `#FS2025${String(orders.length + 3).padStart(3, '0')}`,
         status: 'in-transit',
@@ -551,12 +587,43 @@ const FadedSkiesApp = () => {
         vehicle: 'White Tesla Model 3 - DEF456',
         currentLocation: '1.2 miles away'
       };
-      
+
       setOrders(prev => [newOrder, ...prev]);
       setCart([]);
       setCurrentView('orders');
     }
   }, [user.idVerified, orders.length, cart, cartTotal]);
+
+  // Modal management functions
+  const openModal = useCallback((modalType: string, data?: any) => {
+    setCurrentModal(modalType);
+    setModalData(data || {});
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setCurrentModal(null);
+    setModalData({});
+  }, []);
+
+  const togglePreference = useCallback((key: string) => {
+    setPreferences(prev => ({
+      ...prev,
+      [key]: !prev[key as keyof typeof prev]
+    }));
+  }, []);
+
+  const updateUserProfile = useCallback((updates: Partial<User>) => {
+    setUser(prev => ({ ...prev, ...updates }));
+    setToastMessage('Profile updated successfully!');
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  }, []);
+
+  const showToastMessage = useCallback((message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  }, []);
 
   return (
     <div className="max-w-md mx-auto bg-gray-50 min-h-screen">
@@ -967,7 +1034,7 @@ const FadedSkiesApp = () => {
                       <h3 className="font-bold text-lg text-gray-900">Payment Methods</h3>
                       <div className="grid grid-cols-2 gap-3">
                         {[
-                          { name: 'Apple Pay', icon: '🍎' },
+                          { name: 'Apple Pay', icon: '����' },
                           { name: 'Google Pay', icon: '🔵' },
                           { name: 'Aeropay', icon: '💳' },
                           { name: 'FS Coin', icon: '🪙' }
