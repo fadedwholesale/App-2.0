@@ -2210,6 +2210,9 @@ const LiveTrackingModal = React.memo(({
   const [distance, setDistance] = useState('Calculating...');
   const [mapError, setMapError] = useState(false);
 
+  // Debug logging
+  console.log('LiveTrackingModal render:', { isOpen, orderId: order?.id, hasDriverLocation: !!order?.driverLocation });
+
   // Simulated live updates
   useEffect(() => {
     if (!isOpen || !order?.driverLocation) return;
