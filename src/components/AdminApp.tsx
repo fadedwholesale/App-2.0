@@ -519,9 +519,9 @@ const FadedSkiesTrackingAdmin = () => {
                   <span>Customer Details</span>
                 </h4>
                 <div className="space-y-2">
-                  <p><span className="font-semibold">Name:</span> {selectedOrder.customerName}</p>
-                  <p><span className="font-semibold">Order Date:</span> {selectedOrder.orderDate}</p>
-                  <p><span className="font-semibold">Address:</span> {selectedOrder.address}</p>
+                  <p><span className="font-semibold">Name:</span> {selectedOrder?.customerName}</p>
+                  <p><span className="font-semibold">Order Date:</span> {selectedOrder?.orderDate}</p>
+                  <p><span className="font-semibold">Address:</span> {selectedOrder?.address}</p>
                 </div>
               </div>
 
@@ -531,9 +531,9 @@ const FadedSkiesTrackingAdmin = () => {
                   <span>Order Summary</span>
                 </h4>
                 <div className="space-y-2">
-                  <p><span className="font-semibold">Order ID:</span> {selectedOrder.orderId}</p>
-                  <p><span className="font-semibold">Total:</span> ${selectedOrder.total}</p>
-                  <p><span className="font-semibold">Items:</span> {selectedOrder.items.length} item(s)</p>
+                  <p><span className="font-semibold">Order ID:</span> {selectedOrder?.orderId}</p>
+                  <p><span className="font-semibold">Total:</span> ${selectedOrder?.total}</p>
+                  <p><span className="font-semibold">Items:</span> {selectedOrder?.items?.length || 0} item(s)</p>
                 </div>
               </div>
             </div>
