@@ -991,6 +991,186 @@ const FadedSkiesDriverApp = () => {
     );
   };
 
+  // Payout Settings Modal
+  const PayoutSettingsModal = () => {
+    const [payoutData, setPayoutData] = useState({
+      defaultMethod: driver.payoutSettings.method,
+      primaryAccount: driver.payoutSettings.primaryAccount,
+      instantFeeEnabled: true,
+      autoWithdraw: false,
+      minimumThreshold: '50.00'
+    });
+
+    const handleSave = () => {
+      setDriver(prev => ({
+        ...prev,
+        payoutSettings: {
+          ...prev.payoutSettings,
+          method: payoutData.defaultMethod as 'instant' | 'daily' | 'three_day'
+        }
+      }));
+      closeModal('payoutSettings');
+      showToastMessage('Payout settings updated successfully!', 'success');
+    };
+
+    return (
+      <Modal
+        isOpen={modals.payoutSettings}
+        onClose={() => closeModal('payoutSettings')}
+        title="Payout Settings"
+        size="md"
+      >
+        <div className="space-y-6">
+          {/* Current Bank Account */}
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <h4 className="text-lg font-bold text-blue-800 mb-3">Primary Bank Account</h4>
+            <div className="flex items-center space-x-3">
+              <CreditCard className="w-6 h-6 text-blue-600" />
+              <div>
+                <p className="font-semibold text-blue-900">{payoutData.primaryAccount}</p>
+                <p className="text-sm text-blue-700">Primary payout destination</p>
+              </div>
+            </div>
+            <button className="mt-3 text-blue-600 hover:text-blue-700 font-medium text-sm">
+              Change Bank Account
+            </button>
+          </div>
+
+          {/* Default Payout Method */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-3">Default Payout Method</label>
+            <div className="space-y-3">
+              {[
+                {
+                  value: 'instant',
+                  title: 'Instant Payout',
+                  desc: 'Get funds immediately',
+                  fee: `$${driver.payoutSettings.instantFee} fee per transaction`,
+                  icon: '⚡'
+                },
+                {
+                  value: 'daily',
+                  title: 'Daily Payout',
+                  desc: 'Next business day',
+                  fee: 'No fees',
+                  icon: '📅'
+                },
+                {
+                  value: 'three_day',
+                  title: 'Standard Payout',
+                  desc: 'Within 3 business days',
+                  fee: 'No fees',
+                  icon: '🏦'
+                }
+              ].map((method) => (
+                <label key={method.value} className={`flex items-center p-4 border rounded-xl cursor-pointer transition-colors ${
+                  payoutData.defaultMethod === method.value ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                }`}>
+                  <input
+                    type="radio"
+                    name="defaultMethod"
+                    value={method.value}
+                    checked={payoutData.defaultMethod === method.value}
+                    onChange={(e) => setPayoutData({...payoutData, defaultMethod: e.target.value})}
+                    className="w-4 h-4 text-blue-600 mr-4"
+                  />
+                  <div className="flex items-center space-x-3 flex-1">
+                    <span className="text-2xl">{method.icon}</span>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-gray-900">{method.title}</span>
+                        <span className="text-sm text-gray-600">{method.fee}</span>
+                      </div>
+                      <p className="text-sm text-gray-600">{method.desc}</p>
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Auto-Withdraw Settings */}
+          <div className="space-y-4">
+            <h4 className="text-lg font-semibold text-gray-900">Auto-Withdraw Settings</h4>
+
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div>
+                <label className="font-medium text-gray-700">Enable Auto-Withdraw</label>
+                <p className="text-sm text-gray-600">Automatically withdraw when threshold is reached</p>
+              </div>
+              <div
+                onClick={() => setPayoutData({...payoutData, autoWithdraw: !payoutData.autoWithdraw})}
+                className={`w-12 h-6 rounded-full relative transition-colors cursor-pointer ${
+                  payoutData.autoWithdraw ? 'bg-blue-600' : 'bg-gray-300'
+                }`}
+              >
+                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                  payoutData.autoWithdraw ? 'translate-x-7' : 'translate-x-1'
+                }`}></div>
+              </div>
+            </div>
+
+            {payoutData.autoWithdraw && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Minimum Threshold</label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={payoutData.minimumThreshold}
+                    onChange={(e) => setPayoutData({...payoutData, minimumThreshold: e.target.value})}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="50.00"
+                  />
+                </div>
+                <p className="text-sm text-gray-600 mt-1">
+                  Auto-withdraw when earnings reach ${payoutData.minimumThreshold}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Tax Information */}
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+            <h4 className="text-lg font-bold text-yellow-800 mb-2">Tax Information</h4>
+            <p className="text-sm text-yellow-700 mb-3">
+              We'll send you a 1099 form at the end of the year for tax purposes.
+            </p>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-yellow-800">Year-to-date earnings:</span>
+                <span className="font-semibold text-yellow-900">$12,450.75</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-yellow-800">Tax documents:</span>
+                <button className="text-yellow-600 hover:text-yellow-700 font-medium">
+                  Download 1099
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
+            <button
+              onClick={() => closeModal('payoutSettings')}
+              className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+            >
+              Save Settings
+            </button>
+          </div>
+        </div>
+      </Modal>
+    );
+  };
+
   return (
     <div className="max-w-md mx-auto bg-gray-50 min-h-screen">
       <Toast showToast={showToast} toastMessage={toastMessage} type={toastType} />
