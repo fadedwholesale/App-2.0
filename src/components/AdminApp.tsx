@@ -1820,7 +1820,10 @@ const FadedSkiesTrackingAdmin = () => {
               </div>
             </div>
 
-            <button className="w-full bg-indigo-100 text-indigo-700 py-3 rounded-xl font-bold hover:bg-indigo-200 transition-colors">
+            <button
+              onClick={() => openModal('userManagement')}
+              className="w-full bg-indigo-100 text-indigo-700 py-3 rounded-xl font-bold hover:bg-indigo-200 transition-colors"
+            >
               Manage Users & Permissions
             </button>
           </div>
