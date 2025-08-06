@@ -479,11 +479,6 @@ const FadedSkiesTrackingAdmin = () => {
       console.log('Order status updated:', newStatus);
     };
 
-    // Don't render if no order is selected
-    if (!modals.orderDetails || !selectedOrder) {
-      return null;
-    }
-
     return (
       <Modal
         isOpen={modals.orderDetails}
