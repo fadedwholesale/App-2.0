@@ -1033,7 +1033,10 @@ const FadedSkiesDriverApp = () => {
                 <p className="text-sm text-blue-700">Primary payout destination</p>
               </div>
             </div>
-            <button className="mt-3 text-blue-600 hover:text-blue-700 font-medium text-sm">
+            <button
+              onClick={() => openModal('changeBankAccount')}
+              className="mt-3 text-blue-600 hover:text-blue-700 font-medium text-sm"
+            >
               Change Bank Account
             </button>
           </div>
