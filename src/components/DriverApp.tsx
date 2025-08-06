@@ -336,6 +336,49 @@ const FadedSkiesDriverApp = () => {
   const [showToast, setShowToast] = useState<boolean>(false);
   const [toastType, setToastType] = useState<'success' | 'error' | 'warning' | 'info'>('success');
 
+  // Modal states
+  const [modals, setModals] = useState({
+    editProfile: false,
+    editVehicle: false,
+    withdrawEarnings: false,
+    manageSchedule: false,
+    settings: false
+  });
+
+  // Modal management functions
+  const openModal = (modalName: string) => {
+    setModals(prev => ({ ...prev, [modalName]: true }));
+  };
+
+  const closeModal = (modalName: string) => {
+    setModals(prev => ({ ...prev, [modalName]: false }));
+  };
+
+  const closeAllModals = () => {
+    setModals({
+      editProfile: false,
+      editVehicle: false,
+      withdrawEarnings: false,
+      manageSchedule: false,
+      settings: false
+    });
+  };
+
+  // Handle keyboard events for modals
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        const hasOpenModal = Object.values(modals).some(modal => modal);
+        if (hasOpenModal) {
+          closeAllModals();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [modals]);
+
   const showToastMessage = useCallback((message: string, type: 'success' | 'error' | 'warning' | 'info' = 'success') => {
     setToastMessage(message);
     setToastType(type);
