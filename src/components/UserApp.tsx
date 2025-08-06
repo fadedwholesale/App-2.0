@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   ShoppingCart, 
   User, 
@@ -2018,7 +2018,7 @@ const FadedSkiesApp = () => {
                     <div className="grid grid-cols-2 gap-4">
                       {[
                         { name: "Driver's License", icon: "🚗" },
-                        { name: "State ID Card", icon: "🆔" },
+                        { name: "State ID Card", icon: "���" },
                         { name: "Passport", icon: "📘" },
                         { name: "Military ID", icon: "🎖️" }
                       ].map(idType => (
