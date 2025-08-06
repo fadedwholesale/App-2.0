@@ -3470,7 +3470,7 @@ const FadedSkiesApp = () => {
                         </div>
                         {cartTotal < 100 && (
                           <p className="text-sm text-amber-700 mt-3 text-center bg-amber-50 p-3 rounded-xl">
-                            Add ${(100 - cartTotal).toFixed(2)} more for free delivery! ����
+                            Add ${(100 - cartTotal).toFixed(2)} more for free delivery! 🚚
                           </p>
                         )}
                       </div>
@@ -3711,14 +3711,14 @@ const FadedSkiesApp = () => {
                         <div className="flex space-x-3 mt-4">
                           <button
                             type="button"
-                            onClick={() => alert('Reorder functionality would be implemented here')}
+                            onClick={() => handleReorderItems(order)}
                             className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 text-white py-3 rounded-xl font-bold hover:from-emerald-700 hover:to-green-700 transition-all"
                           >
                             Reorder
                           </button>
                           <button
                             type="button"
-                            onClick={() => alert('Order details would be shown here')}
+                            onClick={() => handleViewOrderDetails(order)}
                             className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors"
                           >
                             View Details
