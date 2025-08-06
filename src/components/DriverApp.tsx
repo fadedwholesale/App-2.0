@@ -1698,7 +1698,7 @@ const FadedSkiesDriverApp = () => {
                   </div>
                   <button
                     type="button"
-                    onClick={() => alert('Update vehicle information would be implemented here')}
+                    onClick={() => openModal('editVehicle')}
                     className="w-full mt-6 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors flex items-center justify-center space-x-2"
                   >
                     <Car className="w-5 h-5" />
