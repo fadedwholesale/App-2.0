@@ -492,6 +492,503 @@ const FadedSkiesDriverApp = () => {
     showToastMessage('Logged out successfully', 'info');
   }, [showToastMessage]);
 
+  // Base Modal Component
+  const Modal = ({ isOpen, onClose, title, children, size = 'md' }: {
+    isOpen: boolean;
+    onClose: () => void;
+    title: string;
+    children: React.ReactNode;
+    size?: 'sm' | 'md' | 'lg' | 'xl';
+  }) => {
+    if (!isOpen) return null;
+
+    const sizeClasses = {
+      sm: 'max-w-md',
+      md: 'max-w-lg',
+      lg: 'max-w-2xl',
+      xl: 'max-w-4xl'
+    };
+
+    return (
+      <div className="fixed inset-0 z-50 overflow-y-auto">
+        <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+          <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={onClose}></div>
+
+          <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+          <div className={`inline-block align-bottom bg-white rounded-2xl px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle ${sizeClasses[size]} sm:w-full sm:p-6`}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-900">{title}</h3>
+              <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            {children}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Edit Profile Modal
+  const EditProfileModal = () => {
+    const [profileData, setProfileData] = useState({
+      name: driver.name,
+      phone: driver.phone,
+      email: driver.email
+    });
+
+    const handleSave = () => {
+      setDriver(prev => ({
+        ...prev,
+        name: profileData.name,
+        phone: profileData.phone,
+        email: profileData.email
+      }));
+      closeModal('editProfile');
+      showToastMessage('Profile updated successfully!', 'success');
+    };
+
+    return (
+      <Modal
+        isOpen={modals.editProfile}
+        onClose={() => closeModal('editProfile')}
+        title="Edit Profile Information"
+        size="md"
+      >
+        <div className="space-y-6">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+            <input
+              type="text"
+              value={profileData.name}
+              onChange={(e) => setProfileData({...profileData, name: e.target.value})}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter your full name"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
+            <input
+              type="tel"
+              value={profileData.phone}
+              onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="(555) 123-4567"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+            <input
+              type="email"
+              value={profileData.email}
+              onChange={(e) => setProfileData({...profileData, email: e.target.value})}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="your.email@example.com"
+            />
+          </div>
+
+          <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
+            <button
+              onClick={() => closeModal('editProfile')}
+              className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+            >
+              Save Changes
+            </button>
+          </div>
+        </div>
+      </Modal>
+    );
+  };
+
+  // Edit Vehicle Modal
+  const EditVehicleModal = () => {
+    const [vehicleData, setVehicleData] = useState({
+      make: driver.vehicle.make,
+      model: driver.vehicle.model,
+      year: driver.vehicle.year,
+      color: driver.vehicle.color,
+      licensePlate: driver.vehicle.licensePlate
+    });
+
+    const handleSave = () => {
+      setDriver(prev => ({
+        ...prev,
+        vehicle: {
+          ...vehicleData
+        }
+      }));
+      closeModal('editVehicle');
+      showToastMessage('Vehicle information updated!', 'success');
+    };
+
+    return (
+      <Modal
+        isOpen={modals.editVehicle}
+        onClose={() => closeModal('editVehicle')}
+        title="Update Vehicle Information"
+        size="md"
+      >
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Make</label>
+              <input
+                type="text"
+                value={vehicleData.make}
+                onChange={(e) => setVehicleData({...vehicleData, make: e.target.value})}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Toyota"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Model</label>
+              <input
+                type="text"
+                value={vehicleData.model}
+                onChange={(e) => setVehicleData({...vehicleData, model: e.target.value})}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Prius"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Year</label>
+              <input
+                type="number"
+                value={vehicleData.year}
+                onChange={(e) => setVehicleData({...vehicleData, year: parseInt(e.target.value)})}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="2022"
+                min="1990"
+                max="2025"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Color</label>
+              <input
+                type="text"
+                value={vehicleData.color}
+                onChange={(e) => setVehicleData({...vehicleData, color: e.target.value})}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Blue"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">License Plate</label>
+            <input
+              type="text"
+              value={vehicleData.licensePlate}
+              onChange={(e) => setVehicleData({...vehicleData, licensePlate: e.target.value.toUpperCase()})}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="ABC123"
+              maxLength={8}
+            />
+          </div>
+
+          <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
+            <button
+              onClick={() => closeModal('editVehicle')}
+              className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+            >
+              Save Changes
+            </button>
+          </div>
+        </div>
+      </Modal>
+    );
+  };
+
+  // Withdraw Earnings Modal
+  const WithdrawEarningsModal = () => {
+    const [withdrawData, setWithdrawData] = useState({
+      amount: driver.earnings.pending.toString(),
+      method: driver.payoutSettings.method,
+      bankAccount: driver.payoutSettings.primaryAccount
+    });
+
+    const calculateFee = () => {
+      const amount = parseFloat(withdrawData.amount) || 0;
+      if (withdrawData.method === 'instant') {
+        return Math.max(driver.payoutSettings.instantFee, amount * 0.01);
+      }
+      return 0;
+    };
+
+    const handleWithdraw = () => {
+      const amount = parseFloat(withdrawData.amount) || 0;
+      const fee = calculateFee();
+      const netAmount = amount - fee;
+
+      setDriver(prev => ({
+        ...prev,
+        earnings: {
+          ...prev.earnings,
+          pending: prev.earnings.pending - amount
+        },
+        payoutSettings: {
+          ...prev.payoutSettings,
+          method: withdrawData.method as 'instant' | 'daily' | 'three_day'
+        }
+      }));
+
+      closeModal('withdrawEarnings');
+
+      const timeframe = withdrawData.method === 'instant' ? 'instantly' :
+                       withdrawData.method === 'daily' ? 'within 1 business day' :
+                       'within 3 business days';
+
+      showToastMessage(`$${netAmount.toFixed(2)} withdrawal initiated! Funds will arrive ${timeframe}.`, 'success');
+    };
+
+    return (
+      <Modal
+        isOpen={modals.withdrawEarnings}
+        onClose={() => closeModal('withdrawEarnings')}
+        title="Withdraw Earnings"
+        size="md"
+      >
+        <div className="space-y-6">
+          {/* Available Balance */}
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+            <h4 className="text-lg font-bold text-green-800 mb-2">Available Balance</h4>
+            <p className="text-3xl font-black text-green-600">${driver.earnings.pending.toFixed(2)}</p>
+          </div>
+
+          {/* Withdrawal Amount */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Withdrawal Amount</label>
+            <div className="relative">
+              <DollarSign className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+              <input
+                type="number"
+                step="0.01"
+                value={withdrawData.amount}
+                onChange={(e) => setWithdrawData({...withdrawData, amount: e.target.value})}
+                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="0.00"
+                max={driver.earnings.pending}
+              />
+            </div>
+          </div>
+
+          {/* Payout Method */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Payout Method</label>
+            <div className="space-y-3">
+              {[
+                { value: 'instant', label: 'Instant Payout', desc: 'Get funds immediately', fee: `$${driver.payoutSettings.instantFee} fee` },
+                { value: 'daily', label: 'Daily Payout', desc: 'Next business day', fee: 'No fee' },
+                { value: 'three_day', label: 'Standard Payout', desc: 'Within 3 business days', fee: 'No fee' }
+              ].map((method) => (
+                <label key={method.value} className={`flex items-center p-4 border rounded-xl cursor-pointer transition-colors ${
+                  withdrawData.method === method.value ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                }`}>
+                  <input
+                    type="radio"
+                    name="payoutMethod"
+                    value={method.value}
+                    checked={withdrawData.method === method.value}
+                    onChange={(e) => setWithdrawData({...withdrawData, method: e.target.value})}
+                    className="w-4 h-4 text-blue-600 mr-3"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-gray-900">{method.label}</span>
+                      <span className="text-sm text-gray-600">{method.fee}</span>
+                    </div>
+                    <p className="text-sm text-gray-600">{method.desc}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Bank Account */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Bank Account</label>
+            <div className="p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center space-x-3">
+                <CreditCard className="w-5 h-5 text-gray-500" />
+                <span className="font-medium text-gray-900">{withdrawData.bankAccount}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Summary */}
+          <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Withdrawal Amount:</span>
+              <span className="font-semibold">${parseFloat(withdrawData.amount || '0').toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Fee:</span>
+              <span className="font-semibold">${calculateFee().toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between border-t border-gray-200 pt-2">
+              <span className="font-bold text-gray-900">Net Amount:</span>
+              <span className="font-bold text-green-600">${(parseFloat(withdrawData.amount || '0') - calculateFee()).toFixed(2)}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
+            <button
+              onClick={() => closeModal('withdrawEarnings')}
+              className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleWithdraw}
+              disabled={!withdrawData.amount || parseFloat(withdrawData.amount) <= 0 || parseFloat(withdrawData.amount) > driver.earnings.pending}
+              className="px-6 py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+            >
+              Withdraw Funds
+            </button>
+          </div>
+        </div>
+      </Modal>
+    );
+  };
+
+  // Schedule Management Modal
+  const ScheduleModal = () => {
+    const [scheduleData, setScheduleData] = useState({
+      isScheduled: driver.schedule.isScheduled,
+      startTime: driver.schedule.startTime || '09:00',
+      endTime: driver.schedule.endTime || '17:00',
+      days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+    });
+
+    const handleSave = () => {
+      setDriver(prev => ({
+        ...prev,
+        schedule: {
+          isScheduled: scheduleData.isScheduled,
+          startTime: scheduleData.startTime,
+          endTime: scheduleData.endTime
+        }
+      }));
+      closeModal('manageSchedule');
+      showToastMessage('Schedule updated successfully!', 'success');
+    };
+
+    return (
+      <Modal
+        isOpen={modals.manageSchedule}
+        onClose={() => closeModal('manageSchedule')}
+        title="Manage Schedule"
+        size="md"
+      >
+        <div className="space-y-6">
+          {/* Schedule Toggle */}
+          <div className="flex items-center justify-between p-4 bg-blue-50 rounded-xl">
+            <div>
+              <h4 className="font-semibold text-blue-900">Enable Scheduled Hours</h4>
+              <p className="text-sm text-blue-700">Set specific times when you're available</p>
+            </div>
+            <div
+              onClick={() => setScheduleData({...scheduleData, isScheduled: !scheduleData.isScheduled})}
+              className={`w-12 h-6 rounded-full relative transition-colors cursor-pointer ${
+                scheduleData.isScheduled ? 'bg-blue-600' : 'bg-gray-300'
+              }`}
+            >
+              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                scheduleData.isScheduled ? 'translate-x-7' : 'translate-x-1'
+              }`}></div>
+            </div>
+          </div>
+
+          {scheduleData.isScheduled && (
+            <>
+              {/* Time Settings */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Start Time</label>
+                  <input
+                    type="time"
+                    value={scheduleData.startTime}
+                    onChange={(e) => setScheduleData({...scheduleData, startTime: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">End Time</label>
+                  <input
+                    type="time"
+                    value={scheduleData.endTime}
+                    onChange={(e) => setScheduleData({...scheduleData, endTime: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Days Selection */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">Available Days</label>
+                <div className="grid grid-cols-1 gap-2">
+                  {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => (
+                    <label key={day} className="flex items-center p-3 border border-gray-200 rounded-xl hover:border-gray-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={scheduleData.days.includes(day)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setScheduleData({...scheduleData, days: [...scheduleData.days, day]});
+                          } else {
+                            setScheduleData({...scheduleData, days: scheduleData.days.filter(d => d !== day)});
+                          }
+                        }}
+                        className="w-4 h-4 text-blue-600 rounded mr-3"
+                      />
+                      <span className="font-medium text-gray-900">{day}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
+            <button
+              onClick={() => closeModal('manageSchedule')}
+              className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+            >
+              Save Schedule
+            </button>
+          </div>
+        </div>
+      </Modal>
+    );
+  };
+
   return (
     <div className="max-w-md mx-auto bg-gray-50 min-h-screen">
       <Toast showToast={showToast} toastMessage={toastMessage} type={toastType} />
