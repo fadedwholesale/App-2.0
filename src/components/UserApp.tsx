@@ -3191,7 +3191,7 @@ const FadedSkiesApp = () => {
                       <button
                         key={index}
                         type="button"
-                        onClick={() => alert(`${contact.label} would be implemented here`)}
+                        onClick={() => openModal('contact', { contactType: contact.label })}
                         className="w-full flex items-center space-x-4 p-4 rounded-xl hover:bg-gray-50 transition-colors text-left"
                       >
                         <span className="text-2xl">{contact.icon}</span>
