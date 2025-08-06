@@ -1218,6 +1218,313 @@ const QuickHelpModal = React.memo(({
   );
 });
 
+// Contact Options Modal Component
+const ContactModal = React.memo(({
+  isOpen,
+  onClose,
+  contactType,
+  onSuccess
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  contactType: string;
+  onSuccess: (message: string) => void;
+}) => {
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    message: '',
+    rating: 5,
+    issueType: 'general'
+  });
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const getContactContent = () => {
+    switch (contactType) {
+      case 'Call Support':
+        return {
+          title: 'Call Support',
+          icon: '📞',
+          description: 'Speak directly with our support team',
+          showForm: false,
+          content: (
+            <div className="space-y-6">
+              <div className="text-center">
+                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-4xl">📞</span>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Call Our Support Team</h3>
+                <p className="text-gray-600 mb-6">Speak directly with a support representative</p>
+              </div>
+
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200">
+                <div className="text-center mb-4">
+                  <div className="text-3xl font-black text-green-800 mb-2">(555) 420-FADED</div>
+                  <div className="text-green-700 font-semibold">(555) 420-3233</div>
+                </div>
+
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-green-800">Hours:</span>
+                    <span className="text-green-700">24/7 Support Available</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-green-800">Average Wait:</span>
+                    <span className="text-green-700">Under 2 minutes</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-green-800">Languages:</span>
+                    <span className="text-green-700">English, Spanish</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 rounded-xl p-4">
+                <h4 className="font-semibold text-blue-900 mb-2">Before you call:</h4>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>• Have your order number ready (if applicable)</li>
+                  <li>• Be prepared to verify your identity</li>
+                  <li>• Write down specific questions or issues</li>
+                </ul>
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  type="button"
+                  onClick={() => window.open('tel:5554203233', '_self')}
+                  className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-xl font-bold hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
+                >
+                  <span>📞</span>
+                  <span>Call Now</span>
+                </button>
+              </div>
+            </div>
+          )
+        };
+
+      case 'Email Us':
+        return {
+          title: 'Email Support',
+          icon: '✉️',
+          description: 'Send us a detailed message',
+          showForm: true,
+          content: null
+        };
+
+      case 'Report Issue':
+        return {
+          title: 'Report an Issue',
+          icon: '⚠️',
+          description: 'Let us know about problems you\'ve encountered',
+          showForm: true,
+          content: null
+        };
+
+      case 'Feedback':
+        return {
+          title: 'Share Feedback',
+          icon: '💬',
+          description: 'Help us improve our service',
+          showForm: true,
+          content: null
+        };
+
+      default:
+        return {
+          title: 'Contact Us',
+          icon: '💬',
+          description: 'Get in touch',
+          showForm: false,
+          content: null
+        };
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!form.name.trim()) {
+      newErrors.name = 'Name is required';
+    }
+
+    if (!form.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+
+    if (!form.message.trim()) {
+      newErrors.message = 'Message is required';
+    }
+
+    if (contactType === 'Report Issue' && !form.issueType) {
+      newErrors.issueType = 'Please select an issue type';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = () => {
+    if (validateForm()) {
+      let message = '';
+      switch (contactType) {
+        case 'Email Us':
+          message = 'Your email has been sent! We\'ll respond within 24 hours.';
+          break;
+        case 'Report Issue':
+          message = 'Issue reported successfully! We\'ll investigate and follow up with you.';
+          break;
+        case 'Feedback':
+          message = 'Thank you for your feedback! We truly appreciate your input.';
+          break;
+      }
+      onSuccess(message);
+      setForm({ name: '', email: '', phone: '', message: '', rating: 5, issueType: 'general' });
+      setErrors({});
+      onClose();
+    }
+  };
+
+  const contactContent = getContactContent();
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title={contactContent.title}>
+      <div className="space-y-6">
+        {!contactContent.showForm ? (
+          contactContent.content
+        ) : (
+          <>
+            <div className="text-center">
+              <div className="text-6xl mb-4">{contactContent.icon}</div>
+              <p className="text-gray-600">{contactContent.description}</p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Name</label>
+                  <input
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
+                    className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                      errors.name ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50 focus:bg-white'
+                    }`}
+                    placeholder="Your name"
+                  />
+                  {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+                  <input
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
+                    className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                      errors.email ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50 focus:bg-white'
+                    }`}
+                    placeholder="your@email.com"
+                  />
+                  {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+                </div>
+              </div>
+
+              {contactType === 'Report Issue' && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Issue Type</label>
+                  <select
+                    value={form.issueType}
+                    onChange={(e) => setForm(prev => ({ ...prev, issueType: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors bg-gray-50 focus:bg-white"
+                  >
+                    <option value="general">General Issue</option>
+                    <option value="order">Order Problem</option>
+                    <option value="payment">Payment Issue</option>
+                    <option value="delivery">Delivery Problem</option>
+                    <option value="product">Product Quality</option>
+                    <option value="website">Website/App Bug</option>
+                    <option value="account">Account Issue</option>
+                  </select>
+                </div>
+              )}
+
+              {contactType === 'Feedback' && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Rating</label>
+                  <div className="flex items-center space-x-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setForm(prev => ({ ...prev, rating: star }))}
+                        className={`text-2xl transition-colors ${
+                          star <= form.rating ? 'text-yellow-400' : 'text-gray-300'
+                        }`}
+                      >
+                        ⭐
+                      </button>
+                    ))}
+                    <span className="text-sm text-gray-600 ml-2">({form.rating}/5)</span>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  {contactType === 'Report Issue' ? 'Describe the Issue' :
+                   contactType === 'Feedback' ? 'Your Feedback' : 'Message'}
+                </label>
+                <textarea
+                  value={form.message}
+                  onChange={(e) => setForm(prev => ({ ...prev, message: e.target.value }))}
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors resize-none ${
+                    errors.message ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50 focus:bg-white'
+                  }`}
+                  rows={4}
+                  placeholder={`Please provide details about your ${contactType.toLowerCase()}...`}
+                />
+                {errors.message && <p className="text-red-500 text-sm mt-1">{errors.message}</p>}
+              </div>
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 text-white py-3 rounded-xl font-bold hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl"
+              >
+                {contactType === 'Email Us' ? 'Send Email' :
+                 contactType === 'Report Issue' ? 'Report Issue' : 'Submit Feedback'}
+              </button>
+            </div>
+          </>
+        )}
+
+        {contactContent.showForm && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+          >
+            Close
+          </button>
+        )}
+      </div>
+    </Modal>
+  );
+});
+
 // ProductCard component - moved outside
 const ProductCard = React.memo(({ product, addToCart, addingToCart }: { 
   product: Product; 
@@ -2621,7 +2928,7 @@ const FadedSkiesApp = () => {
                   <h3 className="font-bold text-xl text-gray-900 mb-4">Contact Options</h3>
                   <div className="space-y-3">
                     {[
-                      { label: 'Call Support', icon: '����', subtitle: '(555) 420-FADED' },
+                      { label: 'Call Support', icon: '📞', subtitle: '(555) 420-FADED' },
                       { label: 'Email Us', icon: '✉️', subtitle: 'support@fadedskies.com' },
                       { label: 'Report Issue', icon: '⚠️', subtitle: 'Something went wrong?' },
                       { label: 'Feedback', icon: '💬', subtitle: 'Help us improve' }
