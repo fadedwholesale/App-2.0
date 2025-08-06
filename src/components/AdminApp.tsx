@@ -48,6 +48,73 @@ const FadedSkiesTrackingAdmin = () => {
   const [currentView, setCurrentView] = useState('dashboard');
   const [isTrackingLive, setIsTrackingLive] = useState(false);
 
+  // Modal states
+  const [modals, setModals] = useState({
+    addProduct: false,
+    editProduct: false,
+    orderDetails: false,
+    customerDetails: false,
+    userManagement: false,
+    confirmDelete: false
+  });
+
+  // Selected items for modals
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState({ type: '', id: null, name: '' });
+
+  // Modal management functions
+  const openModal = (modalName, item = null) => {
+    setModals(prev => ({ ...prev, [modalName]: true }));
+    if (item) {
+      switch (modalName) {
+        case 'editProduct':
+          setSelectedProduct(item);
+          break;
+        case 'orderDetails':
+          setSelectedOrder(item);
+          break;
+        case 'customerDetails':
+          setSelectedCustomer(item);
+          break;
+        case 'userManagement':
+          setSelectedUser(item);
+          break;
+        case 'confirmDelete':
+          setDeleteTarget(item);
+          break;
+      }
+    }
+  };
+
+  const closeModal = (modalName) => {
+    setModals(prev => ({ ...prev, [modalName]: false }));
+    // Clear selected items
+    if (modalName === 'editProduct' || modalName === 'addProduct') setSelectedProduct(null);
+    if (modalName === 'orderDetails') setSelectedOrder(null);
+    if (modalName === 'customerDetails') setSelectedCustomer(null);
+    if (modalName === 'userManagement') setSelectedUser(null);
+    if (modalName === 'confirmDelete') setDeleteTarget({ type: '', id: null, name: '' });
+  };
+
+  const closeAllModals = () => {
+    setModals({
+      addProduct: false,
+      editProduct: false,
+      orderDetails: false,
+      customerDetails: false,
+      userManagement: false,
+      confirmDelete: false
+    });
+    setSelectedProduct(null);
+    setSelectedOrder(null);
+    setSelectedCustomer(null);
+    setSelectedUser(null);
+    setDeleteTarget({ type: '', id: null, name: '' });
+  };
+
   // Sample data
   const [products] = useState([
     {
