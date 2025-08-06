@@ -48,6 +48,88 @@ const FadedSkiesTrackingAdmin = () => {
   const [currentView, setCurrentView] = useState('dashboard');
   const [isTrackingLive, setIsTrackingLive] = useState(false);
 
+  // Modal states
+  const [modals, setModals] = useState({
+    addProduct: false,
+    editProduct: false,
+    orderDetails: false,
+    customerDetails: false,
+    userManagement: false,
+    confirmDelete: false
+  });
+
+  // Selected items for modals
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState({ type: '', id: null, name: '' });
+
+  // Modal management functions
+  const openModal = (modalName, item = null) => {
+    setModals(prev => ({ ...prev, [modalName]: true }));
+    if (item) {
+      switch (modalName) {
+        case 'editProduct':
+          setSelectedProduct(item);
+          break;
+        case 'orderDetails':
+          setSelectedOrder(item);
+          break;
+        case 'customerDetails':
+          setSelectedCustomer(item);
+          break;
+        case 'userManagement':
+          setSelectedUser(item);
+          break;
+        case 'confirmDelete':
+          setDeleteTarget(item);
+          break;
+      }
+    }
+  };
+
+  const closeModal = (modalName) => {
+    setModals(prev => ({ ...prev, [modalName]: false }));
+    // Clear selected items
+    if (modalName === 'editProduct' || modalName === 'addProduct') setSelectedProduct(null);
+    if (modalName === 'orderDetails') setSelectedOrder(null);
+    if (modalName === 'customerDetails') setSelectedCustomer(null);
+    if (modalName === 'userManagement') setSelectedUser(null);
+    if (modalName === 'confirmDelete') setDeleteTarget({ type: '', id: null, name: '' });
+  };
+
+  const closeAllModals = () => {
+    setModals({
+      addProduct: false,
+      editProduct: false,
+      orderDetails: false,
+      customerDetails: false,
+      userManagement: false,
+      confirmDelete: false
+    });
+    setSelectedProduct(null);
+    setSelectedOrder(null);
+    setSelectedCustomer(null);
+    setSelectedUser(null);
+    setDeleteTarget({ type: '', id: null, name: '' });
+  };
+
+  // Handle keyboard events for modals
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        const hasOpenModal = Object.values(modals).some(modal => modal);
+        if (hasOpenModal) {
+          closeAllModals();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [modals]);
+
   // Sample data
   const [products] = useState([
     {
@@ -172,6 +254,614 @@ const FadedSkiesTrackingAdmin = () => {
       driverId: 1
     }
   ]);
+
+  // Base Modal Component
+  const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
+    if (!isOpen) return null;
+
+    const sizeClasses = {
+      sm: 'max-w-md',
+      md: 'max-w-2xl',
+      lg: 'max-w-4xl',
+      xl: 'max-w-6xl'
+    };
+
+    return (
+      <div className="fixed inset-0 z-50 overflow-y-auto">
+        <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+          <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={onClose}></div>
+
+          <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+          <div className={`inline-block align-bottom bg-white rounded-2xl px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle ${sizeClasses[size]} sm:w-full sm:p-6`}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-900">{title}</h3>
+              <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            {children}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Add/Edit Product Modal
+  const ProductModal = () => {
+    const isEdit = modals.editProduct;
+    const [formData, setFormData] = useState({
+      name: selectedProduct?.name || '',
+      category: selectedProduct?.category || 'Flower',
+      price: selectedProduct?.price || '',
+      stock: selectedProduct?.stock || '',
+      thc: selectedProduct?.thc || '',
+      cbd: selectedProduct?.cbd || '',
+      supplier: selectedProduct?.supplier || '',
+      description: '',
+      featured: false,
+      status: 'active'
+    });
+
+    const handleSubmit = (e) => {
+      e.preventDefault();
+      // Handle form submission
+      console.log('Product data:', formData);
+      closeModal(isEdit ? 'editProduct' : 'addProduct');
+    };
+
+    const handleChange = (field, value) => {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    };
+
+    return (
+      <Modal
+        isOpen={modals.addProduct || modals.editProduct}
+        onClose={() => closeModal(isEdit ? 'editProduct' : 'addProduct')}
+        title={isEdit ? 'Edit Product' : 'Add New Product'}
+        size="lg"
+      >
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Product Name</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => handleChange('name', e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="Enter product name"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Category</label>
+              <select
+                value={formData.category}
+                onChange={(e) => handleChange('category', e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              >
+                <option value="Flower">Flower</option>
+                <option value="Edibles">Edibles</option>
+                <option value="Concentrates">Concentrates</option>
+                <option value="Pre-rolls">Pre-rolls</option>
+                <option value="Accessories">Accessories</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Price ($)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={formData.price}
+                onChange={(e) => handleChange('price', e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="0.00"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Stock Quantity</label>
+              <input
+                type="number"
+                value={formData.stock}
+                onChange={(e) => handleChange('stock', e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="0"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">THC Content</label>
+              <input
+                type="text"
+                value={formData.thc}
+                onChange={(e) => handleChange('thc', e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="e.g., 18% or 10mg"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">CBD Content</label>
+              <input
+                type="text"
+                value={formData.cbd}
+                onChange={(e) => handleChange('cbd', e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="e.g., 2% or 0mg"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Supplier</label>
+            <input
+              type="text"
+              value={formData.supplier}
+              onChange={(e) => handleChange('supplier', e.target.value)}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              placeholder="Supplier name"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => handleChange('description', e.target.value)}
+              rows={4}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              placeholder="Product description..."
+            />
+          </div>
+
+          <div className="flex items-center space-x-6">
+            <div className="flex items-center space-x-3">
+              <input
+                type="checkbox"
+                id="featured"
+                checked={formData.featured}
+                onChange={(e) => handleChange('featured', e.target.checked)}
+                className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+              />
+              <label htmlFor="featured" className="text-sm font-medium text-gray-700">
+                Featured Product
+              </label>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>
+              <select
+                value={formData.status}
+                onChange={(e) => handleChange('status', e.target.value)}
+                className="px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="out_of_stock">Out of Stock</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={() => closeModal(isEdit ? 'editProduct' : 'addProduct')}
+              className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors"
+            >
+              {isEdit ? 'Update Product' : 'Add Product'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+    );
+  };
+
+  // Order Details Modal
+  const OrderDetailsModal = () => {
+    const [orderStatus, setOrderStatus] = useState(selectedOrder?.status || 'pending');
+
+    const updateOrderStatus = (newStatus) => {
+      setOrderStatus(newStatus);
+      // Handle status update
+      console.log('Order status updated:', newStatus);
+    };
+
+    return (
+      <Modal
+        isOpen={modals.orderDetails}
+        onClose={() => closeModal('orderDetails')}
+        title={`Order Details - ${selectedOrder?.orderId}`}
+        size="lg"
+      >
+        {selectedOrder && (
+          <div className="space-y-6">
+            {/* Order Status Update */}
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <h4 className="text-lg font-bold text-blue-800 mb-3">Order Status</h4>
+              <div className="flex items-center space-x-3">
+                <select
+                  value={orderStatus}
+                  onChange={(e) => updateOrderStatus(e.target.value)}
+                  className="px-4 py-2 border border-blue-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="preparing">Preparing</option>
+                  <option value="ready">Ready for Pickup</option>
+                  <option value="en-route">En Route</option>
+                  <option value="delivered">Delivered</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+                <button className="px-4 py-2 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors">
+                  Update Status
+                </button>
+              </div>
+            </div>
+
+            {/* Customer Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-gray-50 rounded-xl p-4">
+                <h4 className="text-lg font-bold text-gray-900 mb-3 flex items-center space-x-2">
+                  <User className="w-5 h-5" />
+                  <span>Customer Details</span>
+                </h4>
+                <div className="space-y-2">
+                  <p><span className="font-semibold">Name:</span> {selectedOrder?.customerName}</p>
+                  <p><span className="font-semibold">Order Date:</span> {selectedOrder?.orderDate}</p>
+                  <p><span className="font-semibold">Address:</span> {selectedOrder?.address}</p>
+                </div>
+              </div>
+
+              <div className="bg-green-50 rounded-xl p-4">
+                <h4 className="text-lg font-bold text-gray-900 mb-3 flex items-center space-x-2">
+                  <DollarSign className="w-5 h-5" />
+                  <span>Order Summary</span>
+                </h4>
+                <div className="space-y-2">
+                  <p><span className="font-semibold">Order ID:</span> {selectedOrder?.orderId}</p>
+                  <p><span className="font-semibold">Total:</span> ${selectedOrder?.total}</p>
+                  <p><span className="font-semibold">Items:</span> {selectedOrder?.items?.length || 0} item(s)</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Order Items */}
+            <div>
+              <h4 className="text-lg font-bold text-gray-900 mb-3">Order Items</h4>
+              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Product</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Quantity</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Price</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {selectedOrder?.items?.map((item, index) => (
+                      <tr key={index}>
+                        <td className="px-4 py-3 font-semibold text-gray-900">{item.name}</td>
+                        <td className="px-4 py-3 text-gray-700">{item.quantity}</td>
+                        <td className="px-4 py-3 text-gray-700">${item.price}</td>
+                        <td className="px-4 py-3 font-semibold text-gray-900">${(item.quantity * item.price).toFixed(2)}</td>
+                      </tr>
+                    )) || []}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
+              <button
+                onClick={() => closeModal('orderDetails')}
+                className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Close
+              </button>
+              <button className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors">
+                Print Order
+              </button>
+              <button className="px-6 py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition-colors">
+                Contact Customer
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    );
+  };
+
+  // Customer Details Modal
+  const CustomerDetailsModal = () => {
+    const [customerData, setCustomerData] = useState({
+      name: selectedCustomer?.name || '',
+      email: selectedCustomer?.email || '',
+      phone: selectedCustomer?.phone || '',
+      address: selectedCustomer?.address || '',
+      status: selectedCustomer?.status || 'pending'
+    });
+
+    const handleSave = () => {
+      console.log('Customer data updated:', customerData);
+      closeModal('customerDetails');
+    };
+
+    return (
+      <Modal
+        isOpen={modals.customerDetails}
+        onClose={() => closeModal('customerDetails')}
+        title={`Customer Details - ${selectedCustomer?.name}`}
+        size="lg"
+      >
+        {selectedCustomer && (
+          <div className="space-y-6">
+            {/* Customer Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+                <h4 className="text-lg font-bold text-blue-800">Total Orders</h4>
+                <p className="text-2xl font-black text-blue-600">{selectedCustomer?.totalOrders || 0}</p>
+              </div>
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+                <h4 className="text-lg font-bold text-green-800">Total Spent</h4>
+                <p className="text-2xl font-black text-green-600">${selectedCustomer?.totalSpent || 0}</p>
+              </div>
+              <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 text-center">
+                <h4 className="text-lg font-bold text-purple-800">Avg Order</h4>
+                <p className="text-2xl font-black text-purple-600">${selectedCustomer?.totalOrders > 0 ? (selectedCustomer.totalSpent / selectedCustomer.totalOrders).toFixed(2) : '0.00'}</p>
+              </div>
+            </div>
+
+            {/* Customer Information Form */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+                <input
+                  type="text"
+                  value={customerData.name}
+                  onChange={(e) => setCustomerData({...customerData, name: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+                <input
+                  type="email"
+                  value={customerData.email}
+                  onChange={(e) => setCustomerData({...customerData, email: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
+                <input
+                  type="tel"
+                  value={customerData.phone}
+                  onChange={(e) => setCustomerData({...customerData, phone: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Verification Status</label>
+                <select
+                  value={customerData.status}
+                  onChange={(e) => setCustomerData({...customerData, status: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                >
+                  <option value="pending">Pending Verification</option>
+                  <option value="verified">Verified</option>
+                  <option value="suspended">Suspended</option>
+                  <option value="banned">Banned</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Address</label>
+              <textarea
+                value={customerData.address}
+                onChange={(e) => setCustomerData({...customerData, address: e.target.value})}
+                rows={3}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
+              <button
+                onClick={() => closeModal('customerDetails')}
+                className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    );
+  };
+
+  // User Management Modal
+  const UserManagementModal = () => {
+    const [userData, setUserData] = useState({
+      name: '',
+      email: '',
+      role: 'Support',
+      permissions: {
+        products: false,
+        orders: false,
+        customers: false,
+        analytics: false,
+        settings: false
+      }
+    });
+
+    const handlePermissionChange = (permission) => {
+      setUserData(prev => ({
+        ...prev,
+        permissions: {
+          ...prev.permissions,
+          [permission]: !prev.permissions[permission]
+        }
+      }));
+    };
+
+    const handleSave = () => {
+      console.log('User data:', userData);
+      closeModal('userManagement');
+    };
+
+    return (
+      <Modal
+        isOpen={modals.userManagement}
+        onClose={() => closeModal('userManagement')}
+        title="User Management"
+        size="lg"
+      >
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+              <input
+                type="text"
+                value={userData.name}
+                onChange={(e) => setUserData({...userData, name: e.target.value})}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="Enter full name"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+              <input
+                type="email"
+                value={userData.email}
+                onChange={(e) => setUserData({...userData, email: e.target.value})}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="Enter email address"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">User Role</label>
+            <select
+              value={userData.role}
+              onChange={(e) => setUserData({...userData, role: e.target.value})}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            >
+              <option value="Super Admin">Super Admin</option>
+              <option value="Admin">Admin</option>
+              <option value="Manager">Manager</option>
+              <option value="Support">Support</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-4">Permissions</label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {Object.keys(userData.permissions).map(permission => (
+                <div key={permission} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                  <span className="font-medium text-gray-700 capitalize">{permission}</span>
+                  <div className={`w-12 h-6 rounded-full relative transition-colors cursor-pointer ${
+                    userData.permissions[permission] ? 'bg-emerald-600' : 'bg-gray-300'
+                  }`} onClick={() => handlePermissionChange(permission)}>
+                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                      userData.permissions[permission] ? 'translate-x-7' : 'translate-x-1'
+                    }`}></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
+            <button
+              onClick={() => closeModal('userManagement')}
+              className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors"
+            >
+              Save User
+            </button>
+          </div>
+        </div>
+      </Modal>
+    );
+  };
+
+  // Confirmation Modal
+  const ConfirmationModal = () => {
+    const handleConfirm = () => {
+      console.log(`Deleting ${deleteTarget.type}:`, deleteTarget.id);
+      closeModal('confirmDelete');
+    };
+
+    return (
+      <Modal
+        isOpen={modals.confirmDelete}
+        onClose={() => closeModal('confirmDelete')}
+        title="Confirm Deletion"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+              <AlertTriangle className="w-6 h-6 text-red-600" />
+            </div>
+            <div>
+              <h4 className="text-lg font-semibold text-gray-900">Are you sure?</h4>
+              <p className="text-sm text-gray-600">
+                This will permanently delete "{deleteTarget.name}". This action cannot be undone.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
+            <button
+              onClick={() => closeModal('confirmDelete')}
+              className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirm}
+              className="px-6 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition-colors"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </Modal>
+    );
+  };
 
   const Sidebar = () => (
     <div className="w-64 bg-gradient-to-b from-emerald-900 to-green-900 text-white min-h-screen p-6">
@@ -304,7 +994,10 @@ const FadedSkiesTrackingAdmin = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Product Management</h1>
-        <button className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-emerald-700 transition-colors">
+        <button
+          onClick={() => openModal('addProduct')}
+          className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-emerald-700 transition-colors"
+        >
           Add Product
         </button>
       </div>
@@ -343,10 +1036,18 @@ const FadedSkiesTrackingAdmin = () => {
                   <td className="px-6 py-4 text-sm text-gray-700">{product.thc} / {product.cbd}</td>
                   <td className="px-6 py-4">
                     <div className="flex space-x-2">
-                      <button className="text-blue-600 hover:text-blue-700 p-1">
+                      <button
+                        onClick={() => openModal('editProduct', product)}
+                        className="text-blue-600 hover:text-blue-700 p-1"
+                        title="Edit Product"
+                      >
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button className="text-red-600 hover:text-red-700 p-1">
+                      <button
+                        onClick={() => openModal('confirmDelete', { type: 'product', id: product.id, name: product.name })}
+                        className="text-red-600 hover:text-red-700 p-1"
+                        title="Delete Product"
+                      >
                         <X className="w-4 h-4" />
                       </button>
                     </div>
@@ -408,10 +1109,18 @@ const FadedSkiesTrackingAdmin = () => {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex space-x-2">
-                      <button className="text-blue-600 hover:text-blue-700 p-1">
-                        <Edit className="w-4 h-4" />
+                      <button
+                        onClick={() => openModal('orderDetails', order)}
+                        className="text-blue-600 hover:text-blue-700 p-1"
+                        title="View Order Details"
+                      >
+                        <Eye className="w-4 h-4" />
                       </button>
-                      <button className="text-green-600 hover:text-green-700 p-1">
+                      <button
+                        onClick={() => openModal('orderDetails', order)}
+                        className="text-green-600 hover:text-green-700 p-1"
+                        title="Update Order Status"
+                      >
                         <CheckCircle className="w-4 h-4" />
                       </button>
                     </div>
@@ -1126,7 +1835,10 @@ const FadedSkiesTrackingAdmin = () => {
               </div>
             </div>
 
-            <button className="w-full bg-indigo-100 text-indigo-700 py-3 rounded-xl font-bold hover:bg-indigo-200 transition-colors">
+            <button
+              onClick={() => openModal('userManagement')}
+              className="w-full bg-indigo-100 text-indigo-700 py-3 rounded-xl font-bold hover:bg-indigo-200 transition-colors"
+            >
               Manage Users & Permissions
             </button>
           </div>
@@ -1242,7 +1954,10 @@ const FadedSkiesTrackingAdmin = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Customer Management</h1>
-        <button className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-emerald-700 transition-colors">
+        <button
+          onClick={() => openModal('customerDetails')}
+          className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-emerald-700 transition-colors"
+        >
           Add Customer
         </button>
       </div>
@@ -1284,11 +1999,19 @@ const FadedSkiesTrackingAdmin = () => {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex space-x-2">
-                      <button className="text-blue-600 hover:text-blue-700 p-1">
+                      <button
+                        onClick={() => openModal('customerDetails', customer)}
+                        className="text-blue-600 hover:text-blue-700 p-1"
+                        title="Edit Customer"
+                      >
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button className="text-green-600 hover:text-green-700 p-1">
-                        <CheckCircle className="w-4 h-4" />
+                      <button
+                        onClick={() => openModal('customerDetails', customer)}
+                        className="text-green-600 hover:text-green-700 p-1"
+                        title="View Customer Details"
+                      >
+                        <Eye className="w-4 h-4" />
                       </button>
                     </div>
                   </td>
@@ -1323,6 +2046,13 @@ const FadedSkiesTrackingAdmin = () => {
       <div className="flex-1 p-8">
         {renderCurrentView()}
       </div>
+
+      {/* Modal Components */}
+      <ProductModal />
+      <OrderDetailsModal />
+      <CustomerDetailsModal />
+      <UserManagementModal />
+      <ConfirmationModal />
     </div>
   );
 };

@@ -1,0 +1,412 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  password          String
+  name              String
+  phone             String?
+  dateOfBirth       DateTime?
+  address           String?
+  city              String?
+  state             String?
+  zipCode           String?
+  isVerified        Boolean   @default(false)
+  verificationToken String?
+  resetToken        String?
+  resetTokenExpiry  DateTime?
+  role              Role      @default(CUSTOMER)
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relationships
+  orders         Order[]
+  reviews        Review[]
+  addresses      Address[]
+  loyaltyPoints  Int           @default(0)
+  preferences    Json?
+  pushTokens     PushToken[]
+  notifications  Notification[]
+
+  @@map("users")
+}
+
+model Driver {
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  licenseNumber     String    @unique
+  vehicleMake       String
+  vehicleModel      String
+  vehicleYear       Int
+  vehicleColor      String
+  licensePlate      String
+  isOnline          Boolean   @default(false)
+  isAvailable       Boolean   @default(true)
+  currentLat        Float?
+  currentLng        Float?
+  lastLocationUpdate DateTime?
+  rating            Float     @default(5.0)
+  totalDeliveries   Int       @default(0)
+  totalEarnings     Float     @default(0)
+  weeklyEarnings    Float     @default(0)
+  monthlyEarnings   Float     @default(0)
+  pendingEarnings   Float     @default(0)
+  bankAccount       String?
+  payoutMethod      PayoutMethod @default(THREE_DAY)
+  isVerified        Boolean   @default(false)
+  documentsStatus   DocumentStatus @default(PENDING)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relationships
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders            Order[]
+  driverSchedule    DriverSchedule[]
+  earnings          Earning[]
+  withdrawals       Withdrawal[]
+
+  @@map("drivers")
+}
+
+model Admin {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  role      AdminRole @default(ADMIN)
+  permissions Json?
+  lastLogin DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("admins")
+}
+
+model Product {
+  id              String        @id @default(cuid())
+  name            String
+  description     String
+  category        ProductCategory
+  price           Float
+  originalPrice   Float?
+  thcContent      String?
+  cbdContent      String?
+  strain          String?
+  effects         String[]
+  imageUrl        String?
+  images          String[]
+  stock           Int           @default(0)
+  isActive        Boolean       @default(true)
+  isFeatured      Boolean       @default(false)
+  isLabTested     Boolean       @default(false)
+  supplier        String?
+  sku             String?       @unique
+  weight          Float?
+  unit            String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relationships
+  orderItems      OrderItem[]
+  reviews         Review[]
+  inventory       InventoryLog[]
+
+  @@map("products")
+}
+
+model Order {
+  id                String        @id @default(cuid())
+  orderNumber       String        @unique
+  customerId        String
+  driverId          String?
+  status            OrderStatus   @default(PENDING)
+  subtotal          Float
+  tax               Float
+  deliveryFee       Float
+  tip               Float         @default(0)
+  total             Float
+  paymentMethod     String
+  paymentStatus     PaymentStatus @default(PENDING)
+  paymentIntentId   String?
+  deliveryAddress   String
+  deliveryLat       Float?
+  deliveryLng       Float?
+  estimatedDelivery DateTime?
+  deliveredAt       DateTime?
+  specialInstructions String?
+  trackingSteps     Json?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  // Relationships
+  customer          User          @relation(fields: [customerId], references: [id])
+  driver            Driver?       @relation(fields: [driverId], references: [id])
+  items             OrderItem[]
+  statusHistory     OrderStatusHistory[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Float
+  createdAt DateTime @default(now())
+
+  // Relationships
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(cuid())
+  orderId   String
+  status    OrderStatus
+  timestamp DateTime    @default(now())
+  notes     String?
+
+  // Relationships
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_status_history")
+}
+
+model Address {
+  id        String   @id @default(cuid())
+  userId    String
+  label     String   // "Home", "Work", etc.
+  street    String
+  city      String
+  state     String
+  zipCode   String
+  lat       Float?
+  lng       Float?
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("addresses")
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  userId     String
+  productId  String
+  rating     Int      // 1-5
+  comment    String?
+  isApproved Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relationships
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("reviews")
+}
+
+model DriverSchedule {
+  id        String    @id @default(cuid())
+  driverId  String
+  dayOfWeek Int       // 0-6 (Sunday-Saturday)
+  startTime String    // "09:00"
+  endTime   String    // "17:00"
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relationships
+  driver    Driver    @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@unique([driverId, dayOfWeek])
+  @@map("driver_schedules")
+}
+
+model Earning {
+  id        String      @id @default(cuid())
+  driverId  String
+  orderId   String?
+  type      EarningType
+  amount    Float
+  date      DateTime    @default(now())
+  isPaid    Boolean     @default(false)
+  createdAt DateTime    @default(now())
+
+  // Relationships
+  driver    Driver      @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@map("earnings")
+}
+
+model Withdrawal {
+  id           String           @id @default(cuid())
+  driverId     String
+  amount       Float
+  fee          Float            @default(0)
+  netAmount    Float
+  method       PayoutMethod
+  status       WithdrawalStatus @default(PENDING)
+  processedAt  DateTime?
+  createdAt    DateTime         @default(now())
+
+  // Relationships
+  driver       Driver           @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@map("withdrawals")
+}
+
+model InventoryLog {
+  id          String          @id @default(cuid())
+  productId   String
+  type        InventoryAction
+  quantity    Int
+  reason      String?
+  previousQty Int
+  newQty      Int
+  createdAt   DateTime        @default(now())
+
+  // Relationships
+  product     Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("inventory_logs")
+}
+
+model PushToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  platform  String   // "ios", "android", "web"
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("push_tokens")
+}
+
+model Notification {
+  id        String             @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      NotificationType
+  isRead    Boolean            @default(false)
+  data      Json?
+  createdAt DateTime           @default(now())
+
+  // Relationships
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+// Enums
+enum Role {
+  CUSTOMER
+  DRIVER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum AdminRole {
+  ADMIN
+  MANAGER
+  SUPPORT
+  SUPER_ADMIN
+}
+
+enum ProductCategory {
+  FLOWER
+  EDIBLES
+  CONCENTRATES
+  PREROLLS
+  ACCESSORIES
+  TOPICALS
+  VAPES
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY_FOR_PICKUP
+  ASSIGNED
+  ACCEPTED
+  PICKED_UP
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PayoutMethod {
+  INSTANT
+  DAILY
+  THREE_DAY
+}
+
+enum DocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum EarningType {
+  BASE_PAY
+  MILEAGE
+  TIP
+  BONUS
+  ADJUSTMENT
+}
+
+enum WithdrawalStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum InventoryAction {
+  RESTOCK
+  SALE
+  ADJUSTMENT
+  DAMAGED
+  EXPIRED
+}
+
+enum NotificationType {
+  ORDER_UPDATE
+  DELIVERY_UPDATE
+  EARNINGS
+  PROMOTION
+  SYSTEM
+}

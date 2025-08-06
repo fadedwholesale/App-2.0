@@ -1,0 +1,143 @@
+{
+  "expo": {
+    "name": "Faded Skies",
+    "slug": "faded-skies-delivery",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1f2937"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.fadedskies.delivery",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app needs location access to provide delivery services and show nearby dispensaries.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs location access to provide delivery services and track orders in real-time.",
+        "NSCameraUsageDescription": "This app needs camera access to scan ID for age verification and take photos for delivery confirmation.",
+        "NSPhotoLibraryUsageDescription": "This app needs photo library access to upload ID verification documents.",
+        "NSFaceIDUsageDescription": "Use Face ID to securely access your account and authorize purchases.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "associatedDomains": [
+        "applinks:fadedskies.app"
+      ]
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1f2937"
+      },
+      "package": "com.fadedskies.delivery",
+      "versionCode": 1,
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "VIBRATE",
+        "RECEIVE_BOOT_COMPLETED",
+        "WAKE_LOCK"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyD_your_android_maps_api_key"
+        }
+      },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "fadedskies.app"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-location",
+      "expo-camera",
+      "expo-notifications",
+      "expo-secure-store",
+      "expo-device",
+      "@react-native-async-storage/async-storage",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#1f2937",
+          "defaultChannel": "default"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "This app needs location access to provide delivery services and track orders in real-time.",
+          "locationAlwaysPermission": "This app needs background location access to track delivery progress when the app is closed.",
+          "locationWhenInUsePermission": "This app needs location access to show nearby dispensaries and estimate delivery times.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "This app needs camera access to scan ID for age verification and take photos for delivery confirmation."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "13.0"
+          },
+          "android": {
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "minSdkVersion": 23
+          }
+        }
+      ]
+    ],
+    "scheme": "fadedskies",
+    "extra": {
+      "eas": {
+        "projectId": "your-expo-project-id"
+      },
+      "apiUrl": "https://api.fadedskies.app",
+      "socketUrl": "wss://api.fadedskies.app",
+      "stripePublishableKey": "pk_live_your_stripe_publishable_key",
+      "googleMapsApiKey": "AIzaSyD_your_google_maps_api_key"
+    },
+    "owner": "fadedskies",
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/your-project-id"
+    }
+  }
+}
