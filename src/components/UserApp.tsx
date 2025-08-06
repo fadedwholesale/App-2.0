@@ -1284,7 +1284,7 @@ const ContactModal = React.memo(({
               <div className="bg-blue-50 rounded-xl p-4">
                 <h4 className="font-semibold text-blue-900 mb-2">Before you call:</h4>
                 <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• Have your order number ready (if applicable)</li>
+                  <li>��� Have your order number ready (if applicable)</li>
                   <li>• Be prepared to verify your identity</li>
                   <li>• Write down specific questions or issues</li>
                 </ul>
@@ -3237,7 +3237,7 @@ const FadedSkiesApp = () => {
                     </div>
                     <button
                       type="button"
-                      onClick={() => alert('Support ticket would be submitted here')}
+                      onClick={() => openModal('submitTicket')}
                       className="w-full bg-gradient-to-r from-emerald-600 to-green-600 text-white py-4 rounded-xl font-bold hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl"
                     >
                       Submit Ticket
