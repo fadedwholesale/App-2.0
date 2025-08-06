@@ -377,6 +377,537 @@ const RewardsModal = React.memo(({
   );
 });
 
+// Change Password Modal Component
+const ChangePasswordModal = React.memo(({
+  isOpen,
+  onClose,
+  onSuccess
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: (message: string) => void;
+}) => {
+  const [form, setForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  });
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!form.currentPassword) {
+      newErrors.currentPassword = 'Current password is required';
+    }
+
+    if (!form.newPassword) {
+      newErrors.newPassword = 'New password is required';
+    } else if (form.newPassword.length < 8) {
+      newErrors.newPassword = 'Password must be at least 8 characters';
+    }
+
+    if (!form.confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your new password';
+    } else if (form.newPassword !== form.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = () => {
+    if (validateForm()) {
+      onSuccess('Password changed successfully!');
+      setForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setErrors({});
+      onClose();
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Change Password">
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Current Password</label>
+          <div className="relative">
+            <input
+              type={showPasswords.current ? 'text' : 'password'}
+              value={form.currentPassword}
+              onChange={(e) => setForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+              className={`w-full px-4 py-3 pr-12 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                errors.currentPassword ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50 focus:bg-white'
+              }`}
+              placeholder="Enter current password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPasswords(prev => ({ ...prev, current: !prev.current }))}
+              className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              {showPasswords.current ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
+          </div>
+          {errors.currentPassword && <p className="text-red-500 text-sm mt-1">{errors.currentPassword}</p>}
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">New Password</label>
+          <div className="relative">
+            <input
+              type={showPasswords.new ? 'text' : 'password'}
+              value={form.newPassword}
+              onChange={(e) => setForm(prev => ({ ...prev, newPassword: e.target.value }))}
+              className={`w-full px-4 py-3 pr-12 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                errors.newPassword ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50 focus:bg-white'
+              }`}
+              placeholder="Enter new password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPasswords(prev => ({ ...prev, new: !prev.new }))}
+              className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              {showPasswords.new ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
+          </div>
+          {errors.newPassword && <p className="text-red-500 text-sm mt-1">{errors.newPassword}</p>}
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Confirm New Password</label>
+          <div className="relative">
+            <input
+              type={showPasswords.confirm ? 'text' : 'password'}
+              value={form.confirmPassword}
+              onChange={(e) => setForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+              className={`w-full px-4 py-3 pr-12 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+                errors.confirmPassword ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50 focus:bg-white'
+              }`}
+              placeholder="Confirm new password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPasswords(prev => ({ ...prev, confirm: !prev.confirm }))}
+              className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              {showPasswords.confirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
+          </div>
+          {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>}
+        </div>
+
+        <div className="bg-blue-50 rounded-xl p-4">
+          <h4 className="font-semibold text-blue-900 mb-2">Password Requirements:</h4>
+          <ul className="text-sm text-blue-800 space-y-1">
+            <li>• At least 8 characters long</li>
+            <li>• Include uppercase and lowercase letters</li>
+            <li>• Include at least one number</li>
+            <li>• Include at least one special character</li>
+          </ul>
+        </div>
+
+        <div className="flex space-x-3 pt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 text-white py-3 rounded-xl font-bold hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl"
+          >
+            Change Password
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+});
+
+// Two-Factor Authentication Modal Component
+const TwoFactorModal = React.memo(({
+  isOpen,
+  onClose,
+  onSuccess
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: (message: string) => void;
+}) => {
+  const [enabled, setEnabled] = useState(false);
+  const [step, setStep] = useState<'setup' | 'verify'>('setup');
+  const [verificationCode, setVerificationCode] = useState('');
+
+  const handleEnable = () => {
+    if (step === 'setup') {
+      setStep('verify');
+    } else {
+      if (verificationCode.length === 6) {
+        setEnabled(true);
+        onSuccess('Two-factor authentication enabled successfully!');
+        onClose();
+      }
+    }
+  };
+
+  const handleDisable = () => {
+    setEnabled(false);
+    onSuccess('Two-factor authentication disabled.');
+    onClose();
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Two-Factor Authentication">
+      <div className="space-y-6">
+        {!enabled ? (
+          step === 'setup' ? (
+            <>
+              <div className="text-center">
+                <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Shield className="w-10 h-10 text-blue-600" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Secure Your Account</h3>
+                <p className="text-gray-600">Add an extra layer of security with two-factor authentication</p>
+              </div>
+
+              <div className="bg-blue-50 rounded-xl p-4">
+                <h4 className="font-semibold text-blue-900 mb-2">How it works:</h4>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>• Install an authenticator app (Google Authenticator, Authy, etc.)</li>
+                  <li>• Scan the QR code with your app</li>
+                  <li>• Enter the 6-digit code to verify</li>
+                  <li>• You'll need this code every time you sign in</li>
+                </ul>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleEnable}
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-xl font-bold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl"
+              >
+                Set Up 2FA
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="text-center">
+                <div className="w-40 h-40 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <div className="text-xs text-gray-500">QR Code would appear here</div>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Scan QR Code</h3>
+                <p className="text-gray-600 mb-4">Open your authenticator app and scan the QR code above</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Verification Code</label>
+                <input
+                  type="text"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-gray-50 focus:bg-white text-center text-2xl font-mono tracking-widest"
+                  placeholder="000000"
+                  maxLength={6}
+                />
+                <p className="text-sm text-gray-500 mt-1">Enter the 6-digit code from your authenticator app</p>
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setStep('setup')}
+                  className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={handleEnable}
+                  disabled={verificationCode.length !== 6}
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-xl font-bold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Verify & Enable
+                </button>
+              </div>
+            </>
+          )
+        ) : (
+          <>
+            <div className="text-center">
+              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-10 h-10 text-green-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">2FA Enabled</h3>
+              <p className="text-gray-600">Your account is protected with two-factor authentication</p>
+            </div>
+
+            <div className="bg-green-50 rounded-xl p-4">
+              <h4 className="font-semibold text-green-900 mb-2">Security Status:</h4>
+              <ul className="text-sm text-green-800 space-y-1">
+                <li>• Two-factor authentication is active</li>
+                <li>• Backup codes have been generated</li>
+                <li>• Account security is enhanced</li>
+              </ul>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleDisable}
+              className="w-full bg-red-500 text-white py-3 rounded-xl font-bold hover:bg-red-600 transition-colors"
+            >
+              Disable 2FA
+            </button>
+          </>
+        )}
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+        >
+          Close
+        </button>
+      </div>
+    </Modal>
+  );
+});
+
+// Privacy Settings Modal Component
+const PrivacySettingsModal = React.memo(({
+  isOpen,
+  onClose,
+  onSuccess
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: (message: string) => void;
+}) => {
+  const [settings, setSettings] = useState({
+    profileVisible: true,
+    orderHistoryVisible: false,
+    locationTracking: true,
+    analyticsData: false,
+    thirdPartySharing: false
+  });
+
+  const handleSave = () => {
+    onSuccess('Privacy settings updated successfully!');
+    onClose();
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Privacy Settings">
+      <div className="space-y-6">
+        <div className="space-y-4">
+          {[
+            {
+              key: 'profileVisible',
+              label: 'Profile Visibility',
+              description: 'Allow other users to see your profile information'
+            },
+            {
+              key: 'orderHistoryVisible',
+              label: 'Order History Visibility',
+              description: 'Share order history for personalized recommendations'
+            },
+            {
+              key: 'locationTracking',
+              label: 'Location Tracking',
+              description: 'Allow location tracking for delivery optimization'
+            },
+            {
+              key: 'analyticsData',
+              label: 'Analytics Data',
+              description: 'Share usage data to help improve our services'
+            },
+            {
+              key: 'thirdPartySharing',
+              label: 'Third-Party Sharing',
+              description: 'Allow sharing data with trusted partners'
+            }
+          ].map((setting) => (
+            <div key={setting.key} className="flex items-start justify-between py-3 border-b border-gray-100 last:border-b-0">
+              <div className="flex-1 mr-4">
+                <h4 className="font-semibold text-gray-900">{setting.label}</h4>
+                <p className="text-sm text-gray-600 mt-1">{setting.description}</p>
+              </div>
+              <div
+                className={`w-12 h-6 rounded-full relative transition-colors cursor-pointer ${
+                  settings[setting.key as keyof typeof settings] ? 'bg-emerald-600' : 'bg-gray-300'
+                }`}
+                onClick={() => setSettings(prev => ({
+                  ...prev,
+                  [setting.key]: !prev[setting.key as keyof typeof prev]
+                }))}
+              >
+                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                  settings[setting.key as keyof typeof settings] ? 'translate-x-7' : 'translate-x-1'
+                }`}></div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="bg-amber-50 rounded-xl p-4">
+          <h4 className="font-semibold text-amber-900 mb-2">Important Note:</h4>
+          <p className="text-sm text-amber-800">
+            Some features may not work properly if certain privacy settings are disabled.
+            You can always change these settings later.
+          </p>
+        </div>
+
+        <div className="flex space-x-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 text-white py-3 rounded-xl font-bold hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl"
+          >
+            Save Settings
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+});
+
+// Data & Privacy Modal Component
+const DataPrivacyModal = React.memo(({
+  isOpen,
+  onClose,
+  onSuccess
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: (message: string) => void;
+}) => {
+  const [selectedAction, setSelectedAction] = useState<string | null>(null);
+
+  const handleDataRequest = (action: string) => {
+    setSelectedAction(action);
+    let message = '';
+    switch (action) {
+      case 'download':
+        message = 'Data download request submitted. You will receive an email with your data within 30 days.';
+        break;
+      case 'delete':
+        message = 'Account deletion request submitted. This action cannot be undone.';
+        break;
+      case 'correct':
+        message = 'Data correction request submitted. We will review and update your information.';
+        break;
+    }
+    onSuccess(message);
+    setTimeout(() => {
+      setSelectedAction(null);
+      onClose();
+    }, 2000);
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Data & Privacy">
+      <div className="space-y-6">
+        <div className="bg-blue-50 rounded-xl p-4">
+          <h4 className="font-semibold text-blue-900 mb-2">Your Data Rights</h4>
+          <p className="text-sm text-blue-800">
+            You have the right to access, correct, download, or delete your personal data.
+            We are committed to protecting your privacy and giving you control over your information.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          {[
+            {
+              action: 'download',
+              title: 'Download Your Data',
+              description: 'Get a copy of all your personal data we have stored',
+              icon: '⬇️',
+              color: 'from-blue-500 to-blue-600'
+            },
+            {
+              action: 'correct',
+              title: 'Correct Your Data',
+              description: 'Request corrections to any inaccurate personal information',
+              icon: '✏️',
+              color: 'from-green-500 to-green-600'
+            },
+            {
+              action: 'delete',
+              title: 'Delete Your Account',
+              description: 'Permanently delete your account and all associated data',
+              icon: '🗑️',
+              color: 'from-red-500 to-red-600'
+            }
+          ].map((item) => (
+            <button
+              key={item.action}
+              type="button"
+              onClick={() => handleDataRequest(item.action)}
+              disabled={selectedAction !== null}
+              className={`w-full p-4 rounded-xl text-left hover:bg-gray-50 transition-colors border-2 border-gray-200 hover:border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed ${
+                selectedAction === item.action ? 'border-emerald-300 bg-emerald-50' : ''
+              }`}
+            >
+              <div className="flex items-start space-x-4">
+                <span className="text-2xl">{item.icon}</span>
+                <div className="flex-1">
+                  <h4 className="font-bold text-gray-900">{item.title}</h4>
+                  <p className="text-sm text-gray-600 mt-1">{item.description}</p>
+                  {selectedAction === item.action && (
+                    <p className="text-sm text-emerald-600 font-semibold mt-2">Processing request...</p>
+                  )}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        <div className="bg-gray-50 rounded-xl p-4">
+          <h4 className="font-semibold text-gray-900 mb-2">Data We Collect</h4>
+          <ul className="text-sm text-gray-600 space-y-1">
+            <li>• Account information (name, email, address)</li>
+            <li>• Order history and preferences</li>
+            <li>• Device and usage information</li>
+            <li>• Location data (for delivery)</li>
+            <li>• Communication history</li>
+          </ul>
+        </div>
+
+        <div className="bg-amber-50 rounded-xl p-4">
+          <h4 className="font-semibold text-amber-900 mb-2">Important Notice</h4>
+          <p className="text-sm text-amber-800">
+            Data requests may take up to 30 days to process. Account deletion is permanent and cannot be undone.
+            Please contact support if you have any questions.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+        >
+          Close
+        </button>
+      </div>
+    </Modal>
+  );
+});
+
 // ProductCard component - moved outside
 const ProductCard = React.memo(({ product, addToCart, addingToCart }: { 
   product: Product; 
