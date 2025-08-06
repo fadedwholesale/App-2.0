@@ -115,6 +115,21 @@ const FadedSkiesTrackingAdmin = () => {
     setDeleteTarget({ type: '', id: null, name: '' });
   };
 
+  // Handle keyboard events for modals
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        const hasOpenModal = Object.values(modals).some(modal => modal);
+        if (hasOpenModal) {
+          closeAllModals();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [modals]);
+
   // Sample data
   const [products] = useState([
     {
