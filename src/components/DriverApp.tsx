@@ -2045,6 +2045,7 @@ const FadedSkiesDriverApp = () => {
           <EditVehicleModal />
           <WithdrawEarningsModal />
           <ScheduleModal />
+          <PayoutSettingsModal />
         </>
       )}
     </div>
