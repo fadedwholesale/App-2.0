@@ -602,13 +602,7 @@ const FadedSkiesTrackingAdmin = () => {
       case 'tracking': return <TrackingView />;
       case 'customers': return <CustomersView />;
       case 'analytics':
-        return (
-          <div className="text-center py-16">
-            <BarChart3 className="w-24 h-24 text-gray-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Analytics Dashboard</h2>
-            <p className="text-gray-600">Advanced analytics and reporting coming soon</p>
-          </div>
-        );
+        return <AnalyticsView />;
       case 'settings':
         return (
           <div className="text-center py-16">
