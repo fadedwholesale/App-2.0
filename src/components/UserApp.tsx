@@ -1094,6 +1094,433 @@ const FadedSkiesApp = () => {
             </div>
           )}
 
+          {currentView === 'orders' && (
+            <div className="pb-24 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+              <div className="bg-gradient-to-r from-emerald-500 to-green-600 text-white p-6 rounded-b-3xl shadow-xl">
+                <h1 className="text-3xl font-bold mb-2">Your Orders</h1>
+                <p className="text-green-100 text-lg">{orders.length} order{orders.length !== 1 ? 's' : ''} total</p>
+              </div>
+
+              <div className="p-6">
+                {orders.length === 0 ? (
+                  <div className="text-center py-16">
+                    <div className="w-32 h-32 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
+                      <Truck className="w-16 h-16 text-gray-400" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-3">No orders yet</h3>
+                    <p className="text-gray-600 mb-8 text-lg">Start shopping to see your orders here</p>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentView('home')}
+                      className="bg-gradient-to-r from-emerald-600 to-green-600 text-white px-10 py-5 rounded-2xl font-bold text-lg hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
+                    >
+                      🌿 Start Shopping
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {orders.map(order => (
+                      <div key={order.id} className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all">
+                        <div className="flex items-start justify-between mb-4">
+                          <div>
+                            <h3 className="font-bold text-xl text-gray-900 mb-1">{order.id}</h3>
+                            <p className="text-gray-600 font-medium">{order.date}</p>
+                          </div>
+                          <div className="text-right">
+                            <div className={`px-4 py-2 rounded-full text-sm font-bold mb-2 ${
+                              order.status === 'delivered'
+                                ? 'bg-green-100 text-green-800'
+                                : order.status === 'in-transit'
+                                ? 'bg-blue-100 text-blue-800'
+                                : order.status === 'preparing'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {order.status === 'delivered' && '✅ Delivered'}
+                              {order.status === 'in-transit' && '🚚 In Transit'}
+                              {order.status === 'preparing' && '📦 Preparing'}
+                              {order.status === 'cancelled' && '❌ Cancelled'}
+                            </div>
+                            <p className="font-black text-xl text-gray-900">${order.total.toFixed(2)}</p>
+                          </div>
+                        </div>
+
+                        <div className="mb-4">
+                          <h4 className="font-semibold text-gray-900 mb-2">Items:</h4>
+                          <div className="space-y-1">
+                            {order.items.map((item, index) => (
+                              <p key={index} className="text-gray-600 text-sm">• {item}</p>
+                            ))}
+                          </div>
+                        </div>
+
+                        {order.status === 'in-transit' && order.currentLocation && (
+                          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 mb-4 border border-blue-100">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+                              <div>
+                                <p className="font-semibold text-blue-900">Driver is {order.currentLocation}</p>
+                                <p className="text-blue-700 text-sm">ETA: {order.estimatedDelivery}</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="bg-gray-50 rounded-2xl p-4 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-gray-700">Driver:</span>
+                            <span className="font-semibold text-gray-900">{order.driver}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-gray-700">Vehicle:</span>
+                            <span className="font-semibold text-gray-900">{order.vehicle}</span>
+                          </div>
+                          {order.deliveredAt && (
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium text-gray-700">Delivered:</span>
+                              <span className="font-semibold text-green-600">{order.deliveredAt}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex space-x-3 mt-4">
+                          <button
+                            type="button"
+                            onClick={() => alert('Reorder functionality would be implemented here')}
+                            className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 text-white py-3 rounded-xl font-bold hover:from-emerald-700 hover:to-green-700 transition-all"
+                          >
+                            Reorder
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => alert('Order details would be shown here')}
+                            className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+                          >
+                            View Details
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {currentView === 'profile' && (
+            <div className="pb-24 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+              <div className="bg-gradient-to-r from-emerald-500 to-green-600 text-white p-6 rounded-b-3xl shadow-xl">
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+                    <User className="w-10 h-10 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-bold">{user.name}</h1>
+                    <p className="text-green-100 text-lg font-medium">{user.email}</p>
+                    {user.idVerified && (
+                      <div className="flex items-center space-x-1 text-sm bg-green-700/80 backdrop-blur-sm px-3 py-1 rounded-full mt-2">
+                        <CheckCircle className="w-4 h-4" />
+                        <span className="font-semibold">Verified Member</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-6">
+                <div className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-3xl p-6 border border-emerald-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-bold text-xl text-gray-900">FS Rewards</h3>
+                    <span className="font-black text-3xl text-emerald-600">{user.rewards}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white rounded-2xl p-4 text-center shadow-sm">
+                      <div className="text-2xl mb-1">🪙</div>
+                      <p className="text-sm font-semibold text-gray-600">Total Coins</p>
+                      <p className="font-bold text-lg text-gray-900">{user.rewards}</p>
+                    </div>
+                    <div className="bg-white rounded-2xl p-4 text-center shadow-sm">
+                      <div className="text-2xl mb-1">📦</div>
+                      <p className="text-sm font-semibold text-gray-600">Orders</p>
+                      <p className="font-bold text-lg text-gray-900">{orders.length}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => alert('Rewards program details would be shown here')}
+                    className="w-full mt-4 bg-gradient-to-r from-emerald-600 to-green-600 text-white py-3 rounded-xl font-bold hover:from-emerald-700 hover:to-green-700 transition-all"
+                  >
+                    View Rewards Program
+                  </button>
+                </div>
+
+                <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100">
+                  <h3 className="font-bold text-xl text-gray-900 mb-4">Account Information</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                      <span className="font-medium text-gray-700">Full Name</span>
+                      <span className="font-semibold text-gray-900">{user.name}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                      <span className="font-medium text-gray-700">Email</span>
+                      <span className="font-semibold text-gray-900">{user.email}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                      <span className="font-medium text-gray-700">Address</span>
+                      <span className="font-semibold text-gray-900">{user.address}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                      <span className="font-medium text-gray-700">Age</span>
+                      <span className="font-semibold text-gray-900">{user.age} years old</span>
+                    </div>
+                    <div className="flex items-center justify-between py-3">
+                      <span className="font-medium text-gray-700">ID Verification</span>
+                      <span className={`font-semibold ${user.idVerified ? 'text-green-600' : 'text-amber-600'}`}>
+                        {user.idVerified ? '✅ Verified' : '⏳ Pending'}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => alert('Edit profile functionality would be implemented here')}
+                    className="w-full mt-6 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <Edit3 className="w-5 h-5" />
+                    <span>Edit Profile</span>
+                  </button>
+                </div>
+
+                <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100">
+                  <h3 className="font-bold text-xl text-gray-900 mb-4">Preferences</h3>
+                  <div className="space-y-4">
+                    {[
+                      { label: 'Push Notifications', icon: Bell, enabled: true },
+                      { label: 'Email Updates', icon: Bell, enabled: false },
+                      { label: 'SMS Alerts', icon: MessageCircle, enabled: true },
+                      { label: 'Marketing Communications', icon: Bell, enabled: false }
+                    ].map((pref, index) => (
+                      <div key={index} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
+                        <div className="flex items-center space-x-3">
+                          <pref.icon className="w-5 h-5 text-gray-500" />
+                          <span className="font-medium text-gray-700">{pref.label}</span>
+                        </div>
+                        <div className={`w-12 h-6 rounded-full relative transition-colors ${
+                          pref.enabled ? 'bg-emerald-600' : 'bg-gray-300'
+                        }`}>
+                          <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                            pref.enabled ? 'translate-x-7' : 'translate-x-1'
+                          }`}></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100">
+                  <h3 className="font-bold text-xl text-gray-900 mb-4">Security & Privacy</h3>
+                  <div className="space-y-3">
+                    {[
+                      { label: 'Change Password', icon: Shield },
+                      { label: 'Two-Factor Authentication', icon: Shield },
+                      { label: 'Privacy Settings', icon: Shield },
+                      { label: 'Data & Privacy', icon: Shield }
+                    ].map((item, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => alert(`${item.label} would be implemented here`)}
+                        className="w-full flex items-center justify-between py-3 px-4 rounded-xl hover:bg-gray-50 transition-colors text-left"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <item.icon className="w-5 h-5 text-gray-500" />
+                          <span className="font-medium text-gray-700">{item.label}</span>
+                        </div>
+                        <span className="text-gray-400">→</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100">
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="w-full bg-red-500 text-white py-4 rounded-xl font-bold hover:bg-red-600 transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {currentView === 'support' && (
+            <div className="pb-24 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+              <div className="bg-gradient-to-r from-emerald-500 to-green-600 text-white p-6 rounded-b-3xl shadow-xl">
+                <h1 className="text-3xl font-bold mb-2">Support Center</h1>
+                <p className="text-green-100 text-lg">We're here to help 24/7</p>
+              </div>
+
+              <div className="p-6 space-y-6">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-3xl p-6 border border-blue-100">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <MessageCircle className="w-8 h-8 text-blue-600" />
+                    <div>
+                      <h3 className="font-bold text-xl text-blue-900">Live Chat</h3>
+                      <p className="text-blue-700">Get instant help from our team</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => alert('Live chat would open here')}
+                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-bold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl"
+                  >
+                    Start Chat
+                  </button>
+                </div>
+
+                <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100">
+                  <h3 className="font-bold text-xl text-gray-900 mb-4">Quick Help</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    {[
+                      { title: 'Order Status', icon: '📦', color: 'from-green-400 to-emerald-500' },
+                      { title: 'Payment Issues', icon: '💳', color: 'from-blue-400 to-cyan-500' },
+                      { title: 'Product Info', icon: '🌿', color: 'from-purple-400 to-violet-500' },
+                      { title: 'Account Help', icon: '👤', color: 'from-orange-400 to-amber-500' }
+                    ].map((item, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => alert(`${item.title} help would be shown here`)}
+                        className={`bg-gradient-to-r ${item.color} text-white p-4 rounded-2xl text-center hover:scale-105 transition-all shadow-lg hover:shadow-xl`}
+                      >
+                        <div className="text-2xl mb-2">{item.icon}</div>
+                        <div className="font-bold text-sm">{item.title}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100">
+                  <h3 className="font-bold text-xl text-gray-900 mb-4">Frequently Asked Questions</h3>
+                  <div className="space-y-4">
+                    {[
+                      {
+                        question: 'How long does delivery take?',
+                        answer: 'Most orders arrive within 1-2 hours. Same-day delivery available until 10 PM.'
+                      },
+                      {
+                        question: 'What payment methods do you accept?',
+                        answer: 'We accept cash, debit cards, Apple Pay, Google Pay, and FS Coins.'
+                      },
+                      {
+                        question: 'Do I need to show ID upon delivery?',
+                        answer: 'Yes, valid government-issued ID is required for all deliveries to verify age (21+).'
+                      },
+                      {
+                        question: 'Can I track my order?',
+                        answer: 'Yes! You can track your order in real-time in the Orders tab.'
+                      }
+                    ].map((faq, index) => (
+                      <div key={index} className="border border-gray-200 rounded-2xl p-4 hover:bg-gray-50 transition-colors">
+                        <h4 className="font-bold text-gray-900 mb-2">{faq.question}</h4>
+                        <p className="text-gray-600 text-sm leading-relaxed">{faq.answer}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100">
+                  <h3 className="font-bold text-xl text-gray-900 mb-4">Contact Options</h3>
+                  <div className="space-y-3">
+                    {[
+                      { label: 'Call Support', icon: '📞', subtitle: '(555) 420-FADED' },
+                      { label: 'Email Us', icon: '✉️', subtitle: 'support@fadedskies.com' },
+                      { label: 'Report Issue', icon: '⚠️', subtitle: 'Something went wrong?' },
+                      { label: 'Feedback', icon: '💬', subtitle: 'Help us improve' }
+                    ].map((contact, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => alert(`${contact.label} would be implemented here`)}
+                        className="w-full flex items-center space-x-4 p-4 rounded-xl hover:bg-gray-50 transition-colors text-left"
+                      >
+                        <span className="text-2xl">{contact.icon}</span>
+                        <div className="flex-1">
+                          <div className="font-bold text-gray-900">{contact.label}</div>
+                          <div className="text-sm text-gray-600">{contact.subtitle}</div>
+                        </div>
+                        <span className="text-gray-400">→</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-3xl p-6 border border-emerald-100">
+                  <h3 className="font-bold text-xl text-emerald-900 mb-4">Submit a Ticket</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-emerald-800 mb-2">Subject</label>
+                      <input
+                        type="text"
+                        placeholder="Brief description of your issue..."
+                        className="w-full px-4 py-3 border border-emerald-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-emerald-800 mb-2">Category</label>
+                      <select className="w-full px-4 py-3 border border-emerald-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors bg-white">
+                        <option>Order Issue</option>
+                        <option>Payment Problem</option>
+                        <option>Product Question</option>
+                        <option>Account Issue</option>
+                        <option>Technical Problem</option>
+                        <option>Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-emerald-800 mb-2">Description</label>
+                      <textarea
+                        placeholder="Please describe your issue in detail..."
+                        rows={4}
+                        className="w-full px-4 py-3 border border-emerald-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors bg-white resize-none"
+                      ></textarea>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => alert('Support ticket would be submitted here')}
+                      className="w-full bg-gradient-to-r from-emerald-600 to-green-600 text-white py-4 rounded-xl font-bold hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl"
+                    >
+                      Submit Ticket
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100">
+                  <h3 className="font-bold text-xl text-gray-900 mb-4">Hours & Information</h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                      <span className="font-medium text-gray-700">Support Hours</span>
+                      <span className="font-semibold text-gray-900">24/7</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                      <span className="font-medium text-gray-700">Live Chat</span>
+                      <span className="font-semibold text-green-600">Online</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                      <span className="font-medium text-gray-700">Response Time</span>
+                      <span className="font-semibold text-gray-900">Under 5 minutes</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2">
+                      <span className="font-medium text-gray-700">Languages</span>
+                      <span className="font-semibold text-gray-900">English, Spanish</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Bottom Navigation */}
           <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-200 p-4 flex justify-around shadow-xl">
             {[
