@@ -2031,6 +2031,13 @@ const FadedSkiesTrackingAdmin = () => {
       <div className="flex-1 p-8">
         {renderCurrentView()}
       </div>
+
+      {/* Modal Components */}
+      <ProductModal />
+      <OrderDetailsModal />
+      <CustomerDetailsModal />
+      <UserManagementModal />
+      <ConfirmationModal />
     </div>
   );
 };
