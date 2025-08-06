@@ -2379,6 +2379,7 @@ const FadedSkiesDriverApp = () => {
           <WithdrawEarningsModal />
           <ScheduleModal />
           <PayoutSettingsModal />
+          <ChangeBankAccountModal />
         </>
       )}
     </div>
