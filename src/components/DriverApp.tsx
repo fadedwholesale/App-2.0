@@ -343,6 +343,7 @@ const FadedSkiesDriverApp = () => {
     withdrawEarnings: false,
     manageSchedule: false,
     payoutSettings: false,
+    changeBankAccount: false,
     settings: false
   });
 
