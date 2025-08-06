@@ -3683,12 +3683,22 @@ const FadedSkiesApp = () => {
 
                         {order.status === 'in-transit' && order.currentLocation && (
                           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 mb-4 border border-blue-100">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
-                              <div>
-                                <p className="font-semibold text-blue-900">Driver is {order.currentLocation}</p>
-                                <p className="text-blue-700 text-sm">ETA: {order.estimatedDelivery}</p>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+                                <div>
+                                  <p className="font-semibold text-blue-900">Driver is {order.currentLocation}</p>
+                                  <p className="text-blue-700 text-sm">ETA: {order.estimatedDelivery}</p>
+                                </div>
                               </div>
+                              <button
+                                type="button"
+                                onClick={() => handleTrackOrder(order)}
+                                className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center space-x-2 text-sm"
+                              >
+                                <MapPin className="w-4 h-4" />
+                                <span>Track Live</span>
+                              </button>
                             </div>
                           </div>
                         )}
