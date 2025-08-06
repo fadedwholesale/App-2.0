@@ -2322,8 +2322,10 @@ const LiveTrackingModal = React.memo(({
     );
   }
 
+  if (!isOpen) return null;
+
   return (
-    <div className={`fixed inset-0 z-50 ${isOpen ? '' : 'hidden'}`}>
+    <div className="fixed inset-0 z-50">
       <div className="flex flex-col h-full bg-white">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4 flex items-center justify-between">
