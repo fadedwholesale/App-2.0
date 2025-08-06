@@ -1069,6 +1069,21 @@ const FadedSkiesApp = () => {
     marketingCommunications: false
   });
 
+  // Support ticket state
+  const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
+  const [ticketForm, setTicketForm] = useState({
+    subject: '',
+    category: 'Order Issue',
+    description: ''
+  });
+
+  // Live chat state
+  const [chatMessages, setChatMessages] = useState([
+    { id: 1, sender: 'agent', message: 'Hi! How can I help you today?', timestamp: new Date() }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+
   const categories = [
     { id: 'all', name: 'All Products', icon: '🌿', gradient: 'from-green-400 to-emerald-500' },
     { id: 'flower', name: 'Flower', icon: '🌸', gradient: 'from-pink-400 to-rose-500' },
