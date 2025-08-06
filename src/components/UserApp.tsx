@@ -128,6 +128,131 @@ const Modal = React.memo(({ isOpen, onClose, children, title }: {
   );
 });
 
+// Edit Profile Modal Component
+const EditProfileModal = React.memo(({
+  isOpen,
+  onClose,
+  user,
+  onUpdate
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  user: User;
+  onUpdate: (updates: Partial<User>) => void;
+}) => {
+  const [form, setForm] = useState({
+    name: user.name,
+    email: user.email,
+    address: user.address
+  });
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (isOpen) {
+      setForm({
+        name: user.name,
+        email: user.email,
+        address: user.address
+      });
+      setErrors({});
+    }
+  }, [isOpen, user]);
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!form.name.trim()) {
+      newErrors.name = 'Name is required';
+    }
+
+    if (!form.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+
+    if (!form.address.trim()) {
+      newErrors.address = 'Address is required';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = () => {
+    if (validateForm()) {
+      onUpdate(form);
+      onClose();
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Edit Profile">
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+          <input
+            type="text"
+            value={form.name}
+            onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
+            className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+              errors.name ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50 focus:bg-white'
+            }`}
+            placeholder="Enter your full name"
+          />
+          {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+          <input
+            type="email"
+            value={form.email}
+            onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
+            className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+              errors.email ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50 focus:bg-white'
+            }`}
+            placeholder="Enter your email address"
+          />
+          {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Delivery Address</label>
+          <input
+            type="text"
+            value={form.address}
+            onChange={(e) => setForm(prev => ({ ...prev, address: e.target.value }))}
+            className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors ${
+              errors.address ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50 focus:bg-white'
+            }`}
+            placeholder="Enter your delivery address"
+          />
+          {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address}</p>}
+        </div>
+
+        <div className="flex space-x-3 pt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 text-white py-3 rounded-xl font-bold hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl"
+          >
+            Update Profile
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+});
+
 // ProductCard component - moved outside
 const ProductCard = React.memo(({ product, addToCart, addingToCart }: { 
   product: Product; 
@@ -1034,7 +1159,7 @@ const FadedSkiesApp = () => {
                       <h3 className="font-bold text-lg text-gray-900">Payment Methods</h3>
                       <div className="grid grid-cols-2 gap-3">
                         {[
-                          { name: 'Apple Pay', icon: '����' },
+                          { name: 'Apple Pay', icon: '🍎' },
                           { name: 'Google Pay', icon: '🔵' },
                           { name: 'Aeropay', icon: '💳' },
                           { name: 'FS Coin', icon: '🪙' }
@@ -1361,7 +1486,7 @@ const FadedSkiesApp = () => {
                   </div>
                   <button
                     type="button"
-                    onClick={() => alert('Edit profile functionality would be implemented here')}
+                    onClick={() => openModal('editProfile')}
                     className="w-full mt-6 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors flex items-center justify-center space-x-2"
                   >
                     <Edit3 className="w-5 h-5" />
