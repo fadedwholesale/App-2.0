@@ -2629,7 +2629,7 @@ const FadedSkiesApp = () => {
                       onClick={() => setCurrentView('home')}
                       className="bg-gradient-to-r from-emerald-600 to-green-600 text-white px-10 py-5 rounded-2xl font-bold text-lg hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
                     >
-                      🌿 Start Shopping
+                      ���� Start Shopping
                     </button>
                   </div>
                 ) : (
@@ -3121,7 +3121,7 @@ const FadedSkiesApp = () => {
                   </div>
                   <button
                     type="button"
-                    onClick={() => alert('Live chat would open here')}
+                    onClick={() => openModal('liveChat')}
                     className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-bold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl"
                   >
                     Start Chat
