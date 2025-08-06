@@ -241,6 +241,18 @@ const FadedSkiesApp = () => {
   const [showToast, setShowToast] = useState<boolean>(false);
   const [addingToCart, setAddingToCart] = useState<number | null>(null);
 
+  // Modal states
+  const [currentModal, setCurrentModal] = useState<string | null>(null);
+  const [modalData, setModalData] = useState<any>({});
+
+  // Profile preferences
+  const [preferences, setPreferences] = useState({
+    pushNotifications: true,
+    emailUpdates: false,
+    smsAlerts: true,
+    marketingCommunications: false
+  });
+
   const categories = [
     { id: 'all', name: 'All Products', icon: '🌿', gradient: 'from-green-400 to-emerald-500' },
     { id: 'flower', name: 'Flower', icon: '🌸', gradient: 'from-pink-400 to-rose-500' },
