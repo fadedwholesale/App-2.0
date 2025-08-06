@@ -1761,6 +1761,218 @@ const SubmitTicketModal = React.memo(({
   );
 });
 
+// Order Details Modal Component
+const OrderDetailsModal = React.memo(({
+  isOpen,
+  onClose,
+  order,
+  onTrackOrder,
+  onReorder
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  order: Order | null;
+  onTrackOrder: (order: Order) => void;
+  onReorder: (order: Order) => void;
+}) => {
+  if (!order) return null;
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'delivered': return 'bg-green-100 text-green-800';
+      case 'in-transit': return 'bg-blue-100 text-blue-800';
+      case 'preparing': return 'bg-amber-100 text-amber-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'delivered': return '✅';
+      case 'in-transit': return '🚚';
+      case 'preparing': return '📦';
+      case 'cancelled': return '❌';
+      default: return '📋';
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title={`Order ${order.id}`}>
+      <div className="space-y-6">
+        {/* Order Status */}
+        <div className="text-center">
+          <div className={`inline-flex items-center space-x-2 px-6 py-3 rounded-full ${getStatusColor(order.status)} text-lg font-bold mb-4`}>
+            <span>{getStatusIcon(order.status)}</span>
+            <span className="capitalize">{order.status.replace('-', ' ')}</span>
+          </div>
+          <p className="text-gray-600">Order placed on {new Date(order.date).toLocaleDateString()}</p>
+        </div>
+
+        {/* Order Progress */}
+        {order.trackingSteps && (
+          <div className="bg-gray-50 rounded-xl p-4">
+            <h4 className="font-bold text-gray-900 mb-4">Order Progress</h4>
+            <div className="space-y-3">
+              {order.trackingSteps.map((step, index) => (
+                <div key={index} className="flex items-center space-x-3">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                    step.completed ? 'bg-green-500' : 'bg-gray-300'
+                  }`}>
+                    {step.completed ? (
+                      <CheckCircle className="w-4 h-4 text-white" />
+                    ) : (
+                      <div className="w-2 h-2 bg-white rounded-full"></div>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className={`font-medium ${
+                      step.completed ? 'text-gray-900' : 'text-gray-500'
+                    }`}>{step.step}</p>
+                    <p className="text-sm text-gray-500">{step.time}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Items */}
+        <div>
+          <h4 className="font-bold text-gray-900 mb-3">Items Ordered</h4>
+          <div className="space-y-3">
+            {order.itemDetails?.map((item, index) => (
+              <div key={index} className="bg-white border border-gray-200 rounded-xl p-4">
+                <div className="flex justify-between items-start mb-2">
+                  <h5 className="font-semibold text-gray-900">{item.name}</h5>
+                  <span className="font-bold text-gray-900">${(item.price * item.quantity).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm text-gray-600">
+                  <div className="flex space-x-4">
+                    {item.strain && <span>Strain: {item.strain}</span>}
+                    {item.thc && <span>THC: {item.thc}</span>}
+                    {item.cbd && <span>CBD: {item.cbd}</span>}
+                  </div>
+                  <span>Qty: {item.quantity}</span>
+                </div>
+              </div>
+            )) || order.items.map((item, index) => (
+              <div key={index} className="bg-white border border-gray-200 rounded-xl p-4">
+                <p className="font-semibold text-gray-900">{item}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Order Summary */}
+        <div className="bg-gray-50 rounded-xl p-4">
+          <h4 className="font-bold text-gray-900 mb-3">Order Summary</h4>
+          <div className="space-y-2">
+            {order.subtotal && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Subtotal:</span>
+                <span className="font-medium">${order.subtotal.toFixed(2)}</span>
+              </div>
+            )}
+            {order.tax && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Tax:</span>
+                <span className="font-medium">${order.tax.toFixed(2)}</span>
+              </div>
+            )}
+            {order.deliveryFee !== undefined && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Delivery Fee:</span>
+                <span className="font-medium">
+                  {order.deliveryFee === 0 ? 'FREE' : `$${order.deliveryFee.toFixed(2)}`}
+                </span>
+              </div>
+            )}
+            <div className="border-t border-gray-200 pt-2 flex justify-between">
+              <span className="font-bold text-lg">Total:</span>
+              <span className="font-bold text-lg text-emerald-600">${order.total.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Delivery Information */}
+        <div className="bg-blue-50 rounded-xl p-4">
+          <h4 className="font-bold text-blue-900 mb-3">Delivery Information</h4>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-blue-800">Driver:</span>
+              <span className="font-medium text-blue-900">{order.driver}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-blue-800">Vehicle:</span>
+              <span className="font-medium text-blue-900">{order.vehicle}</span>
+            </div>
+            {order.driverPhone && (
+              <div className="flex justify-between">
+                <span className="text-blue-800">Driver Phone:</span>
+                <span className="font-medium text-blue-900">{order.driverPhone}</span>
+              </div>
+            )}
+            {order.deliveryAddress && (
+              <div className="flex justify-between">
+                <span className="text-blue-800">Address:</span>
+                <span className="font-medium text-blue-900">{order.deliveryAddress}</span>
+              </div>
+            )}
+            {order.paymentMethod && (
+              <div className="flex justify-between">
+                <span className="text-blue-800">Payment:</span>
+                <span className="font-medium text-blue-900">{order.paymentMethod}</span>
+              </div>
+            )}
+            {order.orderNotes && (
+              <div>
+                <span className="text-blue-800">Notes:</span>
+                <p className="font-medium text-blue-900 mt-1">{order.orderNotes}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex space-x-3">
+          {order.status === 'in-transit' && (
+            <button
+              type="button"
+              onClick={() => {
+                onTrackOrder(order);
+                onClose();
+              }}
+              className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-xl font-bold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
+            >
+              <MapPin className="w-5 h-5" />
+              <span>Track Live</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              onReorder(order);
+              onClose();
+            }}
+            className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 text-white py-3 rounded-xl font-bold hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl"
+          >
+            Reorder
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+        >
+          Close
+        </button>
+      </div>
+    </Modal>
+  );
+});
+
 // ProductCard component - moved outside
 const ProductCard = React.memo(({ product, addToCart, addingToCart }: { 
   product: Product; 
