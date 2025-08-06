@@ -3116,6 +3116,7 @@ const FadedSkiesApp = () => {
   }, [openModal]);
 
   const handleTrackOrder = useCallback((order: Order) => {
+    console.log('Track order clicked:', order.id, order.status, order.driverLocation);
     setSelectedOrder(order);
     openModal('liveTracking');
   }, [openModal]);
