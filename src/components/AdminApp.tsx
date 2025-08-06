@@ -531,6 +531,271 @@ const FadedSkiesTrackingAdmin = () => {
     </div>
   );
 
+  const AnalyticsView = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold text-gray-900">Analytics & Reporting</h1>
+        <div className="flex items-center space-x-3">
+          <select className="px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+            <option>Last 7 days</option>
+            <option>Last 30 days</option>
+            <option>Last 3 months</option>
+            <option>This year</option>
+          </select>
+          <button className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-emerald-700 transition-colors flex items-center space-x-2">
+            <Download className="w-4 h-4" />
+            <span>Export Report</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Key Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-green-800">Total Revenue</h3>
+            <DollarSign className="w-8 h-8 text-green-600" />
+          </div>
+          <p className="text-3xl font-black text-green-600 mb-2">$47,892</p>
+          <div className="flex items-center space-x-2">
+            <TrendingUp className="w-4 h-4 text-green-600" />
+            <span className="text-sm font-semibold text-green-700">+23.5% vs last period</span>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-blue-800">Total Orders</h3>
+            <ShoppingCart className="w-8 h-8 text-blue-600" />
+          </div>
+          <p className="text-3xl font-black text-blue-600 mb-2">1,847</p>
+          <div className="flex items-center space-x-2">
+            <TrendingUp className="w-4 h-4 text-blue-600" />
+            <span className="text-sm font-semibold text-blue-700">+18.2% vs last period</span>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-r from-purple-50 to-violet-50 border border-purple-200 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-purple-800">Active Users</h3>
+            <Users className="w-8 h-8 text-purple-600" />
+          </div>
+          <p className="text-3xl font-black text-purple-600 mb-2">2,341</p>
+          <div className="flex items-center space-x-2">
+            <TrendingUp className="w-4 h-4 text-purple-600" />
+            <span className="text-sm font-semibold text-purple-700">+12.8% vs last period</span>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-orange-800">Avg Order Value</h3>
+            <Target className="w-8 h-8 text-orange-600" />
+          </div>
+          <p className="text-3xl font-black text-orange-600 mb-2">$89.42</p>
+          <div className="flex items-center space-x-2">
+            <TrendingDown className="w-4 h-4 text-red-500" />
+            <span className="text-sm font-semibold text-red-600">-3.1% vs last period</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-bold text-gray-900">Revenue Trend</h3>
+            <button className="text-gray-500 hover:text-gray-700">
+              <RefreshCw className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="h-64 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl flex items-center justify-center">
+            <div className="text-center">
+              <BarChart3 className="w-16 h-16 text-green-400 mx-auto mb-4" />
+              <p className="text-lg font-semibold text-gray-700">Revenue Chart</p>
+              <p className="text-sm text-gray-500">Interactive chart visualization</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-bold text-gray-900">Order Status Distribution</h3>
+            <button className="text-gray-500 hover:text-gray-700">
+              <RefreshCw className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="space-y-4">
+            {[
+              { status: 'Delivered', count: 1456, color: 'bg-green-500', percentage: 78.8 },
+              { status: 'In Transit', count: 234, color: 'bg-blue-500', percentage: 12.7 },
+              { status: 'Processing', count: 123, color: 'bg-yellow-500', percentage: 6.7 },
+              { status: 'Cancelled', count: 34, color: 'bg-red-500', percentage: 1.8 }
+            ].map((item, index) => (
+              <div key={index} className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className={`w-4 h-4 rounded-full ${item.color}`}></div>
+                  <span className="font-medium text-gray-700">{item.status}</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-24 bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${item.color}`}
+                      style={{ width: `${item.percentage}%` }}
+                    ></div>
+                  </div>
+                  <span className="text-sm font-bold text-gray-900 w-12 text-right">{item.count}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Performance Metrics */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <h3 className="text-xl font-bold text-gray-900 mb-4">Delivery Performance</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-gray-700">Average Delivery Time</span>
+              <span className="font-bold text-blue-600">14.3 min</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-gray-700">On-Time Delivery Rate</span>
+              <span className="font-bold text-green-600">97.8%</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-gray-700">Customer Satisfaction</span>
+              <div className="flex items-center space-x-1">
+                <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                <span className="font-bold text-yellow-600">4.8</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-gray-700">Return Rate</span>
+              <span className="font-bold text-red-600">1.2%</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <h3 className="text-xl font-bold text-gray-900 mb-4">Top Products</h3>
+          <div className="space-y-4">
+            {[
+              { name: 'Blue Dream Flower', sales: 234, revenue: '$10,530' },
+              { name: 'Live Resin Carts', sales: 189, revenue: '$12,285' },
+              { name: 'Gummy Edibles', sales: 156, revenue: '$3,900' },
+              { name: 'Pre-rolls Pack', sales: 134, revenue: '$4,690' }
+            ].map((product, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <div>
+                  <h4 className="font-semibold text-gray-900">{product.name}</h4>
+                  <p className="text-sm text-gray-600">{product.sales} units sold</p>
+                </div>
+                <div className="text-right">
+                  <div className="font-bold text-green-600">{product.revenue}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <h3 className="text-xl font-bold text-gray-900 mb-4">Driver Analytics</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-gray-700">Active Drivers</span>
+              <span className="font-bold text-blue-600">{drivers.filter(d => d.online).length}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-gray-700">Average Rating</span>
+              <div className="flex items-center space-x-1">
+                <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                <span className="font-bold text-yellow-600">4.85</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-gray-700">Total Deliveries Today</span>
+              <span className="font-bold text-green-600">47</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-gray-700">Driver Utilization</span>
+              <span className="font-bold text-purple-600">84%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Activity & Alerts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <h3 className="text-xl font-bold text-gray-900 mb-4">Recent Activity</h3>
+          <div className="space-y-4 max-h-64 overflow-y-auto">
+            {[
+              { time: '2 min ago', action: 'New order placed', details: '#FS2025045 - $89.50', type: 'order' },
+              { time: '5 min ago', action: 'Driver went online', details: 'Marcus Johnson', type: 'driver' },
+              { time: '8 min ago', action: 'Order delivered', details: '#FS2025044 - Sarah Williams', type: 'delivery' },
+              { time: '12 min ago', action: 'Inventory alert', details: 'Blue Dream - Low stock', type: 'alert' },
+              { time: '15 min ago', action: 'Customer registered', details: 'New user: Alex Chen', type: 'customer' }
+            ].map((activity, index) => (
+              <div key={index} className="flex items-start space-x-4 p-3 bg-gray-50 rounded-xl">
+                <div className={`w-3 h-3 rounded-full mt-2 ${
+                  activity.type === 'order' ? 'bg-blue-500' :
+                  activity.type === 'driver' ? 'bg-green-500' :
+                  activity.type === 'delivery' ? 'bg-purple-500' :
+                  activity.type === 'alert' ? 'bg-yellow-500' :
+                  'bg-gray-500'
+                }`}></div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-gray-900">{activity.action}</h4>
+                  <p className="text-sm text-gray-600">{activity.details}</p>
+                  <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <h3 className="text-xl font-bold text-gray-900 mb-4">System Alerts</h3>
+          <div className="space-y-4">
+            {[
+              { type: 'warning', message: 'Low inventory: Blue Dream Flower (15 units left)', time: '10 min ago' },
+              { type: 'info', message: 'Weekly report ready for download', time: '1 hour ago' },
+              { type: 'success', message: 'Payment processing system updated', time: '2 hours ago' },
+              { type: 'error', message: 'Failed delivery attempt - Order #FS2025041', time: '3 hours ago' }
+            ].map((alert, index) => (
+              <div key={index} className={`p-4 rounded-xl border-l-4 ${
+                alert.type === 'warning' ? 'bg-yellow-50 border-yellow-400' :
+                alert.type === 'info' ? 'bg-blue-50 border-blue-400' :
+                alert.type === 'success' ? 'bg-green-50 border-green-400' :
+                'bg-red-50 border-red-400'
+              }`}>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <p className={`font-medium ${
+                      alert.type === 'warning' ? 'text-yellow-800' :
+                      alert.type === 'info' ? 'text-blue-800' :
+                      alert.type === 'success' ? 'text-green-800' :
+                      'text-red-800'
+                    }`}>
+                      {alert.message}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">{alert.time}</p>
+                  </div>
+                  <button className="text-gray-400 hover:text-gray-600">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   const CustomersView = () => (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
