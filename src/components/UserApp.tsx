@@ -2246,6 +2246,52 @@ const FadedSkiesApp = () => {
     setTimeout(() => setShowToast(false), 3000);
   }, []);
 
+  const sendChatMessage = useCallback((message: string) => {
+    const newMessage = {
+      id: chatMessages.length + 1,
+      sender: 'user',
+      message,
+      timestamp: new Date()
+    };
+
+    setChatMessages(prev => [...prev, newMessage]);
+
+    // Simulate agent typing
+    setIsTyping(true);
+    setTimeout(() => {
+      setIsTyping(false);
+      const agentResponse = {
+        id: chatMessages.length + 2,
+        sender: 'agent',
+        message: getAgentResponse(message),
+        timestamp: new Date()
+      };
+      setChatMessages(prev => [...prev, agentResponse]);
+    }, 1500 + Math.random() * 1000);
+  }, [chatMessages]);
+
+  const getAgentResponse = (userMessage: string) => {
+    const lowerMessage = userMessage.toLowerCase();
+
+    if (lowerMessage.includes('order') || lowerMessage.includes('delivery')) {
+      return 'I can help you with your order! Can you please provide your order number? You can find it in the Orders tab.';
+    } else if (lowerMessage.includes('payment') || lowerMessage.includes('card')) {
+      return 'I\'m here to help with payment issues. Are you having trouble with a specific payment method or transaction?';
+    } else if (lowerMessage.includes('product') || lowerMessage.includes('strain')) {
+      return 'I\'d be happy to help you learn about our products! What specific information are you looking for?';
+    } else if (lowerMessage.includes('account') || lowerMessage.includes('login')) {
+      return 'I can assist with account-related questions. Are you having trouble logging in or need to update your information?';
+    } else {
+      const responses = [
+        'Thank you for contacting us! Let me help you with that.',
+        'I understand. Can you provide more details about your concern?',
+        'That\'s a great question! Let me gather some information for you.',
+        'I\'m here to help! Could you tell me more about what you\'re experiencing?'
+      ];
+      return responses[Math.floor(Math.random() * responses.length)];
+    }
+  };
+
   return (
     <div className="max-w-md mx-auto bg-gray-50 min-h-screen">
       <Toast showToast={showToast} toastMessage={toastMessage} />
