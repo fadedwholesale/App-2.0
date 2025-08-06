@@ -2406,6 +2406,44 @@ const FadedSkiesApp = () => {
               </button>
             ))}
           </div>
+
+          {/* Modals */}
+          <EditProfileModal
+            isOpen={currentModal === 'editProfile'}
+            onClose={closeModal}
+            user={user}
+            onUpdate={updateUserProfile}
+          />
+
+          <RewardsModal
+            isOpen={currentModal === 'rewards'}
+            onClose={closeModal}
+            user={user}
+          />
+
+          <ChangePasswordModal
+            isOpen={currentModal === 'changePassword'}
+            onClose={closeModal}
+            onSuccess={showToastMessage}
+          />
+
+          <TwoFactorModal
+            isOpen={currentModal === 'twoFactor'}
+            onClose={closeModal}
+            onSuccess={showToastMessage}
+          />
+
+          <PrivacySettingsModal
+            isOpen={currentModal === 'privacySettings'}
+            onClose={closeModal}
+            onSuccess={showToastMessage}
+          />
+
+          <DataPrivacyModal
+            isOpen={currentModal === 'dataPrivacy'}
+            onClose={closeModal}
+            onSuccess={showToastMessage}
+          />
         </>
       )}
     </div>
