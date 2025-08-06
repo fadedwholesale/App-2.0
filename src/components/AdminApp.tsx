@@ -619,15 +619,15 @@ const FadedSkiesTrackingAdmin = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
                 <h4 className="text-lg font-bold text-blue-800">Total Orders</h4>
-                <p className="text-2xl font-black text-blue-600">{selectedCustomer.totalOrders}</p>
+                <p className="text-2xl font-black text-blue-600">{selectedCustomer?.totalOrders || 0}</p>
               </div>
               <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
                 <h4 className="text-lg font-bold text-green-800">Total Spent</h4>
-                <p className="text-2xl font-black text-green-600">${selectedCustomer.totalSpent}</p>
+                <p className="text-2xl font-black text-green-600">${selectedCustomer?.totalSpent || 0}</p>
               </div>
               <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 text-center">
                 <h4 className="text-lg font-bold text-purple-800">Avg Order</h4>
-                <p className="text-2xl font-black text-purple-600">${(selectedCustomer.totalSpent / selectedCustomer.totalOrders).toFixed(2)}</p>
+                <p className="text-2xl font-black text-purple-600">${selectedCustomer?.totalOrders > 0 ? (selectedCustomer.totalSpent / selectedCustomer.totalOrders).toFixed(2) : '0.00'}</p>
               </div>
             </div>
 
