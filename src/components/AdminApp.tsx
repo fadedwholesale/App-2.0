@@ -1981,11 +1981,19 @@ const FadedSkiesTrackingAdmin = () => {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex space-x-2">
-                      <button className="text-blue-600 hover:text-blue-700 p-1">
+                      <button
+                        onClick={() => openModal('customerDetails', customer)}
+                        className="text-blue-600 hover:text-blue-700 p-1"
+                        title="Edit Customer"
+                      >
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button className="text-green-600 hover:text-green-700 p-1">
-                        <CheckCircle className="w-4 h-4" />
+                      <button
+                        onClick={() => openModal('customerDetails', customer)}
+                        className="text-green-600 hover:text-green-700 p-1"
+                        title="View Customer Details"
+                      >
+                        <Eye className="w-4 h-4" />
                       </button>
                     </div>
                   </td>
