@@ -796,6 +796,448 @@ const FadedSkiesTrackingAdmin = () => {
     </div>
   );
 
+  const SettingsView = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold text-gray-900">System Settings</h1>
+        <button className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-emerald-700 transition-colors flex items-center space-x-2">
+          <Save className="w-4 h-4" />
+          <span>Save All Changes</span>
+        </button>
+      </div>
+
+      {/* System Configuration */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center space-x-2">
+            <Database className="w-6 h-6 text-blue-600" />
+            <span>System Configuration</span>
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Business Hours</label>
+              <div className="grid grid-cols-2 gap-3">
+                <select className="px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                  <option>9:00 AM</option>
+                  <option>10:00 AM</option>
+                  <option>11:00 AM</option>
+                </select>
+                <select className="px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                  <option>10:00 PM</option>
+                  <option>11:00 PM</option>
+                  <option>12:00 AM</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Delivery Zone Radius</label>
+              <div className="flex items-center space-x-3">
+                <input
+                  type="range"
+                  min="5"
+                  max="50"
+                  defaultValue="25"
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                />
+                <span className="font-bold text-gray-900 w-12">25 mi</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Minimum Order Amount</label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                <input
+                  type="number"
+                  defaultValue="25"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Tax Rate (%)</label>
+              <input
+                type="number"
+                defaultValue="8.25"
+                step="0.01"
+                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center space-x-2">
+            <Truck className="w-6 h-6 text-green-600" />
+            <span>Delivery Settings</span>
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Standard Delivery Fee</label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                <input
+                  type="number"
+                  defaultValue="5.99"
+                  step="0.01"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Free Delivery Threshold</label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                <input
+                  type="number"
+                  defaultValue="100"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Average Delivery Time (minutes)</label>
+              <input
+                type="number"
+                defaultValue="30"
+                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-between py-3">
+              <div>
+                <label className="font-medium text-gray-700">Enable Real-Time Tracking</label>
+                <p className="text-sm text-gray-600">Allow customers to track deliveries</p>
+              </div>
+              <div className="w-12 h-6 bg-emerald-600 rounded-full relative transition-colors">
+                <div className="absolute top-1 right-1 w-4 h-4 bg-white rounded-full transition-transform"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Payment & Security */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center space-x-2">
+            <CreditCard className="w-6 h-6 text-purple-600" />
+            <span>Payment Settings</span>
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-3">Accepted Payment Methods</label>
+              <div className="space-y-3">
+                {[
+                  { name: 'Credit/Debit Cards', enabled: true },
+                  { name: 'Apple Pay', enabled: true },
+                  { name: 'Google Pay', enabled: true },
+                  { name: 'Cash on Delivery', enabled: false },
+                  { name: 'Crypto Payments', enabled: false }
+                ].map((method, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <span className="font-medium text-gray-700">{method.name}</span>
+                    <div className={`w-12 h-6 rounded-full relative transition-colors ${
+                      method.enabled ? 'bg-emerald-600' : 'bg-gray-300'
+                    }`}>
+                      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                        method.enabled ? 'translate-x-7' : 'translate-x-1'
+                      }`}></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Payment Processing Fee (%)</label>
+              <input
+                type="number"
+                defaultValue="2.9"
+                step="0.1"
+                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center space-x-2">
+            <Shield className="w-6 h-6 text-red-600" />
+            <span>Security Settings</span>
+          </h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between py-3 border-b border-gray-100">
+              <div>
+                <label className="font-medium text-gray-700">Two-Factor Authentication</label>
+                <p className="text-sm text-gray-600">Require 2FA for admin access</p>
+              </div>
+              <div className="w-12 h-6 bg-emerald-600 rounded-full relative transition-colors">
+                <div className="absolute top-1 right-1 w-4 h-4 bg-white rounded-full transition-transform"></div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between py-3 border-b border-gray-100">
+              <div>
+                <label className="font-medium text-gray-700">IP Restriction</label>
+                <p className="text-sm text-gray-600">Limit admin access by IP</p>
+              </div>
+              <div className="w-12 h-6 bg-gray-300 rounded-full relative transition-colors">
+                <div className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform"></div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between py-3 border-b border-gray-100">
+              <div>
+                <label className="font-medium text-gray-700">Session Timeout</label>
+                <p className="text-sm text-gray-600">Auto-logout after inactivity</p>
+              </div>
+              <select className="px-3 py-1 border border-gray-200 rounded-lg text-sm">
+                <option>30 minutes</option>
+                <option>1 hour</option>
+                <option>4 hours</option>
+              </select>
+            </div>
+
+            <div className="flex items-center justify-between py-3">
+              <div>
+                <label className="font-medium text-gray-700">Audit Logging</label>
+                <p className="text-sm text-gray-600">Track all admin actions</p>
+              </div>
+              <div className="w-12 h-6 bg-emerald-600 rounded-full relative transition-colors">
+                <div className="absolute top-1 right-1 w-4 h-4 bg-white rounded-full transition-transform"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Notifications & Communications */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center space-x-2">
+            <Bell className="w-6 h-6 text-blue-600" />
+            <span>Notification Settings</span>
+          </h3>
+          <div className="space-y-4">
+            {[
+              { name: 'Order Alerts', description: 'New orders and updates', enabled: true },
+              { name: 'Inventory Alerts', description: 'Low stock notifications', enabled: true },
+              { name: 'Driver Notifications', description: 'Driver status changes', enabled: true },
+              { name: 'System Alerts', description: 'Technical issues and updates', enabled: true },
+              { name: 'Marketing Reports', description: 'Weekly performance reports', enabled: false }
+            ].map((notification, index) => (
+              <div key={index} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
+                <div>
+                  <label className="font-medium text-gray-700">{notification.name}</label>
+                  <p className="text-sm text-gray-600">{notification.description}</p>
+                </div>
+                <div className={`w-12 h-6 rounded-full relative transition-colors ${
+                  notification.enabled ? 'bg-emerald-600' : 'bg-gray-300'
+                }`}>
+                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                    notification.enabled ? 'translate-x-7' : 'translate-x-1'
+                  }`}></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center space-x-2">
+            <Mail className="w-6 h-6 text-green-600" />
+            <span>Communication Settings</span>
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Customer Support Email</label>
+              <input
+                type="email"
+                defaultValue="support@fadedskies.com"
+                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Support Phone Number</label>
+              <input
+                type="tel"
+                defaultValue="+1 (555) 420-FADED"
+                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">SMS Provider</label>
+              <select className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                <option>Twilio</option>
+                <option>AWS SNS</option>
+                <option>MessageBird</option>
+              </select>
+            </div>
+
+            <div className="flex items-center justify-between py-3">
+              <div>
+                <label className="font-medium text-gray-700">Auto-Reply Messages</label>
+                <p className="text-sm text-gray-600">Automatic customer responses</p>
+              </div>
+              <div className="w-12 h-6 bg-emerald-600 rounded-full relative transition-colors">
+                <div className="absolute top-1 right-1 w-4 h-4 bg-white rounded-full transition-transform"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* User Management & API */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center space-x-2">
+            <UserPlus className="w-6 h-6 text-indigo-600" />
+            <span>User Management</span>
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-3">Admin Roles</label>
+              <div className="space-y-2">
+                {[
+                  { role: 'Super Admin', count: 1, color: 'bg-red-100 text-red-800' },
+                  { role: 'Admin', count: 3, color: 'bg-blue-100 text-blue-800' },
+                  { role: 'Manager', count: 5, color: 'bg-green-100 text-green-800' },
+                  { role: 'Support', count: 8, color: 'bg-gray-100 text-gray-800' }
+                ].map((role, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                    <span className="font-medium text-gray-700">{role.role}</span>
+                    <div className="flex items-center space-x-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${role.color}`}>
+                        {role.count} users
+                      </span>
+                      <button className="text-blue-600 hover:text-blue-700">
+                        <Edit className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <button className="w-full bg-indigo-100 text-indigo-700 py-3 rounded-xl font-bold hover:bg-indigo-200 transition-colors">
+              Manage Users & Permissions
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center space-x-2">
+            <Globe className="w-6 h-6 text-purple-600" />
+            <span>API & Integration</span>
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">API Rate Limit (requests/minute)</label>
+              <input
+                type="number"
+                defaultValue="1000"
+                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-between py-3 border-b border-gray-100">
+              <div>
+                <label className="font-medium text-gray-700">API Access Logging</label>
+                <p className="text-sm text-gray-600">Log all API requests</p>
+              </div>
+              <div className="w-12 h-6 bg-emerald-600 rounded-full relative transition-colors">
+                <div className="absolute top-1 right-1 w-4 h-4 bg-white rounded-full transition-transform"></div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">Active Integrations</label>
+              {[
+                { name: 'Stripe Payment', status: 'Connected', color: 'text-green-600' },
+                { name: 'Google Maps', status: 'Connected', color: 'text-green-600' },
+                { name: 'Twilio SMS', status: 'Connected', color: 'text-green-600' },
+                { name: 'SendGrid Email', status: 'Disconnected', color: 'text-red-600' }
+              ].map((integration, index) => (
+                <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                  <span className="font-medium text-gray-700">{integration.name}</span>
+                  <span className={`text-sm font-semibold ${integration.color}`}>{integration.status}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* System Maintenance */}
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+        <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center space-x-2">
+          <Activity className="w-6 h-6 text-orange-600" />
+          <span>System Maintenance</span>
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="space-y-4">
+            <h4 className="font-semibold text-gray-900">Database</h4>
+            <div className="space-y-2">
+              <button className="w-full bg-blue-100 text-blue-700 py-2 rounded-lg font-medium hover:bg-blue-200 transition-colors">
+                Backup Database
+              </button>
+              <button className="w-full bg-green-100 text-green-700 py-2 rounded-lg font-medium hover:bg-green-200 transition-colors">
+                Optimize Tables
+              </button>
+              <button className="w-full bg-purple-100 text-purple-700 py-2 rounded-lg font-medium hover:bg-purple-200 transition-colors">
+                View Logs
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="font-semibold text-gray-900">Cache Management</h4>
+            <div className="space-y-2">
+              <button className="w-full bg-orange-100 text-orange-700 py-2 rounded-lg font-medium hover:bg-orange-200 transition-colors">
+                Clear All Cache
+              </button>
+              <button className="w-full bg-red-100 text-red-700 py-2 rounded-lg font-medium hover:bg-red-200 transition-colors">
+                Reset Sessions
+              </button>
+              <button className="w-full bg-gray-100 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors">
+                System Status
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="font-semibold text-gray-900">System Info</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Server Uptime:</span>
+                <span className="font-semibold">7d 14h 32m</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Database Size:</span>
+                <span className="font-semibold">2.4 GB</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Active Sessions:</span>
+                <span className="font-semibold">247</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Memory Usage:</span>
+                <span className="font-semibold">68%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   const CustomersView = () => (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
