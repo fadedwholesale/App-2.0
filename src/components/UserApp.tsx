@@ -2351,7 +2351,61 @@ const LiveTrackingModal = React.memo(({
 
         {/* Map Container */}
         <div className="flex-1 relative">
-          <div ref={mapContainer} className="w-full h-full" />
+          {mapError ? (
+            /* Demo Mode Map */
+            <div className="w-full h-full bg-gradient-to-br from-blue-100 to-green-100 flex items-center justify-center relative overflow-hidden">
+              {/* Demo map background */}
+              <div className="absolute inset-0">
+                <div className="absolute inset-0 opacity-20">
+                  <svg viewBox="0 0 400 400" className="w-full h-full">
+                    {/* Streets */}
+                    <line x1="0" y1="100" x2="400" y2="100" stroke="#666" strokeWidth="3" />
+                    <line x1="0" y1="200" x2="400" y2="200" stroke="#666" strokeWidth="3" />
+                    <line x1="0" y1="300" x2="400" y2="300" stroke="#666" strokeWidth="3" />
+                    <line x1="100" y1="0" x2="100" y2="400" stroke="#666" strokeWidth="3" />
+                    <line x1="200" y1="0" x2="200" y2="400" stroke="#666" strokeWidth="3" />
+                    <line x1="300" y1="0" x2="300" y2="400" stroke="#666" strokeWidth="3" />
+                    {/* Buildings */}
+                    <rect x="50" y="50" width="40" height="40" fill="#ccc" />
+                    <rect x="110" y="120" width="80" height="60" fill="#ccc" />
+                    <rect x="250" y="80" width="60" height="100" fill="#ccc" />
+                    <rect x="320" y="250" width="50" height="80" fill="#ccc" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Driver marker - animated */}
+              <div
+                className="absolute transition-all duration-1000 ease-in-out z-10"
+                style={{
+                  left: `${45 + Math.sin(Date.now() / 3000) * 10}%`,
+                  top: `${50 + Math.cos(Date.now() / 3000) * 5}%`,
+                  transform: 'translate(-50%, -50%)'
+                }}
+              >
+                <div className="text-4xl animate-bounce">🚚</div>
+              </div>
+
+              {/* Destination marker */}
+              <div
+                className="absolute z-10"
+                style={{
+                  left: '70%',
+                  top: '65%',
+                  transform: 'translate(-50%, -50%)'
+                }}
+              >
+                <div className="text-3xl">🏠</div>
+              </div>
+
+              {/* Demo watermark */}
+              <div className="absolute bottom-4 right-4 bg-black/20 text-white text-xs px-2 py-1 rounded">
+                Demo Mode
+              </div>
+            </div>
+          ) : (
+            <div ref={mapContainer} className="w-full h-full" />
+          )}
 
           {/* Map Overlay - Status */}
           <div className="absolute top-4 left-4 right-4">
