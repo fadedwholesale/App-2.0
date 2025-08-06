@@ -2629,7 +2629,7 @@ const FadedSkiesApp = () => {
                       onClick={() => setCurrentView('home')}
                       className="bg-gradient-to-r from-emerald-600 to-green-600 text-white px-10 py-5 rounded-2xl font-bold text-lg hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
                     >
-                      ���� Start Shopping
+                      🌿 Start Shopping
                     </button>
                   </div>
                 ) : (
@@ -3140,7 +3140,7 @@ const FadedSkiesApp = () => {
                       <button
                         key={index}
                         type="button"
-                        onClick={() => alert(`${item.title} help would be shown here`)}
+                        onClick={() => openModal('quickHelp', { helpType: item.title })}
                         className={`bg-gradient-to-r ${item.color} text-white p-4 rounded-2xl text-center hover:scale-105 transition-all shadow-lg hover:shadow-xl`}
                       >
                         <div className="text-2xl mb-2">{item.icon}</div>
