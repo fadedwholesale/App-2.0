@@ -1159,7 +1159,7 @@ const QuickHelpModal = React.memo(({
       case 'Account Help':
         return {
           title: 'Account Help',
-          icon: '👤',
+          icon: '���',
           content: [
             {
               question: 'How do I verify my age/ID?',
@@ -2244,13 +2244,13 @@ const LiveTrackingModal = React.memo(({
   useEffect(() => {
     if (!isOpen || !mapContainer.current || !order?.driverLocation) return;
 
-    // Set your Mapbox access token here
-    mapboxgl.accessToken = 'pk.eyJ1IjoiZmFkZWQtc2tpZXMiLCJhIjoiY2xkZW1vY2RtMDQzNDNycWxpbWVkb201NSJ9.demo_token'; // Replace with actual token
+    // For demo purposes - in production, use environment variable
+    mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN || 'pk.eyJ1IjoidGVzdCIsImEiOiJkZW1vLXRva2VuIn0.demo';
 
     // Initialize map
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
+      style: 'mapbox://styles/mapbox/streets-v11', // Use v11 for better compatibility
       center: [order.driverLocation.lng, order.driverLocation.lat],
       zoom: 14
     });
