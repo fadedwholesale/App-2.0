@@ -253,6 +253,130 @@ const EditProfileModal = React.memo(({
   );
 });
 
+// Rewards Program Modal Component
+const RewardsModal = React.memo(({
+  isOpen,
+  onClose,
+  user
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  user: User;
+}) => {
+  const rewards = [
+    { tier: 'Bronze', min: 0, max: 499, perks: ['5% back on all orders', 'Member pricing'], color: 'from-orange-400 to-amber-500' },
+    { tier: 'Silver', min: 500, max: 1499, perks: ['7% back on all orders', 'Free delivery over $75', 'Birthday bonus'], color: 'from-gray-300 to-gray-400' },
+    { tier: 'Gold', min: 1500, max: 2999, perks: ['10% back on all orders', 'Free delivery over $50', 'Early access to new products'], color: 'from-yellow-400 to-yellow-500' },
+    { tier: 'Platinum', min: 3000, max: Infinity, perks: ['15% back on all orders', 'Free delivery on all orders', 'Exclusive products', 'Personal concierge'], color: 'from-purple-400 to-purple-500' }
+  ];
+
+  const currentTier = rewards.find(tier => user.rewards >= tier.min && user.rewards <= tier.max) || rewards[0];
+  const nextTier = rewards.find(tier => user.rewards < tier.min);
+  const progressToNext = nextTier ? ((user.rewards - currentTier.min) / (nextTier.min - currentTier.min)) * 100 : 100;
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="FS Rewards Program">
+      <div className="space-y-6">
+        {/* Current Status */}
+        <div className={`bg-gradient-to-r ${currentTier.color} rounded-2xl p-6 text-white`}>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-2xl font-bold">{currentTier.tier} Member</h3>
+            <div className="text-right">
+              <div className="text-3xl font-black">{user.rewards}</div>
+              <div className="text-sm opacity-90">FS Coins</div>
+            </div>
+          </div>
+          {nextTier && (
+            <div>
+              <div className="flex justify-between text-sm mb-2">
+                <span>Progress to {nextTier.tier}</span>
+                <span>{nextTier.min - user.rewards} coins needed</span>
+              </div>
+              <div className="w-full bg-white/20 rounded-full h-2">
+                <div
+                  className="bg-white rounded-full h-2 transition-all duration-500"
+                  style={{ width: `${Math.min(progressToNext, 100)}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Current Tier Benefits */}
+        <div>
+          <h4 className="font-bold text-lg text-gray-900 mb-3">Your Current Benefits</h4>
+          <div className="space-y-2">
+            {currentTier.perks.map((perk, index) => (
+              <div key={index} className="flex items-center space-x-3 bg-green-50 p-3 rounded-xl">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <span className="font-medium text-green-800">{perk}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* All Tiers */}
+        <div>
+          <h4 className="font-bold text-lg text-gray-900 mb-3">All Tiers</h4>
+          <div className="space-y-3">
+            {rewards.map((tier, index) => (
+              <div key={tier.tier} className={`border-2 rounded-2xl p-4 ${
+                tier.tier === currentTier.tier
+                  ? 'border-emerald-300 bg-emerald-50'
+                  : 'border-gray-200 bg-white'
+              }`}>
+                <div className="flex items-center justify-between mb-2">
+                  <h5 className={`font-bold text-lg ${
+                    tier.tier === currentTier.tier ? 'text-emerald-800' : 'text-gray-900'
+                  }`}>{tier.tier}</h5>
+                  <span className="text-sm font-medium text-gray-600">
+                    {tier.min === 0 ? '0' : tier.min.toLocaleString()}{tier.max === Infinity ? '+' : ` - ${tier.max.toLocaleString()}`} coins
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  {tier.perks.map((perk, perkIndex) => (
+                    <div key={perkIndex} className="text-sm text-gray-600 flex items-center space-x-2">
+                      <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
+                      <span>{perk}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* How to Earn */}
+        <div className="bg-blue-50 rounded-2xl p-4">
+          <h4 className="font-bold text-lg text-blue-900 mb-3">How to Earn FS Coins</h4>
+          <div className="space-y-2">
+            {[
+              { action: 'Make a purchase', coins: '$1 spent = 1 coin' },
+              { action: 'Refer a friend', coins: '500 coins' },
+              { action: 'Write a review', coins: '50 coins' },
+              { action: 'Birthday bonus', coins: '200 coins' },
+              { action: 'Social media follow', coins: '25 coins' }
+            ].map((item, index) => (
+              <div key={index} className="flex justify-between items-center">
+                <span className="text-blue-800 font-medium">{item.action}</span>
+                <span className="text-blue-600 font-bold text-sm">{item.coins}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-full bg-gradient-to-r from-emerald-600 to-green-600 text-white py-3 rounded-xl font-bold hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl"
+        >
+          Got it!
+        </button>
+      </div>
+    </Modal>
+  );
+});
+
 // ProductCard component - moved outside
 const ProductCard = React.memo(({ product, addToCart, addingToCart }: { 
   product: Product; 
@@ -1451,7 +1575,7 @@ const FadedSkiesApp = () => {
                   </div>
                   <button
                     type="button"
-                    onClick={() => alert('Rewards program details would be shown here')}
+                    onClick={() => openModal('rewards')}
                     className="w-full mt-4 bg-gradient-to-r from-emerald-600 to-green-600 text-white py-3 rounded-xl font-bold hover:from-emerald-700 hover:to-green-700 transition-all"
                   >
                     View Rewards Program
