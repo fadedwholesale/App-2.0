@@ -4142,6 +4142,31 @@ const FadedSkiesApp = () => {
             ticketForm={ticketForm}
             setTicketForm={setTicketForm}
           />
+
+          {/* Order Modals */}
+          <OrderDetailsModal
+            isOpen={currentModal === 'orderDetails'}
+            onClose={closeModal}
+            order={selectedOrder}
+            onTrackOrder={handleTrackOrder}
+            onReorder={handleReorderItems}
+          />
+
+          <ReorderModal
+            isOpen={currentModal === 'reorder'}
+            onClose={closeModal}
+            order={selectedOrder}
+            reorderItems={reorderItems}
+            setReorderItems={setReorderItems}
+            onAddToCart={handleAddReorderToCart}
+            onSuccess={showToastMessage}
+          />
+
+          <LiveTrackingModal
+            isOpen={currentModal === 'liveTracking'}
+            onClose={closeModal}
+            order={selectedOrder}
+          />
         </>
       )}
     </div>
