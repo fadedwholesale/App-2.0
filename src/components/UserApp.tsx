@@ -1284,7 +1284,7 @@ const ContactModal = React.memo(({
               <div className="bg-blue-50 rounded-xl p-4">
                 <h4 className="font-semibold text-blue-900 mb-2">Before you call:</h4>
                 <ul className="text-sm text-blue-800 space-y-1">
-                  <li>��� Have your order number ready (if applicable)</li>
+                  <li>• Have your order number ready (if applicable)</li>
                   <li>• Be prepared to verify your identity</li>
                   <li>• Write down specific questions or issues</li>
                 </ul>
@@ -3330,6 +3330,38 @@ const FadedSkiesApp = () => {
             isOpen={currentModal === 'dataPrivacy'}
             onClose={closeModal}
             onSuccess={showToastMessage}
+          />
+
+          {/* Support Modals */}
+          <LiveChatModal
+            isOpen={currentModal === 'liveChat'}
+            onClose={closeModal}
+            messages={chatMessages}
+            onSendMessage={sendChatMessage}
+            chatInput={chatInput}
+            setChatInput={setChatInput}
+            isTyping={isTyping}
+          />
+
+          <QuickHelpModal
+            isOpen={currentModal === 'quickHelp'}
+            onClose={closeModal}
+            helpType={modalData.helpType || ''}
+          />
+
+          <ContactModal
+            isOpen={currentModal === 'contact'}
+            onClose={closeModal}
+            contactType={modalData.contactType || ''}
+            onSuccess={showToastMessage}
+          />
+
+          <SubmitTicketModal
+            isOpen={currentModal === 'submitTicket'}
+            onClose={closeModal}
+            onSuccess={showToastMessage}
+            ticketForm={ticketForm}
+            setTicketForm={setTicketForm}
           />
         </>
       )}
