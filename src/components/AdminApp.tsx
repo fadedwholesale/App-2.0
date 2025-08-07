@@ -150,10 +150,10 @@ const FadedSkiesTrackingAdmin = () => {
       };
 
       // Subscribe to admin-specific channels
-      wsService.send({
-        type: 'admin:subscribe',
-        channels: ['orders', 'drivers', 'system']
-      });
+      // wsService.send({
+      //   type: 'admin:subscribe',
+      //   channels: ['orders', 'drivers', 'system']
+      // });
 
       console.log('✅ Admin WebSocket connected');
 
