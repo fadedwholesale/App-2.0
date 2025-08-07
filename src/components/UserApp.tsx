@@ -2856,8 +2856,8 @@ const FadedSkiesApp = () => {
     console.log('🔄 UserApp connected to real-time product sync - products will update live!');
   }, [setupRealTimeSync]);
 
-  // Products now come from store (synced with admin changes)
-  const activeProducts = products;
+  // Use store products if available, otherwise fall back to local products
+  const activeProducts = products.length > 0 ? products : localProducts;
 
   const filteredProducts = activeProducts.filter(product => {
     const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
