@@ -1509,7 +1509,7 @@ const FadedSkiesDriverApp = () => {
 
     const handleSave = () => {
       // Mask account number for display
-      const maskedAccount = `••���•${bankData.accountNumber.slice(-4)}`;
+      const maskedAccount = `••••${bankData.accountNumber.slice(-4)}`;
       const bankDisplay = `${bankData.bankName} ${maskedAccount}`;
 
       setDriver(prev => ({
@@ -2001,7 +2001,18 @@ const FadedSkiesDriverApp = () => {
                       <div className="flex-1">
                         <h4 className="font-bold text-blue-900">{activeOrder.customerName}</h4>
                         <p className="text-blue-700 text-sm">{activeOrder.address}</p>
-                        <p className="text-blue-600 text-xs font-semibold">{activeOrder.status.replace('_', ' ').toUpperCase()}</p>
+                        <div className="flex items-center space-x-2">
+                          <p className="text-blue-600 text-xs font-semibold">{activeOrder.status.replace('_', ' ').toUpperCase()}</p>
+                          {activeOrder.status === 'in_transit' && (
+                            <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
+                              isWithinDeliveryRadius
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-amber-100 text-amber-700'
+                            }`}>
+                              {isWithinDeliveryRadius ? '🎯 In Zone' : '📍 En Route'}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="text-right">
                         <div className="text-lg font-black text-blue-900">${activeOrder.totalDriverPay.toFixed(2)}</div>
