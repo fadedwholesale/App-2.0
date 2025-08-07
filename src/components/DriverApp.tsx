@@ -45,8 +45,8 @@ import {
   Users
 } from 'lucide-react';
 
-// Import WebSocket service for real-time driver updates
-import { wsService } from '../../User app/api-integration-service';
+// WebSocket service temporarily disabled due to import issues
+// import { wsService } from '../../User app/api-integration-service';
 
 // TypeScript interfaces
 interface Order {
@@ -2145,7 +2145,7 @@ const FadedSkiesDriverApp = () => {
                       {
                         title: 'Instant Transfer',
                         subtitle: `Available now • $${driver.payoutSettings.instantFee.toFixed(2)} fee`,
-                        icon: '⚡',
+                        icon: '���',
                         color: 'from-yellow-400 to-orange-500'
                       },
                       {
