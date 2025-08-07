@@ -303,7 +303,8 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   };
 
   console.log('🧪 Test functions available:');
-  console.log('- testRealTimeSync() - Test complete real-time flow');
+  console.log('- testRealTimeSync() - Test complete real-time order flow');
+  console.log('- testProductSync() - Test real-time product synchronization');
   console.log('- checkWebSocketStatus() - Check connection status');
 }
 
