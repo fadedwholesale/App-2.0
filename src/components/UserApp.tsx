@@ -28,6 +28,7 @@ import {
 
 // Import simple WebSocket service for real-time updates
 import { wsService } from '../services/simple-websocket';
+import { useCannabisDeliveryStore } from '../services/cannabis-delivery-store';
 
 // TypeScript interfaces
 interface Product {
@@ -3972,7 +3973,7 @@ const FadedSkiesApp = () => {
                     <div className="grid grid-cols-2 gap-4">
                       {[
                         { name: "Driver's License", icon: "🚗" },
-                        { name: "State ID Card", icon: "🆔" },
+                        { name: "State ID Card", icon: "��" },
                         { name: "Passport", icon: "📘" },
                         { name: "Military ID", icon: "🎖️" }
                       ].map(idType => (
