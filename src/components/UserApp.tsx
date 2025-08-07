@@ -2919,33 +2919,58 @@ const FadedSkiesApp = () => {
         alert('Please enter email and password');
       }
     } else if (authMode === 'signup') {
-      if (!authForm.name || !authForm.dateOfBirth || !authForm.phone || !authForm.email || !authForm.password) {
-        alert('Please fill in all required fields');
-        return;
+    if (!authForm.name || !authForm.dateOfBirth || !authForm.phone || !authForm.email || !authForm.password) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    if (authForm.password !== authForm.confirmPassword) {
+      alert('Passwords do not match');
+      return;
+    }
+
+    const birthDate = new Date(authForm.dateOfBirth);
+    const today = new Date();
+    const age = today.getFullYear() - birthDate.getFullYear();
+
+    if (age < 21) {
+      alert('You must be 21 or older to use this service');
+      return;
+    }
+
+    // Call backend API to create account
+    const apiCall = async () => {
+      try {
+        const apiModule = await import('../../User app/api-integration-service');
+        const response = await apiModule.apiService.register({
+          name: authForm.name,
+          email: authForm.email,
+          password: authForm.password,
+          phone: authForm.phone,
+          dateOfBirth: authForm.dateOfBirth
+        });
+
+        if (response.success) {
+          setIsAuthenticated(true);
+          setUser(prev => ({
+            ...prev,
+            name: response.data?.user.name || authForm.name,
+            email: response.data?.user.email || authForm.email,
+            age: age,
+            idVerified: response.data?.user.isVerified || false
+          }));
+          setCurrentView('home');
+          showToast('Account created successfully! Welcome to Faded Skies!');
+        } else {
+          alert(response.error || 'Registration failed. Please try again.');
+        }
+      } catch (error) {
+        console.error('Registration error:', error);
+        alert('Registration failed. Please check your connection and try again.');
       }
-      
-      if (authForm.password !== authForm.confirmPassword) {
-        alert('Passwords do not match');
-        return;
-      }
-      
-      const birthDate = new Date(authForm.dateOfBirth);
-      const today = new Date();
-      const age = today.getFullYear() - birthDate.getFullYear();
-      
-      if (age < 21) {
-        alert('You must be 21 or older to use this service');
-        return;
-      }
-      
-      setIsAuthenticated(true);
-      setUser(prev => ({ 
-        ...prev, 
-        name: authForm.name, 
-        email: authForm.email,
-        age: age
-      }));
-      setCurrentView('home');
+    };
+
+    apiCall();
     } else if (authMode === 'forgot') {
       if (authForm.email && authForm.email.trim()) {
         alert('Password reset link sent to your email!');
