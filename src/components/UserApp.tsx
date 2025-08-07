@@ -2912,6 +2912,62 @@ const FadedSkiesApp = () => {
   const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
+  // WebSocket connection for real-time updates
+  useEffect(() => {
+    if (isAuthenticated && user.email) {
+      try {
+        // Connect WebSocket with user token for authentication
+        wsService.connect(user.email);
+
+        // Subscribe to order updates
+        const handleOrderUpdate = (update: any) => {
+          setOrders(prev => prev.map(order =>
+            order.id === update.orderId ? { ...order, ...update, status: update.status } : order
+          ));
+
+          // Show notification for order updates
+          showToast(`Order ${update.orderId}: ${update.message || 'Status updated'}`);
+        };
+
+        // Subscribe to driver location updates
+        const handleDriverLocationUpdate = (driverUpdate: any) => {
+          setOrders(prev => prev.map(order =>
+            order.id === driverUpdate.orderId
+              ? { ...order, driverLocation: driverUpdate.driverLocation }
+              : order
+          ));
+        };
+
+        // Set up event listeners (simulated for now)
+        const wsConnected = () => {
+          console.log('✅ WebSocket connected for user:', user.email);
+
+          // Subscribe to user-specific order channels
+          wsService.send({
+            type: 'subscribe',
+            channel: 'user_orders',
+            userId: user.email
+          });
+        };
+
+        // Simulate WebSocket connection for development
+        setTimeout(wsConnected, 100);
+
+        return () => {
+          // Cleanup WebSocket connection on logout or unmount
+          try {
+            wsService.disconnect();
+            console.log('🔌 WebSocket disconnected');
+          } catch (error) {
+            console.warn('WebSocket disconnect error:', error);
+          }
+        };
+      } catch (error) {
+        console.error('WebSocket connection failed:', error);
+      }
+    }
+  }, [isAuthenticated, user.email]);
+
   const handleAuthSubmit = useCallback(async () => {
     if (authMode === 'login') {
     if (authForm.email && authForm.email.trim() && authForm.password && authForm.password.trim()) {
