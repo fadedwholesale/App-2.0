@@ -3348,15 +3348,18 @@ const FadedSkiesApp = () => {
         // Try to submit to backend API
         try {
           // const apiModule = await import('../../User app/api-integration-service');
-          const response = await apiModule.apiService.createOrder(orderData);
+          // const response = await apiModule.apiService.createOrder(orderData);
 
-          if (response.success) {
-            console.log('✅ Order submitted to backend:', response.data);
-            showToast('Order placed successfully! Admin will confirm shortly.');
-          } else {
-            console.warn('Backend order submission failed:', response.error);
-            showToast('Order placed! Processing with backup system.');
-          }
+          // if (response.success) {
+          //   console.log('✅ Order submitted to backend:', response.data);
+          //   showToast('Order placed successfully! Admin will confirm shortly.');
+          // } else {
+          //   console.warn('Backend order submission failed:', response.error);
+          //   showToast('Order placed! Processing with backup system.');
+          // }
+
+          // Temporary: Order placed locally only
+          showToast('Order placed successfully! (Local mode)');
         } catch (apiError) {
           console.warn('API submission failed, using local processing:', apiError);
           showToast('Order placed successfully! Preparing your delivery.');
