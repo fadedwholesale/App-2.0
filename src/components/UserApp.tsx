@@ -3325,22 +3325,22 @@ const FadedSkiesApp = () => {
 
         // Send real-time notification to admin and drivers
         try {
-          // wsService.send({
-          //   type: 'customer:order_placed',
-          //   data: {
-          //     orderId: newOrder.id,
-          //     customerId: user.email,
-          //     customerName: user.name,
-          //     location: orderData.deliveryAddress,
-          //     total: total,
-          //     estimatedDistance: '2.3 miles',
-          //     items: orderData.items,
-          //     timestamp: new Date(),
-          //     priority: total > 150 ? 'high' : 'normal'
-          //   }
-          // });
+          wsService.send({
+            type: 'customer:order_placed',
+            data: {
+              orderId: newOrder.id,
+              customerId: user.email,
+              customerName: user.name,
+              location: orderData.deliveryAddress,
+              total: total,
+              estimatedDistance: '2.3 miles',
+              items: orderData.items,
+              timestamp: new Date(),
+              priority: total > 150 ? 'high' : 'normal'
+            }
+          });
 
-          console.log('📡 Order notification sent to admin and drivers (disabled)');
+          console.log('📡 Order notification sent to admin and drivers');
         } catch (wsError) {
           console.warn('WebSocket notification failed:', wsError);
         }
