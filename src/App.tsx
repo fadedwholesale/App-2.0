@@ -33,13 +33,14 @@ function App() {
     <div className="min-h-screen bg-gray-50">
       {/* Backend Status Indicator */}
       {backendStatus === 'disconnected' && (
-        <div className="fixed top-4 left-4 z-50">
-          <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded-lg shadow-lg">
-            <div className="flex items-center">
-              <div className="w-3 h-3 bg-yellow-500 rounded-full mr-3 animate-pulse"></div>
+        <div className="fixed top-4 left-4 z-50 max-w-md">
+          <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg shadow-lg">
+            <div className="flex items-start">
+              <div className="w-3 h-3 bg-blue-500 rounded-full mr-3 mt-1 animate-pulse"></div>
               <div>
-                <p className="font-medium">Backend Offline</p>
-                <p className="text-sm">Start backend: <code className="bg-yellow-200 px-1 rounded">cd backend && npm run dev</code></p>
+                <p className="font-medium">Demo Mode</p>
+                <p className="text-sm mt-1">App is running with mock data. For full functionality, start the backend:</p>
+                <code className="block bg-blue-100 px-2 py-1 rounded text-xs mt-2">cd backend && npm run dev</code>
               </div>
             </div>
           </div>
