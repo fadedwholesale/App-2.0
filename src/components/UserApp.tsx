@@ -3078,6 +3078,7 @@ const FadedSkiesApp = () => {
             wsService.off('driver_location_update', handleDriverLocationUpdate);
 
             wsService.disconnect();
+            setConnectionStatus('disconnected');
             console.log('🔌 WebSocket disconnected');
           } catch (error) {
             console.warn('WebSocket disconnect error:', error);
