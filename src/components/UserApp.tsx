@@ -1354,7 +1354,7 @@ const ContactModal = React.memo(({
       case 'Feedback':
         return {
           title: 'Share Feedback',
-          icon: '����',
+          icon: '💬',
           description: 'Help us improve our service',
           showForm: true,
           content: null
@@ -2911,13 +2911,31 @@ const FadedSkiesApp = () => {
 
   const handleAuthSubmit = useCallback(async () => {
     if (authMode === 'login') {
-      if (authForm.email && authForm.email.trim() && authForm.password && authForm.password.trim()) {
-        setIsAuthenticated(true);
-        setCurrentView('home');
-        setUser(prev => ({ ...prev, email: authForm.email, name: authForm.name || 'Demo User' }));
-      } else {
-        alert('Please enter email and password');
+    if (authForm.email && authForm.email.trim() && authForm.password && authForm.password.trim()) {
+      try {
+        const apiModule = await import('../../User app/api-integration-service');
+        const response = await apiModule.apiService.login(authForm.email, authForm.password);
+
+        if (response.success) {
+          setIsAuthenticated(true);
+          setCurrentView('home');
+          setUser(prev => ({
+            ...prev,
+            email: response.data?.user.email || authForm.email,
+            name: response.data?.user.name || 'User',
+            idVerified: response.data?.user.isVerified || false
+          }));
+          showToast('Welcome back to Faded Skies!');
+        } else {
+          alert(response.error || 'Login failed. Please check your credentials.');
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        alert('Login failed. Please check your connection and try again.');
       }
+    } else {
+      alert('Please enter email and password');
+    }
     } else if (authMode === 'signup') {
     if (!authForm.name || !authForm.dateOfBirth || !authForm.phone || !authForm.email || !authForm.password) {
       alert('Please fill in all required fields');
