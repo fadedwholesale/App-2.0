@@ -221,8 +221,8 @@ export const useCannabisDeliveryStore = create<CannabisDeliveryState>()(
 
         // Product Actions
         setProducts: (products) => set({ products }),
-        addProduct: (product) => set((state) => ({ 
-          products: [...state.products, product] 
+        addProduct: (product) => set((state) => ({
+          products: [...state.products, product]
         })),
         updateProduct: (id, updates) => set((state) => ({
           products: state.products.map(p => p.id === id ? { ...p, ...updates } : p)
@@ -230,6 +230,82 @@ export const useCannabisDeliveryStore = create<CannabisDeliveryState>()(
         deleteProduct: (id) => set((state) => ({
           products: state.products.filter(p => p.id !== id)
         })),
+
+        // Real-time sync actions
+        broadcastProductAdded: (product) => {
+          // First update local state
+          set((state) => ({
+            products: [...state.products, product],
+            lastUpdated: new Date().toISOString()
+          }));
+          // Then broadcast to other clients
+          wsService.send({
+            type: 'admin:product_added',
+            data: { product, timestamp: new Date().toISOString() }
+          });
+          console.log('📡 Broadcasting product added:', product.name);
+        },
+
+        broadcastProductUpdated: (id, updates) => {
+          // First update local state
+          set((state) => ({
+            products: state.products.map(p => p.id === id ? { ...p, ...updates } : p),
+            lastUpdated: new Date().toISOString()
+          }));
+          // Then broadcast to other clients
+          wsService.send({
+            type: 'admin:product_updated',
+            data: { id, updates, timestamp: new Date().toISOString() }
+          });
+          console.log('📡 Broadcasting product updated:', id, updates);
+        },
+
+        broadcastProductDeleted: (id) => {
+          // First update local state
+          set((state) => ({
+            products: state.products.filter(p => p.id !== id),
+            lastUpdated: new Date().toISOString()
+          }));
+          // Then broadcast to other clients
+          wsService.send({
+            type: 'admin:product_deleted',
+            data: { id, timestamp: new Date().toISOString() }
+          });
+          console.log('📡 Broadcasting product deleted:', id);
+        },
+
+        setupRealTimeSync: () => {
+          console.log('🔄 Setting up real-time product sync...');
+
+          // Listen for product events from other clients
+          wsService.on('product_added', (data) => {
+            console.log('📥 Received product added:', data.product.name);
+            set((state) => ({
+              products: [...state.products, data.product],
+              lastUpdated: data.timestamp
+            }));
+          });
+
+          wsService.on('product_updated', (data) => {
+            console.log('📥 Received product updated:', data.id);
+            set((state) => ({
+              products: state.products.map(p => p.id === data.id ? { ...p, ...data.updates } : p),
+              lastUpdated: data.timestamp
+            }));
+          });
+
+          wsService.on('product_deleted', (data) => {
+            console.log('📥 Received product deleted:', data.id);
+            set((state) => ({
+              products: state.products.filter(p => p.id !== data.id),
+              lastUpdated: data.timestamp
+            }));
+          });
+
+          // Connect WebSocket if not already connected
+          wsService.connect();
+          console.log('✅ Real-time product sync activated');
+        },
 
         // Customer Actions
         setCustomers: (customers) => set({ customers }),
