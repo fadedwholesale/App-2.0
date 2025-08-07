@@ -397,6 +397,140 @@ const FadedSkiesDriverApp = () => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [modals]);
 
+  // Geofencing utilities
+  const calculateDistance = useCallback((lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371000; // Earth's radius in meters
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance in meters
+  }, []);
+
+  const updateDriverLocation = useCallback((position: GeolocationPosition) => {
+    const newLocation = {
+      lat: position.coords.latitude,
+      lng: position.coords.longitude
+    };
+
+    setDriverLocation(newLocation);
+    setGeofenceError(null);
+
+    // Update driver's current location in state
+    setDriver(prev => ({
+      ...prev,
+      currentLocation: newLocation
+    }));
+
+    // Check if within delivery radius for active order
+    if (activeOrder && activeOrder.status === 'in_transit') {
+      const distance = calculateDistance(
+        newLocation.lat,
+        newLocation.lng,
+        activeOrder.lat,
+        activeOrder.lng
+      );
+
+      setDistanceToCustomer(distance);
+      const withinRadius = distance <= DELIVERY_RADIUS_METERS;
+      setIsWithinDeliveryRadius(withinRadius);
+
+      // Send real-time location update
+      try {
+        wsService.send({
+          type: 'driver:location_update',
+          data: {
+            orderId: activeOrder.id,
+            driverId: driver.id,
+            location: newLocation,
+            distanceToCustomer: distance,
+            withinDeliveryRadius: withinRadius,
+            timestamp: new Date()
+          }
+        });
+      } catch (error) {
+        console.warn('Failed to send location update:', error);
+      }
+
+      // Show notification when entering/leaving delivery zone
+      if (withinRadius && distanceToCustomer && distanceToCustomer > DELIVERY_RADIUS_METERS) {
+        showToastMessage('🎯 You\'re within delivery range! You can now mark as delivered.', 'success');
+      } else if (!withinRadius && distanceToCustomer && distanceToCustomer <= DELIVERY_RADIUS_METERS) {
+        showToastMessage('⚠️ You\'ve moved outside the delivery zone.', 'warning');
+      }
+    }
+  }, [activeOrder, driver.id, calculateDistance, distanceToCustomer]);
+
+  const handleLocationError = useCallback((error: GeolocationPositionError) => {
+    let errorMessage = 'Location access required for delivery verification.';
+
+    switch (error.code) {
+      case error.PERMISSION_DENIED:
+        errorMessage = 'Location permission denied. Please enable location access in your browser settings.';
+        break;
+      case error.POSITION_UNAVAILABLE:
+        errorMessage = 'Location information unavailable. Please check your GPS/internet connection.';
+        break;
+      case error.TIMEOUT:
+        errorMessage = 'Location request timed out. Please try again.';
+        break;
+    }
+
+    setGeofenceError(errorMessage);
+    setIsWithinDeliveryRadius(false);
+    showToastMessage(errorMessage, 'error');
+  }, [showToastMessage]);
+
+  const stopLocationTracking = useCallback(() => {
+    if (locationWatchId !== null) {
+      navigator.geolocation.clearWatch(locationWatchId);
+      setLocationWatchId(null);
+      console.log('📍 Location tracking stopped');
+    }
+  }, [locationWatchId]);
+
+  const startLocationTracking = useCallback(() => {
+    if (!navigator.geolocation) {
+      setGeofenceError('Geolocation is not supported by this browser.');
+      showToastMessage('Geolocation not supported', 'error');
+      return;
+    }
+
+    // Get initial location
+    navigator.geolocation.getCurrentPosition(
+      updateDriverLocation,
+      handleLocationError,
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000
+      }
+    );
+
+    // Start watching location changes
+    const watchId = navigator.geolocation.watchPosition(
+      updateDriverLocation,
+      handleLocationError,
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 30000
+      }
+    );
+
+    setLocationWatchId(watchId);
+    console.log('📍 Location tracking started for geofencing');
+  }, [updateDriverLocation, handleLocationError, showToastMessage]);
+
+  const showToastMessage = useCallback((message: string, type: 'success' | 'error' | 'warning' | 'info' = 'success') => {
+    setToastMessage(message);
+    setToastType(type);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  }, []);
+
   // WebSocket connection for real-time driver updates
   useEffect(() => {
     if (isAuthenticated && driver.isOnline) {
@@ -477,139 +611,6 @@ const FadedSkiesDriverApp = () => {
     };
   }, [stopLocationTracking]);
 
-  const showToastMessage = useCallback((message: string, type: 'success' | 'error' | 'warning' | 'info' = 'success') => {
-    setToastMessage(message);
-    setToastType(type);
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
-  }, []);
-
-  // Geofencing utilities
-  const calculateDistance = useCallback((lat1: number, lng1: number, lat2: number, lng2: number): number => {
-    const R = 6371000; // Earth's radius in meters
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLng = (lng2 - lng1) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLng / 2) * Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c; // Distance in meters
-  }, []);
-
-  const updateDriverLocation = useCallback((position: GeolocationPosition) => {
-    const newLocation = {
-      lat: position.coords.latitude,
-      lng: position.coords.longitude
-    };
-
-    setDriverLocation(newLocation);
-    setGeofenceError(null);
-
-    // Update driver's current location in state
-    setDriver(prev => ({
-      ...prev,
-      currentLocation: newLocation
-    }));
-
-    // Check if within delivery radius for active order
-    if (activeOrder && activeOrder.status === 'in_transit') {
-      const distance = calculateDistance(
-        newLocation.lat,
-        newLocation.lng,
-        activeOrder.lat,
-        activeOrder.lng
-      );
-
-      setDistanceToCustomer(distance);
-      const withinRadius = distance <= DELIVERY_RADIUS_METERS;
-      setIsWithinDeliveryRadius(withinRadius);
-
-      // Send real-time location update
-      try {
-        wsService.send({
-          type: 'driver:location_update',
-          data: {
-            orderId: activeOrder.id,
-            driverId: driver.id,
-            location: newLocation,
-            distanceToCustomer: distance,
-            withinDeliveryRadius: withinRadius,
-            timestamp: new Date()
-          }
-        });
-      } catch (error) {
-        console.warn('Failed to send location update:', error);
-      }
-
-      // Show notification when entering/leaving delivery zone
-      if (withinRadius && distanceToCustomer && distanceToCustomer > DELIVERY_RADIUS_METERS) {
-        showToastMessage('🎯 You\'re within delivery range! You can now mark as delivered.', 'success');
-      } else if (!withinRadius && distanceToCustomer && distanceToCustomer <= DELIVERY_RADIUS_METERS) {
-        showToastMessage('⚠️ You\'ve moved outside the delivery zone.', 'warning');
-      }
-    }
-  }, [activeOrder, driver.id, calculateDistance, showToastMessage, distanceToCustomer]);
-
-  const handleLocationError = useCallback((error: GeolocationPositionError) => {
-    let errorMessage = 'Location access required for delivery verification.';
-
-    switch (error.code) {
-      case error.PERMISSION_DENIED:
-        errorMessage = 'Location permission denied. Please enable location access in your browser settings.';
-        break;
-      case error.POSITION_UNAVAILABLE:
-        errorMessage = 'Location information unavailable. Please check your GPS/internet connection.';
-        break;
-      case error.TIMEOUT:
-        errorMessage = 'Location request timed out. Please try again.';
-        break;
-    }
-
-    setGeofenceError(errorMessage);
-    setIsWithinDeliveryRadius(false);
-    showToastMessage(errorMessage, 'error');
-  }, [showToastMessage]);
-
-  const stopLocationTracking = useCallback(() => {
-    if (locationWatchId !== null) {
-      navigator.geolocation.clearWatch(locationWatchId);
-      setLocationWatchId(null);
-      console.log('📍 Location tracking stopped');
-    }
-  }, [locationWatchId]);
-
-  const startLocationTracking = useCallback(() => {
-    if (!navigator.geolocation) {
-      setGeofenceError('Geolocation is not supported by this browser.');
-      showToastMessage('Geolocation not supported', 'error');
-      return;
-    }
-
-    // Get initial location
-    navigator.geolocation.getCurrentPosition(
-      updateDriverLocation,
-      handleLocationError,
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000
-      }
-    );
-
-    // Start watching location changes
-    const watchId = navigator.geolocation.watchPosition(
-      updateDriverLocation,
-      handleLocationError,
-      {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 30000
-      }
-    );
-
-    setLocationWatchId(watchId);
-    console.log('📍 Location tracking started for geofencing');
-  }, [updateDriverLocation, handleLocationError, showToastMessage]);
 
   const toggleOnlineStatus = useCallback(() => {
     setDriver(prev => ({
