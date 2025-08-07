@@ -31,6 +31,32 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Backend Status Indicator */}
+      {backendStatus === 'disconnected' && (
+        <div className="fixed top-4 left-4 z-50">
+          <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded-lg shadow-lg">
+            <div className="flex items-center">
+              <div className="w-3 h-3 bg-yellow-500 rounded-full mr-3 animate-pulse"></div>
+              <div>
+                <p className="font-medium">Backend Offline</p>
+                <p className="text-sm">Start backend: <code className="bg-yellow-200 px-1 rounded">cd backend && npm run dev</code></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {backendStatus === 'connected' && (
+        <div className="fixed top-4 left-4 z-50">
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded-lg shadow-lg">
+            <div className="flex items-center">
+              <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
+              <p className="font-medium">Backend Connected</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* App Selector */}
       <div className="fixed top-4 right-4 z-50">
         <div className="bg-white rounded-lg shadow-lg p-2 flex space-x-2">
