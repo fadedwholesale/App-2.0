@@ -6,6 +6,28 @@ import { apiService } from './services/api-integration-service'
 
 function App() {
   const [currentApp, setCurrentApp] = useState<'user' | 'driver' | 'admin'>('user')
+  const [backendStatus, setBackendStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking')
+
+  // Check backend connection on mount
+  useEffect(() => {
+    const checkBackendConnection = async () => {
+      try {
+        const response = await fetch('/api/health')
+        if (response.ok) {
+          setBackendStatus('connected')
+        } else {
+          setBackendStatus('disconnected')
+        }
+      } catch (error) {
+        setBackendStatus('disconnected')
+      }
+    }
+
+    checkBackendConnection()
+    // Check every 30 seconds
+    const interval = setInterval(checkBackendConnection, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   return (
     <div className="min-h-screen bg-gray-50">
