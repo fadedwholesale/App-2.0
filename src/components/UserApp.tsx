@@ -3051,8 +3051,8 @@ const FadedSkiesApp = () => {
         return () => {
           // Cleanup WebSocket connection on logout or unmount
           try {
-            wsService.disconnect();
-            console.log('🔌 WebSocket disconnected');
+            // wsService.disconnect();
+            console.log('🔌 WebSocket disconnected (disabled)');
           } catch (error) {
             console.warn('WebSocket disconnect error:', error);
           }
