@@ -282,23 +282,49 @@ export const useCannabisDeliveryStore = create<CannabisDeliveryState>()(
             console.log('📥 Received product added:', data.product.name);
             set((state) => ({
               products: [...state.products, data.product],
-              lastUpdated: data.timestamp
+              lastUpdated: data.timestamp,
+              notifications: [...state.notifications, {
+                id: Date.now(),
+                type: 'success',
+                title: 'New Product Added',
+                message: `${data.product.name} is now available!`,
+                priority: 'low',
+                timestamp: new Date().toISOString()
+              }]
             }));
           });
 
           wsService.on('product_updated', (data) => {
             console.log('📥 Received product updated:', data.id);
+            const product = get().products.find(p => p.id === data.id);
             set((state) => ({
               products: state.products.map(p => p.id === data.id ? { ...p, ...data.updates } : p),
-              lastUpdated: data.timestamp
+              lastUpdated: data.timestamp,
+              notifications: [...state.notifications, {
+                id: Date.now(),
+                type: 'info',
+                title: 'Product Updated',
+                message: `${product?.name || 'A product'} has been updated`,
+                priority: 'low',
+                timestamp: new Date().toISOString()
+              }]
             }));
           });
 
           wsService.on('product_deleted', (data) => {
             console.log('📥 Received product deleted:', data.id);
+            const product = get().products.find(p => p.id === data.id);
             set((state) => ({
               products: state.products.filter(p => p.id !== data.id),
-              lastUpdated: data.timestamp
+              lastUpdated: data.timestamp,
+              notifications: [...state.notifications, {
+                id: Date.now(),
+                type: 'warning',
+                title: 'Product Removed',
+                message: `${product?.name || 'A product'} is no longer available`,
+                priority: 'medium',
+                timestamp: new Date().toISOString()
+              }]
             }));
           });
 
