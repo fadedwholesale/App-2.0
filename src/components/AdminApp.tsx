@@ -159,8 +159,8 @@ const FadedSkiesTrackingAdmin = () => {
 
       return () => {
         try {
-          wsService.disconnect();
-          console.log('🔌 Admin WebSocket disconnected');
+          // wsService.disconnect();
+          console.log('🔌 Admin WebSocket disconnected (disabled)');
         } catch (error) {
           console.warn('WebSocket disconnect error:', error);
         }
