@@ -553,10 +553,83 @@ const FadedSkiesTrackingAdmin = () => {
   const OrderDetailsModal = () => {
     const [orderStatus, setOrderStatus] = useState(selectedOrder?.status || 'pending');
 
-    const updateOrderStatus = (newStatus) => {
+    const updateOrderStatus = async (newStatus) => {
       setOrderStatus(newStatus);
-      // Handle status update
-      console.log('Order status updated:', newStatus);
+
+      try {
+        // Send real-time order status update
+        const statusUpdate = {
+          orderId: selectedOrder?.id,
+          customerId: selectedOrder?.customer,
+          status: newStatus,
+          timestamp: new Date(),
+          message: getStatusMessage(newStatus)
+        };
+
+        // Notify customer of status change
+        wsService.send({
+          type: 'admin:order_status_update',
+          data: {
+            ...statusUpdate,
+            target: 'customer'
+          }
+        });
+
+        // If order is confirmed or ready, notify available drivers
+        if (newStatus === 'confirmed' || newStatus === 'ready') {
+          wsService.send({
+            type: 'admin:order_available_for_pickup',
+            data: {
+              ...statusUpdate,
+              target: 'drivers',
+              orderDetails: {
+                id: selectedOrder?.id,
+                customer: selectedOrder?.customer,
+                location: selectedOrder?.location || 'Austin, TX',
+                value: selectedOrder?.total,
+                items: selectedOrder?.items,
+                priority: selectedOrder?.total > 150 ? 'high' : 'normal',
+                estimatedDistance: '2.3 miles',
+                pickupLocation: 'Faded Skies Dispensary - 123 Cannabis St'
+              }
+            }
+          });
+
+          console.log('📡 Order sent to available drivers:', selectedOrder?.id);
+        }
+
+        // If driver is assigned, notify specific driver
+        if (newStatus === 'assigned' && selectedOrder?.assignedDriver) {
+          wsService.send({
+            type: 'admin:assign_order',
+            data: {
+              orderId: selectedOrder.id,
+              driverId: selectedOrder.assignedDriver,
+              orderDetails: statusUpdate
+            }
+          });
+        }
+
+        console.log('✅ Order status updated and notifications sent:', newStatus);
+
+      } catch (error) {
+        console.error('Failed to send status update notifications:', error);
+      }
+    };
+
+    // Helper function to get user-friendly status messages
+    const getStatusMessage = (status) => {
+      const messages = {
+        'pending': 'Order received and pending review',
+        'confirmed': 'Order confirmed and being prepared',
+        'preparing': 'Your order is being prepared',
+        'ready': 'Order ready for pickup - driver will be assigned',
+        'assigned': 'Driver assigned to your order',
+        'en-route': 'Driver is on the way to deliver your order',
+        'delivered': 'Order has been delivered successfully',
+        'cancelled': 'Order has been cancelled'
+      };
+      return messages[status] || `Order status updated to ${status}`;
     };
 
     return (
