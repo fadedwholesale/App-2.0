@@ -164,6 +164,11 @@ const FadedSkiesTrackingAdmin = () => {
 
       return () => {
         try {
+          // Remove event listeners
+          wsService.off('order_placed', handleNewOrder);
+          wsService.off('order_update', handleOrderUpdate);
+          wsService.off('driver_status_change', handleDriverStatusChange);
+
           wsService.disconnect();
           console.log('🔌 Admin WebSocket disconnected');
         } catch (error) {
