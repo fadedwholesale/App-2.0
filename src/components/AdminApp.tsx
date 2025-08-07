@@ -577,25 +577,25 @@ const FadedSkiesTrackingAdmin = () => {
 
         // If order is confirmed or ready, notify available drivers
         if (newStatus === 'confirmed' || newStatus === 'ready') {
-          wsService.send({
-            type: 'admin:order_available_for_pickup',
-            data: {
-              ...statusUpdate,
-              target: 'drivers',
-              orderDetails: {
-                id: selectedOrder?.id,
-                customer: selectedOrder?.customer,
-                location: selectedOrder?.location || 'Austin, TX',
-                value: selectedOrder?.total,
-                items: selectedOrder?.items,
-                priority: selectedOrder?.total > 150 ? 'high' : 'normal',
-                estimatedDistance: '2.3 miles',
-                pickupLocation: 'Faded Skies Dispensary - 123 Cannabis St'
-              }
-            }
-          });
+          // wsService.send({
+          //   type: 'admin:order_available_for_pickup',
+          //   data: {
+          //     ...statusUpdate,
+          //     target: 'drivers',
+          //     orderDetails: {
+          //       id: selectedOrder?.id,
+          //       customer: selectedOrder?.customer,
+          //       location: selectedOrder?.location || 'Austin, TX',
+          //       value: selectedOrder?.total,
+          //       items: selectedOrder?.items,
+          //       priority: selectedOrder?.total > 150 ? 'high' : 'normal',
+          //       estimatedDistance: '2.3 miles',
+          //       pickupLocation: 'Faded Skies Dispensary - 123 Cannabis St'
+          //     }
+          //   }
+          // });
 
-          console.log('📡 Order sent to available drivers:', selectedOrder?.id);
+          console.log('📡 Order sent to available drivers (disabled):', selectedOrder?.id);
         }
 
         // If driver is assigned, notify specific driver
