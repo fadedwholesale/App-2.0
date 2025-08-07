@@ -233,6 +233,66 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     console.log('🧪 Real-time sync test sequence started');
   };
 
+  // Test product synchronization
+  (window as any).testProductSync = () => {
+    console.log('🧪 Testing Product Real-Time Sync...');
+
+    // Test adding a new product
+    wsService.send({
+      type: 'admin:product_added',
+      data: {
+        product: {
+          id: Date.now(),
+          name: 'Test Product - Live Update',
+          category: 'flower',
+          price: 35.00,
+          originalPrice: null,
+          thc: '22.1%',
+          cbd: '0.5%',
+          strain: 'Hybrid',
+          rating: 4.8,
+          reviewCount: 0,
+          imageUrl: 'https://images.unsplash.com/photo-1560448204-61dc36dc98c8?w=400',
+          description: 'This is a test product added via real-time sync!',
+          effects: ['Happy', 'Relaxed'],
+          labTested: true,
+          inStock: true,
+          featured: false
+        },
+        timestamp: new Date().toISOString()
+      }
+    });
+
+    // Test updating a product after 2 seconds
+    setTimeout(() => {
+      wsService.send({
+        type: 'admin:product_updated',
+        data: {
+          id: 1,
+          updates: {
+            price: 50.00,
+            name: 'Purple Haze Live Resin Cartridge - UPDATED!',
+            featured: true
+          },
+          timestamp: new Date().toISOString()
+        }
+      });
+    }, 2000);
+
+    // Test deleting a product after 4 seconds
+    setTimeout(() => {
+      wsService.send({
+        type: 'admin:product_deleted',
+        data: {
+          id: 4,
+          timestamp: new Date().toISOString()
+        }
+      });
+    }, 4000);
+
+    console.log('🧪 Product sync test sequence started - watch both Admin and User apps!');
+  };
+
   (window as any).checkWebSocketStatus = () => {
     console.log('🔍 WebSocket Status:', {
       connected: wsService.ws?.readyState === WebSocket.OPEN,
