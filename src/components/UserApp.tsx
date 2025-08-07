@@ -3348,18 +3348,15 @@ const FadedSkiesApp = () => {
         // Try to submit to backend API
         try {
           const apiModule = await import('../services/api-integration-service');
-          // const response = await apiModule.apiService.createOrder(orderData);
+          const response = await apiModule.apiService.createOrder(orderData);
 
-          // if (response.success) {
-          //   console.log('✅ Order submitted to backend:', response.data);
-          //   showToast('Order placed successfully! Admin will confirm shortly.');
-          // } else {
-          //   console.warn('Backend order submission failed:', response.error);
-          //   showToast('Order placed! Processing with backup system.');
-          // }
-
-          // Temporary: Order placed locally only
-          showToast('Order placed successfully! (Local mode)');
+          if (response.success) {
+            console.log('✅ Order submitted to backend:', response.data);
+            showToast('Order placed successfully! Admin will confirm shortly.');
+          } else {
+            console.warn('Backend order submission failed:', response.error);
+            showToast('Order placed! Processing with backup system.');
+          }
         } catch (apiError) {
           console.warn('API submission failed, using local processing:', apiError);
           showToast('Order placed successfully! Preparing your delivery.');
@@ -4075,7 +4072,7 @@ const FadedSkiesApp = () => {
                                 ? 'bg-amber-100 text-amber-800'
                                 : 'bg-gray-100 text-gray-800'
                             }`}>
-                              {order.status === 'delivered' && '✅ Delivered'}
+                              {order.status === 'delivered' && '�� Delivered'}
                               {order.status === 'in-transit' && '🚚 In Transit'}
                               {order.status === 'preparing' && '📦 Preparing'}
                               {order.status === 'cancelled' && '❌ Cancelled'}
