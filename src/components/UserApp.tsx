@@ -2604,6 +2604,9 @@ const ProductCard = React.memo(({ product, addToCart, addingToCart }: {
 ));
 
 const FadedSkiesApp = () => {
+  // Store integration for real-time product updates
+  const { products, setProducts, setupRealTimeSync } = useCannabisDeliveryStore();
+
   const [currentView, setCurrentView] = useState<string>('auth');
   const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
