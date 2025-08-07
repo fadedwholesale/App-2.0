@@ -2607,6 +2607,7 @@ const FadedSkiesApp = () => {
   const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [idVerified, setIdVerified] = useState<boolean>(false);
+  const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connected' | 'connecting'>('disconnected');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [authForm, setAuthForm] = useState({
     email: '',
@@ -3915,7 +3916,7 @@ const FadedSkiesApp = () => {
                       <div className="grid grid-cols-2 gap-3">
                         {[
                           { name: 'Apple Pay', icon: '🍎' },
-                          { name: 'Google Pay', icon: '🔵' },
+                          { name: 'Google Pay', icon: '���' },
                           { name: 'Aeropay', icon: '💳' },
                           { name: 'FS Coin', icon: '🪙' }
                         ].map(method => (
