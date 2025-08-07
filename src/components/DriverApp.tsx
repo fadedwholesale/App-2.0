@@ -2212,6 +2212,62 @@ const FadedSkiesDriverApp = () => {
                   </div>
                 </div>
 
+                {/* Geofencing Debug Info - Development Only */}
+                {activeOrder.status === 'in_transit' && driverLocation && (
+                  <div className="bg-gray-50 rounded-3xl p-4 mb-4 border border-gray-200">
+                    <h4 className="font-semibold text-gray-800 mb-2">📍 Location Debug</h4>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <span className="text-gray-600">Driver:</span>
+                        <p className="font-mono text-gray-800">
+                          {driverLocation.lat.toFixed(6)}, {driverLocation.lng.toFixed(6)}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Customer:</span>
+                        <p className="font-mono text-gray-800">
+                          {activeOrder.lat.toFixed(6)}, {activeOrder.lng.toFixed(6)}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Distance:</span>
+                        <p className="font-semibold text-gray-800">
+                          {distanceToCustomer ? `${Math.round(distanceToCustomer)}m` : 'Calculating...'}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Radius:</span>
+                        <p className="font-semibold text-gray-800">{DELIVERY_RADIUS_METERS}m</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Test geofencing by simulating customer location
+                        const simulatedLocation = {
+                          lat: activeOrder.lat + 0.0001,
+                          lng: activeOrder.lng + 0.0001
+                        };
+                        updateDriverLocation({
+                          coords: {
+                            latitude: simulatedLocation.lat,
+                            longitude: simulatedLocation.lng,
+                            accuracy: 10,
+                            altitude: null,
+                            altitudeAccuracy: null,
+                            heading: null,
+                            speed: null
+                          },
+                          timestamp: Date.now()
+                        } as GeolocationPosition);
+                      }}
+                      className="mt-2 w-full bg-blue-100 text-blue-700 py-2 px-3 rounded-xl text-xs font-semibold hover:bg-blue-200 transition-colors"
+                    >
+                      🧪 Test: Simulate Near Customer
+                    </button>
+                  </div>
+                )}
+
                 {/* Customer Info */}
                 <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100 mb-6">
                   <h3 className="font-bold text-xl text-gray-900 mb-4">Customer Information</h3>
