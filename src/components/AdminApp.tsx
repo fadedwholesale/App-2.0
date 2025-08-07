@@ -600,14 +600,14 @@ const FadedSkiesTrackingAdmin = () => {
 
         // If driver is assigned, notify specific driver
         if (newStatus === 'assigned' && selectedOrder?.assignedDriver) {
-          // wsService.send({
-          //   type: 'admin:assign_order',
-          //   data: {
-          //     orderId: selectedOrder.id,
-          //     driverId: selectedOrder.assignedDriver,
-          //     orderDetails: statusUpdate
-          //   }
-          // });
+          wsService.send({
+            type: 'admin:assign_order',
+            data: {
+              orderId: selectedOrder.id,
+              driverId: selectedOrder.assignedDriver,
+              orderDetails: statusUpdate
+            }
+          });
         }
 
         console.log('✅ Order status updated and notifications sent:', newStatus);
