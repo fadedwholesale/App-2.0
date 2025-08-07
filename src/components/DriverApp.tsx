@@ -2183,7 +2183,11 @@ const FadedSkiesDriverApp = () => {
                     {activeOrder.status === 'picked_up' && (
                       <button
                         type="button"
-                        onClick={() => updateOrderStatus('in_transit')}
+                        onClick={() => {
+                          updateOrderStatus('in_transit');
+                          // Start intensive location tracking for geofencing
+                          startLocationTracking();
+                        }}
                         className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-2xl font-bold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg col-span-2"
                       >
                         🚗 Start Delivery
