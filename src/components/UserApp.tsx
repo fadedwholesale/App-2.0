@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 
 // Import WebSocket service for real-time updates
-import { wsService } from '../../User app/api-integration-service';
+import { wsService } from '../../User\ app/api-integration-service';
 
 // TypeScript interfaces
 interface Product {
