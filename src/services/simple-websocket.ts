@@ -169,6 +169,66 @@ export class SimpleWebSocketService {
 // Export singleton instance
 export const wsService = new SimpleWebSocketService();
 
+// Add global test functions for development
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  (window as any).testRealTimeSync = () => {
+    console.log('🧪 Testing Real-Time Sync...');
+
+    // Test order placement flow
+    wsService.send({
+      type: 'customer:order_placed',
+      data: {
+        orderId: '#TEST001',
+        customerId: 'test@user.com',
+        customerName: 'Test User',
+        total: 99.99,
+        items: [{ name: 'Test Product', quantity: 1, price: 99.99 }]
+      }
+    });
+
+    // Test admin approval
+    setTimeout(() => {
+      wsService.send({
+        type: 'admin:order_status_update',
+        data: {
+          orderId: '#TEST001',
+          status: 'confirmed',
+          message: 'Order confirmed and ready for pickup'
+        }
+      });
+    }, 1000);
+
+    // Test driver acceptance
+    setTimeout(() => {
+      wsService.send({
+        type: 'driver:accept_order',
+        data: {
+          orderId: '#TEST001',
+          driverId: 'driver123',
+          driverName: 'Test Driver',
+          vehicle: 'White Tesla Model 3',
+          estimatedArrival: '15-20 minutes'
+        }
+      });
+    }, 2000);
+
+    console.log('🧪 Real-time sync test sequence started');
+  };
+
+  (window as any).checkWebSocketStatus = () => {
+    console.log('🔍 WebSocket Status:', {
+      connected: wsService.ws?.readyState === WebSocket.OPEN,
+      readyState: wsService.ws?.readyState,
+      url: wsService.ws?.url,
+      listeners: wsService.eventListeners.size
+    });
+  };
+
+  console.log('🧪 Test functions available:');
+  console.log('- testRealTimeSync() - Test complete real-time flow');
+  console.log('- checkWebSocketStatus() - Check connection status');
+}
+
 // Simple API service
 export const apiService = {
   register: async (userData: any) => {
