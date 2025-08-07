@@ -44,7 +44,7 @@ router.post('/register', [
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // Create user
+    // Create user with verification enabled by default for immediate login
     const user = await prisma.user.create({
       data: {
         email,
@@ -52,7 +52,9 @@ router.post('/register', [
         name,
         phone,
         role,
-        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null
+        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+        isVerified: true,  // Set as verified by default for immediate access
+        isActive: true     // Ensure account is active
       }
     });
 
