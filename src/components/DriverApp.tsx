@@ -570,6 +570,14 @@ const FadedSkiesDriverApp = () => {
     showToastMessage(errorMessage, 'error');
   }, [showToastMessage]);
 
+  const stopLocationTracking = useCallback(() => {
+    if (locationWatchId !== null) {
+      navigator.geolocation.clearWatch(locationWatchId);
+      setLocationWatchId(null);
+      console.log('📍 Location tracking stopped');
+    }
+  }, [locationWatchId]);
+
   const startLocationTracking = useCallback(() => {
     if (!navigator.geolocation) {
       setGeofenceError('Geolocation is not supported by this browser.');
@@ -602,14 +610,6 @@ const FadedSkiesDriverApp = () => {
     setLocationWatchId(watchId);
     console.log('📍 Location tracking started for geofencing');
   }, [updateDriverLocation, handleLocationError, showToastMessage]);
-
-  const stopLocationTracking = useCallback(() => {
-    if (locationWatchId !== null) {
-      navigator.geolocation.clearWatch(locationWatchId);
-      setLocationWatchId(null);
-      console.log('📍 Location tracking stopped');
-    }
-  }, [locationWatchId]);
 
   const toggleOnlineStatus = useCallback(() => {
     setDriver(prev => ({
