@@ -2959,6 +2959,7 @@ const FadedSkiesApp = () => {
     // Call backend API to create account
     const apiCall = async () => {
       try {
+        // Try real API first
         const apiModule = await import('../../User app/api-integration-service');
         const response = await apiModule.apiService.register({
           name: authForm.name,
@@ -2983,8 +2984,37 @@ const FadedSkiesApp = () => {
           alert(response.error || 'Registration failed. Please try again.');
         }
       } catch (error) {
-        console.error('Registration error:', error);
-        alert('Registration failed. Please check your connection and try again.');
+        console.error('Registration error, trying mock API:', error);
+
+        // Fallback to mock API for development
+        try {
+          const mockApi = await import('../mockApi');
+          const mockResponse = await mockApi.mockApiService.register({
+            name: authForm.name,
+            email: authForm.email,
+            password: authForm.password,
+            phone: authForm.phone,
+            dateOfBirth: authForm.dateOfBirth
+          });
+
+          if (mockResponse.success) {
+            setIsAuthenticated(true);
+            setUser(prev => ({
+              ...prev,
+              name: mockResponse.data?.user.name || authForm.name,
+              email: mockResponse.data?.user.email || authForm.email,
+              age: age,
+              idVerified: mockResponse.data?.user.isVerified || false
+            }));
+            setCurrentView('home');
+            showToast('Account created successfully! Welcome to Faded Skies! (Demo Mode)');
+          } else {
+            alert(mockResponse.error || 'Registration failed. Please try again.');
+          }
+        } catch (mockError) {
+          console.error('Mock API error:', mockError);
+          alert('Registration failed. Please check your connection and try again.');
+        }
       }
     };
 
