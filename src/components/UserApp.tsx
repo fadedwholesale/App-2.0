@@ -2937,6 +2937,7 @@ const FadedSkiesApp = () => {
         // Set up real-time event listeners
         const wsConnected = () => {
           console.log('✅ WebSocket connected for user:', user.email);
+          setConnectionStatus('connected');
 
           // Subscribe to user-specific order channels
 
