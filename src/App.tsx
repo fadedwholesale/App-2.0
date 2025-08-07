@@ -24,8 +24,8 @@ function App() {
     }
 
     checkBackendConnection()
-    // Check every 30 seconds
-    const interval = setInterval(checkBackendConnection, 30000)
+    // Check every 2 minutes to reduce proxy error logs
+    const interval = setInterval(checkBackendConnection, 120000)
     return () => clearInterval(interval)
   }, [])
 
