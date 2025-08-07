@@ -12,7 +12,7 @@ router.post('/process', async (req, res) => {
     // For now, simulate payment processing
     const order = await prisma.order.update({
       where: { id: orderId },
-      data: { paymentStatus: 'PAID' }
+      data: { paymentStatus: 'COMPLETED' }
     });
 
     res.json({
