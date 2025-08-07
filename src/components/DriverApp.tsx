@@ -391,17 +391,17 @@ const FadedSkiesDriverApp = () => {
     if (isAuthenticated && driver.isOnline) {
       try {
         // Connect WebSocket for driver
-        wsService.connect(`driver-${driver.name}`);
+        // wsService.connect(`driver-${driver.name}`);
 
         // Send driver online status
-        wsService.send({
-          type: 'driver:online',
-          data: {
-            driverId: driver.id,
-            location: driver.currentLocation,
-            isAvailable: driver.isAvailable
-          }
-        });
+        // wsService.send({
+        //   type: 'driver:online',
+        //   data: {
+        //     driverId: driver.id,
+        //     location: driver.currentLocation,
+        //     isAvailable: driver.isAvailable
+        //   }
+        // });
 
         console.log('✅ Driver WebSocket connected for:', driver.name);
 
