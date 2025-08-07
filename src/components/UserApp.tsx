@@ -2948,11 +2948,11 @@ const FadedSkiesApp = () => {
 
           console.log('🧪 Test function available: testOrderFlow()');
         }
-          wsService.send({
-            type: 'subscribe',
-            channel: 'user_orders',
-            userId: user.email
-          });
+          // wsService.send({
+          //   type: 'subscribe',
+          //   channel: 'user_orders',
+          //   userId: user.email
+          // });
         };
 
         // Listen for order acceptance by driver
