@@ -1509,7 +1509,7 @@ const FadedSkiesDriverApp = () => {
 
     const handleSave = () => {
       // Mask account number for display
-      const maskedAccount = `••••${bankData.accountNumber.slice(-4)}`;
+      const maskedAccount = `••���•${bankData.accountNumber.slice(-4)}`;
       const bankDisplay = `${bankData.bankName} ${maskedAccount}`;
 
       setDriver(prev => ({
@@ -2297,7 +2297,7 @@ const FadedSkiesDriverApp = () => {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 mt-4">
+                  <div className="grid grid-cols-3 gap-3 mt-4">
                     <button
                       type="button"
                       onClick={() => window.open(`tel:${activeOrder.customerPhone}`)}
@@ -2313,6 +2313,17 @@ const FadedSkiesDriverApp = () => {
                     >
                       <MessageCircle className="w-5 h-5" />
                       <span>Message</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${activeOrder.lat},${activeOrder.lng}&travelmode=driving`;
+                        window.open(navigationUrl, '_blank');
+                      }}
+                      className="bg-purple-600 text-white py-3 rounded-2xl font-bold hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2"
+                    >
+                      <Navigation className="w-5 h-5" />
+                      <span>Navigate</span>
                     </button>
                   </div>
                 </div>
