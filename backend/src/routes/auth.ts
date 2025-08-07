@@ -150,6 +150,9 @@ router.post('/login', [
       });
     }
 
+    // Note: Removed isVerified check to allow immediate login after signup
+    // Users can access the app immediately and verify ID later for purchases
+
     // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
