@@ -440,6 +440,9 @@ const FadedSkiesDriverApp = () => {
               }
             });
 
+            // Remove event listeners
+            wsService.off('order_available_for_pickup');
+
             wsService.disconnect();
             console.log('🔌 Driver WebSocket disconnected');
           } catch (error) {
@@ -1551,7 +1554,7 @@ const FadedSkiesDriverApp = () => {
                   </div>
                   <div>
                     <span className="text-sm text-gray-600">Account Number:</span>
-                    <p className="font-semibold">••••••{bankData.accountNumber.slice(-4)}</p>
+                    <p className="font-semibold">••••���•{bankData.accountNumber.slice(-4)}</p>
                   </div>
                   <div className="col-span-2">
                     <span className="text-sm text-gray-600">Account Holder:</span>
