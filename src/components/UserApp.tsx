@@ -2943,6 +2943,17 @@ const FadedSkiesApp = () => {
           console.log('✅ WebSocket connected for user:', user.email);
 
           // Subscribe to user-specific order channels
+
+        // Add test order flow functionality in development
+        if (process.env.NODE_ENV === 'development') {
+          (window as any).testOrderFlow = () => {
+            import('../testOrderFlow').then(module => {
+              module.runCompleteOrderFlowTest();
+            });
+          };
+
+          console.log('🧪 Test function available: testOrderFlow()');
+        }
           wsService.send({
             type: 'subscribe',
             channel: 'user_orders',
@@ -4330,7 +4341,7 @@ const FadedSkiesApp = () => {
                       { title: 'Order Status', icon: '📦', color: 'from-green-400 to-emerald-500' },
                       { title: 'Payment Issues', icon: '💳', color: 'from-blue-400 to-cyan-500' },
                       { title: 'Product Info', icon: '🌿', color: 'from-purple-400 to-violet-500' },
-                      { title: 'Account Help', icon: '👤', color: 'from-orange-400 to-amber-500' }
+                      { title: 'Account Help', icon: '����', color: 'from-orange-400 to-amber-500' }
                     ].map((item, index) => (
                       <button
                         key={index}
