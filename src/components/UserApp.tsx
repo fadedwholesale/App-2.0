@@ -1794,7 +1794,7 @@ const OrderDetailsModal = React.memo(({
       case 'delivered': return '✅';
       case 'in-transit': return '🚚';
       case 'preparing': return '📦';
-      case 'cancelled': return '❌';
+      case 'cancelled': return '��';
       default: return '📋';
     }
   };
@@ -2913,6 +2913,7 @@ const FadedSkiesApp = () => {
     if (authMode === 'login') {
     if (authForm.email && authForm.email.trim() && authForm.password && authForm.password.trim()) {
       try {
+        // Try real API first
         const apiModule = await import('../../User app/api-integration-service');
         const response = await apiModule.apiService.login(authForm.email, authForm.password);
 
@@ -2930,8 +2931,30 @@ const FadedSkiesApp = () => {
           alert(response.error || 'Login failed. Please check your credentials.');
         }
       } catch (error) {
-        console.error('Login error:', error);
-        alert('Login failed. Please check your connection and try again.');
+        console.error('Login error, trying mock API:', error);
+
+        // Fallback to mock API for development
+        try {
+          const mockApi = await import('../mockApi');
+          const mockResponse = await mockApi.mockApiService.login(authForm.email, authForm.password);
+
+          if (mockResponse.success) {
+            setIsAuthenticated(true);
+            setCurrentView('home');
+            setUser(prev => ({
+              ...prev,
+              email: mockResponse.data?.user.email || authForm.email,
+              name: mockResponse.data?.user.name || 'User',
+              idVerified: mockResponse.data?.user.isVerified || false
+            }));
+            showToast('Welcome back to Faded Skies! (Demo Mode)');
+          } else {
+            alert(mockResponse.error || 'Login failed. Please check your credentials.');
+          }
+        } catch (mockError) {
+          console.error('Mock API error:', mockError);
+          alert('Login failed. Please check your connection and try again.');
+        }
       }
     } else {
       alert('Please enter email and password');
