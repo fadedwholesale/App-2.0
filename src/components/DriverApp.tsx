@@ -408,14 +408,14 @@ const FadedSkiesDriverApp = () => {
         return () => {
           try {
             // Send driver offline status before disconnecting
-            wsService.send({
-              type: 'driver:offline',
-              data: {
-                driverId: driver.id
-              }
-            });
+            // wsService.send({
+            //   type: 'driver:offline',
+            //   data: {
+            //     driverId: driver.id
+            //   }
+            // });
 
-            wsService.disconnect();
+            // wsService.disconnect();
             console.log('🔌 Driver WebSocket disconnected');
           } catch (error) {
             console.warn('WebSocket disconnect error:', error);
