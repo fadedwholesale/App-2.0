@@ -403,6 +403,31 @@ const FadedSkiesDriverApp = () => {
           }
         });
 
+        // Register event listeners for real-time notifications
+        wsService.on('order_available_for_pickup', (orderData) => {
+          console.log('🆕 New order available:', orderData);
+          setAvailableOrders(prev => {
+            const exists = prev.some(order => order.id === orderData.orderId);
+            if (!exists) {
+              const newOrder = {
+                id: orderData.orderId,
+                customer: orderData.customerName || 'Customer',
+                pickup: orderData.pickupLocation || 'Faded Skies Dispensary',
+                dropoff: orderData.location,
+                distance: orderData.estimatedDistance || '2.3 miles',
+                value: orderData.total || 0,
+                items: orderData.items?.length || 3,
+                estimatedTime: '15-20 min',
+                priority: orderData.priority || 'normal'
+              };
+
+              showToastMessage(`New order available: ${orderData.orderId} - $${orderData.total}`, 'info');
+              return [...prev, newOrder];
+            }
+            return prev;
+          });
+        });
+
         console.log('✅ Driver WebSocket connected for:', driver.name);
 
         return () => {
