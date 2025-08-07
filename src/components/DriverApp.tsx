@@ -335,6 +335,17 @@ const FadedSkiesDriverApp = () => {
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const [completedOrders, setCompletedOrders] = useState<Order[]>([]);
 
+  // Geofencing states
+  const [driverLocation, setDriverLocation] = useState<{lat: number; lng: number} | null>(null);
+  const [isWithinDeliveryRadius, setIsWithinDeliveryRadius] = useState(false);
+  const [distanceToCustomer, setDistanceToCustomer] = useState<number | null>(null);
+  const [geofenceError, setGeofenceError] = useState<string | null>(null);
+  const [locationWatchId, setLocationWatchId] = useState<number | null>(null);
+
+  // Geofencing constants
+  const DELIVERY_RADIUS_METERS = 100; // 100 meters radius
+  const LOCATION_UPDATE_INTERVAL = 5000; // 5 seconds
+
   const [toastMessage, setToastMessage] = useState<string>('');
   const [showToast, setShowToast] = useState<boolean>(false);
   const [toastType, setToastType] = useState<'success' | 'error' | 'warning' | 'info'>('success');
@@ -443,6 +454,9 @@ const FadedSkiesDriverApp = () => {
             // Remove event listeners
             wsService.off('order_available_for_pickup');
 
+            // Stop location tracking on disconnect
+            stopLocationTracking();
+
             wsService.disconnect();
             console.log('🔌 Driver WebSocket disconnected');
           } catch (error) {
@@ -454,7 +468,14 @@ const FadedSkiesDriverApp = () => {
         console.error('Driver WebSocket connection failed:', error);
       }
     }
-  }, [isAuthenticated, driver.isOnline, driver.id, driver.name, driver.currentLocation, driver.isAvailable]);
+  }, [isAuthenticated, driver.isOnline, driver.id, driver.name, driver.currentLocation, driver.isAvailable, stopLocationTracking]);
+
+  // Cleanup location tracking on component unmount
+  useEffect(() => {
+    return () => {
+      stopLocationTracking();
+    };
+  }, [stopLocationTracking]);
 
   const showToastMessage = useCallback((message: string, type: 'success' | 'error' | 'warning' | 'info' = 'success') => {
     setToastMessage(message);
@@ -462,6 +483,133 @@ const FadedSkiesDriverApp = () => {
     setShowToast(true);
     setTimeout(() => setShowToast(false), 3000);
   }, []);
+
+  // Geofencing utilities
+  const calculateDistance = useCallback((lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371000; // Earth's radius in meters
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance in meters
+  }, []);
+
+  const updateDriverLocation = useCallback((position: GeolocationPosition) => {
+    const newLocation = {
+      lat: position.coords.latitude,
+      lng: position.coords.longitude
+    };
+
+    setDriverLocation(newLocation);
+    setGeofenceError(null);
+
+    // Update driver's current location in state
+    setDriver(prev => ({
+      ...prev,
+      currentLocation: newLocation
+    }));
+
+    // Check if within delivery radius for active order
+    if (activeOrder && activeOrder.status === 'in_transit') {
+      const distance = calculateDistance(
+        newLocation.lat,
+        newLocation.lng,
+        activeOrder.lat,
+        activeOrder.lng
+      );
+
+      setDistanceToCustomer(distance);
+      const withinRadius = distance <= DELIVERY_RADIUS_METERS;
+      setIsWithinDeliveryRadius(withinRadius);
+
+      // Send real-time location update
+      try {
+        wsService.send({
+          type: 'driver:location_update',
+          data: {
+            orderId: activeOrder.id,
+            driverId: driver.id,
+            location: newLocation,
+            distanceToCustomer: distance,
+            withinDeliveryRadius: withinRadius,
+            timestamp: new Date()
+          }
+        });
+      } catch (error) {
+        console.warn('Failed to send location update:', error);
+      }
+
+      // Show notification when entering/leaving delivery zone
+      if (withinRadius && distanceToCustomer && distanceToCustomer > DELIVERY_RADIUS_METERS) {
+        showToastMessage('🎯 You\'re within delivery range! You can now mark as delivered.', 'success');
+      } else if (!withinRadius && distanceToCustomer && distanceToCustomer <= DELIVERY_RADIUS_METERS) {
+        showToastMessage('⚠️ You\'ve moved outside the delivery zone.', 'warning');
+      }
+    }
+  }, [activeOrder, driver.id, calculateDistance, showToastMessage, distanceToCustomer]);
+
+  const handleLocationError = useCallback((error: GeolocationPositionError) => {
+    let errorMessage = 'Location access required for delivery verification.';
+
+    switch (error.code) {
+      case error.PERMISSION_DENIED:
+        errorMessage = 'Location permission denied. Please enable location access in your browser settings.';
+        break;
+      case error.POSITION_UNAVAILABLE:
+        errorMessage = 'Location information unavailable. Please check your GPS/internet connection.';
+        break;
+      case error.TIMEOUT:
+        errorMessage = 'Location request timed out. Please try again.';
+        break;
+    }
+
+    setGeofenceError(errorMessage);
+    setIsWithinDeliveryRadius(false);
+    showToastMessage(errorMessage, 'error');
+  }, [showToastMessage]);
+
+  const startLocationTracking = useCallback(() => {
+    if (!navigator.geolocation) {
+      setGeofenceError('Geolocation is not supported by this browser.');
+      showToastMessage('Geolocation not supported', 'error');
+      return;
+    }
+
+    // Get initial location
+    navigator.geolocation.getCurrentPosition(
+      updateDriverLocation,
+      handleLocationError,
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000
+      }
+    );
+
+    // Start watching location changes
+    const watchId = navigator.geolocation.watchPosition(
+      updateDriverLocation,
+      handleLocationError,
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 30000
+      }
+    );
+
+    setLocationWatchId(watchId);
+    console.log('📍 Location tracking started for geofencing');
+  }, [updateDriverLocation, handleLocationError, showToastMessage]);
+
+  const stopLocationTracking = useCallback(() => {
+    if (locationWatchId !== null) {
+      navigator.geolocation.clearWatch(locationWatchId);
+      setLocationWatchId(null);
+      console.log('📍 Location tracking stopped');
+    }
+  }, [locationWatchId]);
 
   const toggleOnlineStatus = useCallback(() => {
     setDriver(prev => ({
@@ -479,6 +627,9 @@ const FadedSkiesDriverApp = () => {
     const acceptedOrder = { ...order, status: 'accepted', acceptedAt: new Date() };
     setActiveOrder(acceptedOrder);
     setAvailableOrders(prev => prev.filter(o => o.id !== order.id));
+
+    // Start location tracking when order is accepted
+    startLocationTracking();
 
     // Send real-time notification to admin and customer
     try {
@@ -502,7 +653,7 @@ const FadedSkiesDriverApp = () => {
 
     showToastMessage(`Order ${order.id} accepted!`, 'success');
     setTimeout(() => setCurrentView('active-delivery'), 500);
-  }, [driver.id, driver.name, driver.phone, driver.vehicle, showToastMessage]);
+  }, [driver.id, driver.name, driver.phone, driver.vehicle, showToastMessage, startLocationTracking]);
 
   const declineOrder = useCallback((order: Order) => {
     setAvailableOrders(prev => prev.filter(o => o.id !== order.id));
@@ -511,6 +662,12 @@ const FadedSkiesDriverApp = () => {
 
   const updateOrderStatus = useCallback((status: Order['status']) => {
     if (!activeOrder) return;
+
+    // Check geofencing for delivery completion
+    if (status === 'delivered' && !isWithinDeliveryRadius && activeOrder.status === 'in_transit') {
+      showToastMessage('❌ You must be within 100 meters of the customer location to mark as delivered.', 'error');
+      return;
+    }
 
     const updatedOrder = { ...activeOrder, status, lastUpdate: new Date() };
     setActiveOrder(updatedOrder);
@@ -547,6 +704,11 @@ const FadedSkiesDriverApp = () => {
       setCompletedOrders(prev => [updatedOrder, ...prev]);
       setActiveOrder(null);
 
+      // Stop location tracking when delivery is completed
+      stopLocationTracking();
+      setIsWithinDeliveryRadius(false);
+      setDistanceToCustomer(null);
+
       const driverEarnings = updatedOrder.totalDriverPay;
       const mileageEarnings = updatedOrder.mileagePayment;
       const baseEarnings = updatedOrder.basePay;
@@ -568,7 +730,7 @@ const FadedSkiesDriverApp = () => {
     }
 
     showToastMessage(statusMessages[status] || 'Status updated', 'success');
-  }, [activeOrder, driver.id, driver.name, driver.currentLocation, showToastMessage]);
+  }, [activeOrder, driver.id, driver.name, driver.currentLocation, showToastMessage, isWithinDeliveryRadius, stopLocationTracking]);
 
   const handleAuthSubmit = useCallback(() => {
     if (authMode === 'login') {
@@ -1909,6 +2071,57 @@ const FadedSkiesDriverApp = () => {
               </div>
 
               <div className="p-6">
+                {/* Geofencing Status */}
+                {activeOrder.status === 'in_transit' && (
+                  <div className={`rounded-3xl p-4 mb-6 border-2 ${
+                    isWithinDeliveryRadius
+                      ? 'bg-green-50 border-green-200'
+                      : 'bg-amber-50 border-amber-200'
+                  }`}>
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-3 h-3 rounded-full ${
+                        isWithinDeliveryRadius ? 'bg-green-500 animate-pulse' : 'bg-amber-500'
+                      }`}></div>
+                      <div className="flex-1">
+                        <h4 className={`font-bold ${
+                          isWithinDeliveryRadius ? 'text-green-800' : 'text-amber-800'
+                        }`}>
+                          {isWithinDeliveryRadius ? '🎯 Within Delivery Zone' : '📍 Approaching Customer'}
+                        </h4>
+                        <p className={`text-sm ${
+                          isWithinDeliveryRadius ? 'text-green-700' : 'text-amber-700'
+                        }`}>
+                          {distanceToCustomer
+                            ? `${Math.round(distanceToCustomer)}m from customer location`
+                            : 'Calculating distance...'}
+                        </p>
+                        {!isWithinDeliveryRadius && (
+                          <p className="text-xs text-amber-600 mt-1">
+                            Get within 100m to enable delivery completion
+                          </p>
+                        )}
+                      </div>
+                      <Target className={`w-6 h-6 ${
+                        isWithinDeliveryRadius ? 'text-green-600' : 'text-amber-600'
+                      }`} />
+                    </div>
+                    {geofenceError && (
+                      <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl">
+                        <p className="text-sm text-red-700">
+                          ⚠️ {geofenceError}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={startLocationTracking}
+                          className="mt-2 text-xs bg-red-100 text-red-800 px-3 py-1 rounded-full hover:bg-red-200 transition-colors"
+                        >
+                          Retry Location Access
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Order Status */}
                 <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100 mb-6">
                   <div className="flex items-center justify-between mb-4">
@@ -1981,9 +2194,15 @@ const FadedSkiesDriverApp = () => {
                       <button
                         type="button"
                         onClick={() => updateOrderStatus('delivered')}
-                        className="bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-2xl font-bold hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg col-span-2"
+                        disabled={!isWithinDeliveryRadius}
+                        className={`py-3 rounded-2xl font-bold transition-all shadow-lg col-span-2 ${
+                          isWithinDeliveryRadius
+                            ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700'
+                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        }`}
+                        title={!isWithinDeliveryRadius ? 'You must be within 100 meters of the customer location to mark as delivered' : 'Mark order as delivered'}
                       >
-                        ✅ Mark as Delivered
+                        {isWithinDeliveryRadius ? '✅ Mark as Delivered' : '🔒 Not Within Delivery Zone'}
                       </button>
                     )}
                   </div>
