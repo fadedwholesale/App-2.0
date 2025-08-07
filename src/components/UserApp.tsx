@@ -2946,7 +2946,20 @@ const FadedSkiesApp = () => {
             });
           };
 
-          console.log('🧪 Test function available: testOrderFlow()');
+          (window as any).testWebSocket = () => {
+            console.log('🧪 Testing WebSocket connection...');
+            console.log('Connection status:', wsService);
+
+            // Test sending a message
+            wsService.send({
+              type: 'test_message',
+              data: { message: 'Hello from UserApp!', timestamp: new Date() }
+            });
+          };
+
+          console.log('🧪 Test functions available:');
+          console.log('- testOrderFlow() - Test complete order flow');
+          console.log('- testWebSocket() - Test WebSocket connection');
         }
           wsService.send({
             type: 'subscribe',
