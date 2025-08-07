@@ -454,20 +454,20 @@ const FadedSkiesDriverApp = () => {
 
     // Send real-time notification to admin and customer
     try {
-      wsService.send({
-        type: 'driver:accept_order',
-        data: {
-          orderId: order.id,
-          driverId: driver.id,
-          driverName: driver.name,
-          driverPhone: driver.phone,
-          vehicle: `${driver.vehicle?.color} ${driver.vehicle?.make} ${driver.vehicle?.model}`,
-          estimatedArrival: '15-20 minutes',
-          timestamp: new Date()
-        }
-      });
+      // wsService.send({
+      //   type: 'driver:accept_order',
+      //   data: {
+      //     orderId: order.id,
+      //     driverId: driver.id,
+      //     driverName: driver.name,
+      //     driverPhone: driver.phone,
+      //     vehicle: `${driver.vehicle?.color} ${driver.vehicle?.make} ${driver.vehicle?.model}`,
+      //     estimatedArrival: '15-20 minutes',
+      //     timestamp: new Date()
+      //   }
+      // });
 
-      console.log('📡 Order acceptance notification sent:', order.id);
+      console.log('📡 Order acceptance notification sent (disabled):', order.id);
     } catch (error) {
       console.error('Failed to send order acceptance notification:', error);
     }
