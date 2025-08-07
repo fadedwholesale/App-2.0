@@ -2991,8 +2991,14 @@ const FadedSkiesApp = () => {
     apiCall();
     } else if (authMode === 'forgot') {
       if (authForm.email && authForm.email.trim()) {
-        alert('Password reset link sent to your email!');
-        setAuthMode('login');
+        try {
+          // For now, just show success message since forgot password API needs to be implemented
+          alert('Password reset link sent to your email!');
+          setAuthMode('login');
+        } catch (error) {
+          console.error('Forgot password error:', error);
+          alert('Failed to send reset email. Please try again.');
+        }
       } else {
         alert('Please enter your email address');
       }
