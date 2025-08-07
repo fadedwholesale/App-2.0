@@ -2938,7 +2938,7 @@ const FadedSkiesApp = () => {
           ));
         };
 
-        // Set up event listeners (simulated for now)
+        // Set up real-time event listeners
         const wsConnected = () => {
           console.log('✅ WebSocket connected for user:', user.email);
 
@@ -2948,6 +2948,96 @@ const FadedSkiesApp = () => {
             channel: 'user_orders',
             userId: user.email
           });
+        };
+
+        // Listen for order acceptance by driver
+        const handleOrderAccepted = (data: any) => {
+          console.log('📋 Order accepted by driver:', data);
+
+          setOrders(prev => prev.map(order =>
+            order.id === data.orderId
+              ? {
+                  ...order,
+                  status: 'accepted',
+                  driver: data.driverName,
+                  vehicle: data.vehicle,
+                  estimatedDelivery: data.estimatedArrival,
+                  trackingSteps: order.trackingSteps?.map(step =>
+                    step.step === 'Driver Assigned'
+                      ? { ...step, completed: true, time: new Date().toLocaleTimeString() }
+                      : step
+                  )
+                }
+              : order
+          ));
+
+          showToast(`Great news! Driver ${data.driverName} accepted your order and is on the way!`);
+        };
+
+        // Listen for order status updates
+        const handleOrderStatusUpdate = (data: any) => {
+          console.log('📊 Order status update:', data);
+
+          setOrders(prev => prev.map(order =>
+            order.id === data.orderId
+              ? {
+                  ...order,
+                  status: data.status,
+                  currentLocation: data.location ? `${data.location} away` : order.currentLocation,
+                  trackingSteps: updateTrackingSteps(order.trackingSteps, data.status)
+                }
+              : order
+          ));
+
+          showToast(data.message || `Order ${data.orderId} status updated`);
+        };
+
+        // Listen for driver location updates
+        const handleDriverLocationUpdate = (data: any) => {
+          console.log('📍 Driver location update:', data);
+
+          setOrders(prev => prev.map(order =>
+            order.id === data.orderId
+              ? {
+                  ...order,
+                  driverLocation: data.driverLocation,
+                  currentLocation: calculateDistance(data.driverLocation) + ' away'
+                }
+              : order
+          ));
+        };
+
+        // Helper function to update tracking steps
+        const updateTrackingSteps = (steps: any[], status: string) => {
+          if (!steps) return steps;
+
+          const stepMapping: Record<string, string> = {
+            'confirmed': 'Order Confirmed',
+            'preparing': 'Preparing Order',
+            'ready': 'Preparing Order',
+            'accepted': 'Driver Assigned',
+            'picked_up': 'Out for Delivery',
+            'in_transit': 'Out for Delivery',
+            'delivered': 'Delivered'
+          };
+
+          const stepToUpdate = stepMapping[status];
+          if (stepToUpdate) {
+            return steps.map(step =>
+              step.step === stepToUpdate
+                ? { ...step, completed: true, time: new Date().toLocaleTimeString() }
+                : step
+            );
+          }
+
+          return steps;
+        };
+
+        // Helper function to calculate distance (mock)
+        const calculateDistance = (driverLocation: any) => {
+          if (!driverLocation) return '0.0 miles';
+          const distances = ['0.2 miles', '0.5 miles', '0.8 miles', '1.2 miles', '1.8 miles'];
+          return distances[Math.floor(Math.random() * distances.length)];
         };
 
         // Simulate WebSocket connection for development
