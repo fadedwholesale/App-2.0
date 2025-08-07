@@ -430,8 +430,37 @@ const FadedSkiesTrackingAdmin = () => {
 
     const handleSubmit = (e) => {
       e.preventDefault();
-      // Handle form submission
-      console.log('Product data:', formData);
+
+      // Create product object with proper structure
+      const productData = {
+        id: isEdit ? selectedProduct.id : Date.now(), // Use timestamp as ID for new products
+        name: formData.name,
+        category: formData.category,
+        price: parseFloat(formData.price),
+        originalPrice: null,
+        thc: formData.thc,
+        cbd: formData.cbd,
+        strain: 'Hybrid', // Default value
+        rating: isEdit ? selectedProduct.rating : 5.0,
+        reviewCount: isEdit ? selectedProduct.reviewCount : 0,
+        imageUrl: 'https://images.unsplash.com/photo-1560448204-61dc36dc98c8?w=400', // Default image
+        description: formData.description || 'Premium cannabis product',
+        effects: ['Relaxed', 'Happy'], // Default effects
+        labTested: true,
+        inStock: parseInt(formData.stock) > 0,
+        featured: formData.featured
+      };
+
+      if (isEdit) {
+        // Update existing product with real-time sync
+        broadcastProductUpdated(selectedProduct.id, productData);
+        console.log('✅ Product updated with real-time sync:', productData.name);
+      } else {
+        // Add new product with real-time sync
+        broadcastProductAdded(productData);
+        console.log('✅ Product added with real-time sync:', productData.name);
+      }
+
       closeModal(isEdit ? 'editProduct' : 'addProduct');
     };
 
