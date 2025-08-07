@@ -456,9 +456,15 @@ const FadedSkiesDriverApp = () => {
 
       // Show notification when entering/leaving delivery zone
       if (withinRadius && distanceToCustomer && distanceToCustomer > DELIVERY_RADIUS_METERS) {
-        showToastMessage('🎯 You\'re within delivery range! You can now mark as delivered.', 'success');
+        setToastMessage('🎯 You\'re within delivery range! You can now mark as delivered.');
+        setToastType('success');
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 3000);
       } else if (!withinRadius && distanceToCustomer && distanceToCustomer <= DELIVERY_RADIUS_METERS) {
-        showToastMessage('⚠️ You\'ve moved outside the delivery zone.', 'warning');
+        setToastMessage('⚠️ You\'ve moved outside the delivery zone.');
+        setToastType('warning');
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 3000);
       }
     }
   }, [activeOrder, driver.id, calculateDistance, distanceToCustomer]);
