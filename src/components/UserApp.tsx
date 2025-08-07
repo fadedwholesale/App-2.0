@@ -3347,7 +3347,7 @@ const FadedSkiesApp = () => {
 
         // Try to submit to backend API
         try {
-          // const apiModule = await import('../../User app/api-integration-service');
+          const apiModule = await import('../services/api-integration-service');
           // const response = await apiModule.apiService.createOrder(orderData);
 
           // if (response.success) {
