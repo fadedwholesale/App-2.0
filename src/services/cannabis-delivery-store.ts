@@ -163,6 +163,12 @@ interface CannabisDeliveryState {
   addProduct: (product: Product) => void;
   updateProduct: (id: number, updates: Partial<Product>) => void;
   deleteProduct: (id: number) => void;
+
+  // Real-time sync actions
+  broadcastProductAdded: (product: Product) => void;
+  broadcastProductUpdated: (id: number, updates: Partial<Product>) => void;
+  broadcastProductDeleted: (id: number) => void;
+  setupRealTimeSync: () => void;
   
   setCustomers: (customers: Customer[]) => void;
   addCustomer: (customer: Customer) => void;
