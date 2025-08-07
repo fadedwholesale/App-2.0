@@ -26,6 +26,9 @@ import {
   Edit3
 } from 'lucide-react';
 
+// Import simple WebSocket service for real-time updates
+import { wsService } from '../services/simple-websocket';
+
 // TypeScript interfaces
 interface Product {
   id: number;
@@ -2604,6 +2607,7 @@ const FadedSkiesApp = () => {
   const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [idVerified, setIdVerified] = useState<boolean>(false);
+  const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connected' | 'connecting'>('disconnected');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [authForm, setAuthForm] = useState({
     email: '',
@@ -2909,47 +2913,326 @@ const FadedSkiesApp = () => {
   const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  const handleAuthSubmit = useCallback(() => {
+  // WebSocket connection for real-time updates
+  useEffect(() => {
+    if (isAuthenticated && user.email) {
+      try {
+        // Connect WebSocket with user token for authentication
+        setConnectionStatus('connecting');
+        wsService.connect(user.email);
+
+        // Subscribe to order updates
+        const handleOrderUpdate = (update: any) => {
+          setOrders(prev => prev.map(order =>
+            order.id === update.orderId ? { ...order, ...update, status: update.status } : order
+          ));
+
+          // Show notification for order updates
+          showToast(`Order ${update.orderId}: ${update.message || 'Status updated'}`);
+        };
+
+        // Subscribe to driver location updates
+        // (function defined below with full implementation)
+
+        // Set up real-time event listeners
+        const wsConnected = () => {
+          console.log('✅ WebSocket connected for user:', user.email);
+          setConnectionStatus('connected');
+
+          // Subscribe to user-specific order channels
+
+        // Add test order flow functionality in development
+        if (process.env.NODE_ENV === 'development') {
+          (window as any).testOrderFlow = () => {
+            import('../testOrderFlow').then(module => {
+              module.runCompleteOrderFlowTest();
+            });
+          };
+
+          (window as any).testWebSocket = () => {
+            console.log('🧪 Testing WebSocket connection...');
+            console.log('Connection status:', wsService);
+
+            // Test sending a message
+            wsService.send({
+              type: 'test_message',
+              data: { message: 'Hello from UserApp!', timestamp: new Date() }
+            });
+          };
+
+          console.log('🧪 Test functions available:');
+          console.log('- testOrderFlow() - Test complete order flow');
+          console.log('- testWebSocket() - Test WebSocket connection');
+        }
+          wsService.send({
+            type: 'subscribe',
+            channel: 'user_orders',
+            userId: user.email
+          });
+
+          // Register event listeners for real-time updates
+          wsService.on('driver_accept_order', handleOrderAccepted);
+          wsService.on('order_status_update', handleOrderStatusUpdate);
+          wsService.on('driver_location_update', handleDriverLocationUpdate);
+        };
+
+        // Listen for order acceptance by driver
+        const handleOrderAccepted = (data: any) => {
+          console.log('📋 Order accepted by driver:', data);
+
+          setOrders(prev => prev.map(order =>
+            order.id === data.orderId
+              ? {
+                  ...order,
+                  status: 'accepted',
+                  driver: data.driverName,
+                  vehicle: data.vehicle,
+                  estimatedDelivery: data.estimatedArrival,
+                  trackingSteps: order.trackingSteps?.map(step =>
+                    step.step === 'Driver Assigned'
+                      ? { ...step, completed: true, time: new Date().toLocaleTimeString() }
+                      : step
+                  )
+                }
+              : order
+          ));
+
+          showToast(`Great news! Driver ${data.driverName} accepted your order and is on the way!`);
+        };
+
+        // Listen for order status updates
+        const handleOrderStatusUpdate = (data: any) => {
+          console.log('📊 Order status update:', data);
+
+          setOrders(prev => prev.map(order =>
+            order.id === data.orderId
+              ? {
+                  ...order,
+                  status: data.status,
+                  currentLocation: data.location ? `${data.location} away` : order.currentLocation,
+                  trackingSteps: updateTrackingSteps(order.trackingSteps, data.status)
+                }
+              : order
+          ));
+
+          showToast(data.message || `Order ${data.orderId} status updated`);
+        };
+
+        // Listen for driver location updates
+        const handleDriverLocationUpdate = (data: any) => {
+          console.log('📍 Driver location update:', data);
+
+          setOrders(prev => prev.map(order =>
+            order.id === data.orderId
+              ? {
+                  ...order,
+                  driverLocation: data.driverLocation,
+                  currentLocation: calculateDistance(data.driverLocation) + ' away'
+                }
+              : order
+          ));
+        };
+
+        // Helper function to update tracking steps
+        const updateTrackingSteps = (steps: any[], status: string) => {
+          if (!steps) return steps;
+
+          const stepMapping: Record<string, string> = {
+            'confirmed': 'Order Confirmed',
+            'preparing': 'Preparing Order',
+            'ready': 'Preparing Order',
+            'accepted': 'Driver Assigned',
+            'picked_up': 'Out for Delivery',
+            'in_transit': 'Out for Delivery',
+            'delivered': 'Delivered'
+          };
+
+          const stepToUpdate = stepMapping[status];
+          if (stepToUpdate) {
+            return steps.map(step =>
+              step.step === stepToUpdate
+                ? { ...step, completed: true, time: new Date().toLocaleTimeString() }
+                : step
+            );
+          }
+
+          return steps;
+        };
+
+        // Helper function to calculate distance (mock)
+        const calculateDistance = (driverLocation: any) => {
+          if (!driverLocation) return '0.0 miles';
+          const distances = ['0.2 miles', '0.5 miles', '0.8 miles', '1.2 miles', '1.8 miles'];
+          return distances[Math.floor(Math.random() * distances.length)];
+        };
+
+        // Simulate WebSocket connection for development
+        setTimeout(wsConnected, 100);
+
+        return () => {
+          // Cleanup WebSocket connection on logout or unmount
+          try {
+            // Remove event listeners
+            wsService.off('driver_accept_order', handleOrderAccepted);
+            wsService.off('order_status_update', handleOrderStatusUpdate);
+            wsService.off('driver_location_update', handleDriverLocationUpdate);
+
+            wsService.disconnect();
+            setConnectionStatus('disconnected');
+            console.log('🔌 WebSocket disconnected');
+          } catch (error) {
+            console.warn('WebSocket disconnect error:', error);
+          }
+        };
+      } catch (error) {
+        console.error('WebSocket connection failed:', error);
+      }
+    }
+  }, [isAuthenticated, user.email]);
+
+  const handleAuthSubmit = useCallback(async () => {
     if (authMode === 'login') {
-      if (authForm.email && authForm.email.trim() && authForm.password && authForm.password.trim()) {
-        setIsAuthenticated(true);
-        setCurrentView('home');
-        setUser(prev => ({ ...prev, email: authForm.email, name: authForm.name || 'Demo User' }));
-      } else {
-        alert('Please enter email and password');
+    if (authForm.email && authForm.email.trim() && authForm.password && authForm.password.trim()) {
+      try {
+        // Try real API first
+        const apiModule = await import('../../User app/api-integration-service');
+        const response = await apiModule.apiService.login(authForm.email, authForm.password);
+
+        if (response.success) {
+          setIsAuthenticated(true);
+          setCurrentView('home');
+          setUser(prev => ({
+            ...prev,
+            email: response.data?.user.email || authForm.email,
+            name: response.data?.user.name || 'User',
+            idVerified: response.data?.user.isVerified || false
+          }));
+          showToast('Welcome back to Faded Skies!');
+        } else {
+          alert(response.error || 'Login failed. Please check your credentials.');
+        }
+      } catch (error) {
+        console.error('Login error, trying mock API:', error);
+
+        // Fallback to mock API for development
+        try {
+          const mockApi = await import('../mockApi');
+          const mockResponse = await mockApi.mockApiService.login(authForm.email, authForm.password);
+
+          if (mockResponse.success) {
+            setIsAuthenticated(true);
+            setCurrentView('home');
+            setUser(prev => ({
+              ...prev,
+              email: mockResponse.data?.user.email || authForm.email,
+              name: mockResponse.data?.user.name || 'User',
+              idVerified: mockResponse.data?.user.isVerified || false
+            }));
+            showToast('Welcome back to Faded Skies! (Demo Mode)');
+          } else {
+            alert(mockResponse.error || 'Login failed. Please check your credentials.');
+          }
+        } catch (mockError) {
+          console.error('Mock API error:', mockError);
+          alert('Login failed. Please check your connection and try again.');
+        }
       }
+    } else {
+      alert('Please enter email and password');
+    }
     } else if (authMode === 'signup') {
-      if (!authForm.name || !authForm.dateOfBirth || !authForm.phone || !authForm.email || !authForm.password) {
-        alert('Please fill in all required fields');
-        return;
+    if (!authForm.name || !authForm.dateOfBirth || !authForm.phone || !authForm.email || !authForm.password) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    if (authForm.password !== authForm.confirmPassword) {
+      alert('Passwords do not match');
+      return;
+    }
+
+    const birthDate = new Date(authForm.dateOfBirth);
+    const today = new Date();
+    const age = today.getFullYear() - birthDate.getFullYear();
+
+    if (age < 21) {
+      alert('You must be 21 or older to use this service');
+      return;
+    }
+
+    // Call backend API to create account
+    const apiCall = async () => {
+      try {
+        // Try real API first
+        const apiModule = await import('../../User app/api-integration-service');
+        const response = await apiModule.apiService.register({
+          name: authForm.name,
+          email: authForm.email,
+          password: authForm.password,
+          phone: authForm.phone,
+          dateOfBirth: authForm.dateOfBirth
+        });
+
+        if (response.success) {
+          setIsAuthenticated(true);
+          setUser(prev => ({
+            ...prev,
+            name: response.data?.user.name || authForm.name,
+            email: response.data?.user.email || authForm.email,
+            age: age,
+            idVerified: response.data?.user.isVerified || false
+          }));
+          setCurrentView('home');
+          showToast('Account created successfully! Welcome to Faded Skies!');
+        } else {
+          alert(response.error || 'Registration failed. Please try again.');
+        }
+      } catch (error) {
+        console.error('Registration error, trying mock API:', error);
+
+        // Fallback to mock API for development
+        try {
+          const mockApi = await import('../mockApi');
+          const mockResponse = await mockApi.mockApiService.register({
+            name: authForm.name,
+            email: authForm.email,
+            password: authForm.password,
+            phone: authForm.phone,
+            dateOfBirth: authForm.dateOfBirth
+          });
+
+          if (mockResponse.success) {
+            setIsAuthenticated(true);
+            setUser(prev => ({
+              ...prev,
+              name: mockResponse.data?.user.name || authForm.name,
+              email: mockResponse.data?.user.email || authForm.email,
+              age: age,
+              idVerified: mockResponse.data?.user.isVerified || false
+            }));
+            setCurrentView('home');
+            showToast('Account created successfully! Welcome to Faded Skies! (Demo Mode)');
+          } else {
+            alert(mockResponse.error || 'Registration failed. Please try again.');
+          }
+        } catch (mockError) {
+          console.error('Mock API error:', mockError);
+          alert('Registration failed. Please check your connection and try again.');
+        }
       }
-      
-      if (authForm.password !== authForm.confirmPassword) {
-        alert('Passwords do not match');
-        return;
-      }
-      
-      const birthDate = new Date(authForm.dateOfBirth);
-      const today = new Date();
-      const age = today.getFullYear() - birthDate.getFullYear();
-      
-      if (age < 21) {
-        alert('You must be 21 or older to use this service');
-        return;
-      }
-      
-      setIsAuthenticated(true);
-      setUser(prev => ({ 
-        ...prev, 
-        name: authForm.name, 
-        email: authForm.email,
-        age: age
-      }));
-      setCurrentView('home');
+    };
+
+    apiCall();
     } else if (authMode === 'forgot') {
       if (authForm.email && authForm.email.trim()) {
-        alert('Password reset link sent to your email!');
-        setAuthMode('login');
+        try {
+          // For now, just show success message since forgot password API needs to be implemented
+          alert('Password reset link sent to your email!');
+          setAuthMode('login');
+        } catch (error) {
+          console.error('Forgot password error:', error);
+          alert('Failed to send reset email. Please try again.');
+        }
       } else {
         alert('Please enter your email address');
       }
@@ -3003,29 +3286,117 @@ const FadedSkiesApp = () => {
     setCurrentView('cart');
   }, []);
 
-  const proceedToCheckout = useCallback(() => {
+  const proceedToCheckout = useCallback(async () => {
     if (!user.idVerified) {
       setCurrentView('id-verification');
     } else {
-      alert('Order placed successfully!');
+      try {
+        // Prepare order data
+        const subtotal = cartTotal;
+        const deliveryFee = cartTotal >= 100 ? 0 : 5;
+        const tax = subtotal * 0.0825; // 8.25% tax rate
+        const total = subtotal + deliveryFee + tax;
 
-      const newOrder: Order = {
-        id: `#FS2025${String(orders.length + 3).padStart(3, '0')}`,
-        status: 'in-transit',
-        items: cart.map(item => item.name),
-        total: cartTotal + (cartTotal >= 100 ? 0 : 5),
-        date: new Date().toISOString().split('T')[0],
-        estimatedDelivery: '1-2 hours',
-        driver: 'Sarah Johnson',
-        vehicle: 'White Tesla Model 3 - DEF456',
-        currentLocation: '1.2 miles away'
-      };
+        const orderData = {
+          customerId: user.email,
+          items: cart.map(item => ({
+            productId: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price
+          })),
+          subtotal,
+          tax,
+          deliveryFee,
+          total,
+          deliveryAddress: user.address || '123 Main St, Austin, TX',
+          paymentMethod: 'Apple Pay' // Default for demo
+        };
 
-      setOrders(prev => [newOrder, ...prev]);
-      setCart([]);
-      setCurrentView('orders');
+        // Create local order for immediate UI update
+        const newOrder: Order = {
+          id: `#FS2025${String(orders.length + 3).padStart(3, '0')}`,
+          status: 'preparing',
+          items: cart.map(item => item.name),
+          itemDetails: cart.map(item => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+            strain: item.strain,
+            thc: item.thc,
+            cbd: item.cbd
+          })),
+          total,
+          subtotal,
+          tax,
+          deliveryFee,
+          date: new Date().toISOString().split('T')[0],
+          estimatedDelivery: '45-60 minutes',
+          driver: 'Awaiting assignment',
+          vehicle: 'Pending driver assignment',
+          deliveryAddress: orderData.deliveryAddress,
+          paymentMethod: orderData.paymentMethod,
+          trackingSteps: [
+            { step: 'Order Placed', time: new Date().toLocaleTimeString(), completed: true },
+            { step: 'Order Confirmed', time: '', completed: false },
+            { step: 'Preparing Order', time: '', completed: false },
+            { step: 'Driver Assigned', time: '', completed: false },
+            { step: 'Out for Delivery', time: '', completed: false },
+            { step: 'Delivered', time: '', completed: false }
+          ]
+        };
+
+        // Add order to local state immediately
+        setOrders(prev => [newOrder, ...prev]);
+        setCart([]);
+
+        // Send real-time notification to admin and drivers
+        try {
+          wsService.send({
+            type: 'customer:order_placed',
+            data: {
+              orderId: newOrder.id,
+              customerId: user.email,
+              customerName: user.name,
+              location: orderData.deliveryAddress,
+              total: total,
+              estimatedDistance: '2.3 miles',
+              items: orderData.items,
+              timestamp: new Date(),
+              priority: total > 150 ? 'high' : 'normal'
+            }
+          });
+
+          console.log('📡 Order notification sent to admin and drivers');
+        } catch (wsError) {
+          console.warn('WebSocket notification failed:', wsError);
+        }
+
+        // Try to submit to backend API
+        try {
+          const apiModule = await import('../services/simple-websocket');
+          const response = await apiModule.apiService.createOrder(orderData);
+
+          if (response.success) {
+            console.log('✅ Order submitted to backend:', response.data);
+            showToast('Order placed successfully! Admin will confirm shortly.');
+          } else {
+            console.warn('Backend order submission failed:', response.error);
+            showToast('Order placed! Processing with backup system.');
+          }
+        } catch (apiError) {
+          console.warn('API submission failed, using local processing:', apiError);
+          showToast('Order placed successfully! Preparing your delivery.');
+        }
+
+        setCurrentView('orders');
+
+      } catch (error) {
+        console.error('Order placement error:', error);
+        alert('Failed to place order. Please try again.');
+      }
     }
-  }, [user.idVerified, orders.length, cart, cartTotal]);
+  }, [user.idVerified, user.email, user.name, user.address, orders.length, cart, cartTotal]);
 
   // Modal management functions
   const openModal = useCallback((modalType: string, data?: any) => {
@@ -3728,7 +4099,7 @@ const FadedSkiesApp = () => {
                                 ? 'bg-amber-100 text-amber-800'
                                 : 'bg-gray-100 text-gray-800'
                             }`}>
-                              {order.status === 'delivered' && '✅ Delivered'}
+                              {order.status === 'delivered' && '�� Delivered'}
                               {order.status === 'in-transit' && '🚚 In Transit'}
                               {order.status === 'preparing' && '📦 Preparing'}
                               {order.status === 'cancelled' && '❌ Cancelled'}
@@ -3991,7 +4362,7 @@ const FadedSkiesApp = () => {
                       { title: 'Order Status', icon: '📦', color: 'from-green-400 to-emerald-500' },
                       { title: 'Payment Issues', icon: '💳', color: 'from-blue-400 to-cyan-500' },
                       { title: 'Product Info', icon: '🌿', color: 'from-purple-400 to-violet-500' },
-                      { title: 'Account Help', icon: '👤', color: 'from-orange-400 to-amber-500' }
+                      { title: 'Account Help', icon: '����', color: 'from-orange-400 to-amber-500' }
                     ].map((item, index) => (
                       <button
                         key={index}

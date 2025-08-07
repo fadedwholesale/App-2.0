@@ -44,6 +44,9 @@ import {
   Activity
 } from 'lucide-react';
 
+// Import simple WebSocket service for real-time admin monitoring
+import { wsService } from '../services/simple-websocket';
+
 const FadedSkiesTrackingAdmin = () => {
   const [currentView, setCurrentView] = useState('dashboard');
   const [isTrackingLive, setIsTrackingLive] = useState(false);
@@ -98,6 +101,93 @@ const FadedSkiesTrackingAdmin = () => {
     if (modalName === 'userManagement') setSelectedUser(null);
     if (modalName === 'confirmDelete') setDeleteTarget({ type: '', id: null, name: '' });
   };
+
+  // WebSocket connection for real-time admin monitoring
+  useEffect(() => {
+    try {
+      // Connect WebSocket for admin monitoring
+      wsService.connect('admin-session');
+
+      // Set up real-time order notifications
+      const handleNewOrder = (orderData) => {
+        console.log('🔔 New order received:', orderData);
+
+        // Add visual notification
+        const notification = {
+          id: Date.now(),
+          type: 'order',
+          title: 'New Order Received!',
+          message: `Order ${orderData.orderId} from ${orderData.customerName} - $${orderData.total.toFixed(2)}`,
+          timestamp: new Date(),
+          priority: orderData.priority || 'normal'
+        };
+
+        // Show browser notification if permission granted
+        if (Notification.permission === 'granted') {
+          new Notification('New Order - Faded Skies Admin', {
+            body: notification.message,
+            icon: '/favicon.ico',
+            tag: orderData.orderId
+          });
+        }
+
+        // Play notification sound
+        try {
+          const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DwvmEaBy5+zPLZiTYIF2q+8uGVUQwQUarm7bllHgg2jdXxynkpBChxy+/eizEIHWq85OKgUgINeKvgN');
+          audio.volume = 0.3;
+          audio.play().catch(e => console.log('Audio notification failed:', e));
+        } catch (e) {
+          console.log('Audio notification not available');
+        }
+      };
+
+      const handleOrderUpdate = (updateData) => {
+        console.log('📊 Order status updated:', updateData);
+      };
+
+      const handleDriverStatusChange = (driverData) => {
+        console.log('🚗 Driver status changed:', driverData);
+      };
+
+      // Subscribe to admin-specific channels
+      wsService.send({
+        type: 'admin:subscribe',
+        channels: ['orders', 'drivers', 'system']
+      });
+
+      // Register event listeners for real-time notifications
+      wsService.on('order_placed', handleNewOrder);
+      wsService.on('order_update', handleOrderUpdate);
+      wsService.on('driver_status_change', handleDriverStatusChange);
+
+      console.log('✅ Admin WebSocket connected');
+
+      return () => {
+        try {
+          // Remove event listeners
+          wsService.off('order_placed', handleNewOrder);
+          wsService.off('order_update', handleOrderUpdate);
+          wsService.off('driver_status_change', handleDriverStatusChange);
+
+          wsService.disconnect();
+          console.log('🔌 Admin WebSocket disconnected');
+        } catch (error) {
+          console.warn('WebSocket disconnect error:', error);
+        }
+      };
+    } catch (error) {
+      console.error('Admin WebSocket connection failed:', error);
+    }
+  }, []);
+
+  // Request notification permission on component mount
+  useEffect(() => {
+    if (Notification.permission === 'default') {
+      Notification.requestPermission().then(permission => {
+        console.log('Notification permission:', permission);
+      });
+    }
+  }, []);
 
   const closeAllModals = () => {
     setModals({
@@ -473,10 +563,83 @@ const FadedSkiesTrackingAdmin = () => {
   const OrderDetailsModal = () => {
     const [orderStatus, setOrderStatus] = useState(selectedOrder?.status || 'pending');
 
-    const updateOrderStatus = (newStatus) => {
+    const updateOrderStatus = async (newStatus) => {
       setOrderStatus(newStatus);
-      // Handle status update
-      console.log('Order status updated:', newStatus);
+
+      try {
+        // Send real-time order status update
+        const statusUpdate = {
+          orderId: selectedOrder?.id,
+          customerId: selectedOrder?.customer,
+          status: newStatus,
+          timestamp: new Date(),
+          message: getStatusMessage(newStatus)
+        };
+
+        // Notify customer of status change
+        wsService.send({
+          type: 'admin:order_status_update',
+          data: {
+            ...statusUpdate,
+            target: 'customer'
+          }
+        });
+
+        // If order is confirmed or ready, notify available drivers
+        if (newStatus === 'confirmed' || newStatus === 'ready') {
+          wsService.send({
+            type: 'admin:order_available_for_pickup',
+            data: {
+              ...statusUpdate,
+              target: 'drivers',
+              orderDetails: {
+                id: selectedOrder?.id,
+                customer: selectedOrder?.customer,
+                location: selectedOrder?.location || 'Austin, TX',
+                value: selectedOrder?.total,
+                items: selectedOrder?.items,
+                priority: selectedOrder?.total > 150 ? 'high' : 'normal',
+                estimatedDistance: '2.3 miles',
+                pickupLocation: 'Faded Skies Dispensary - 123 Cannabis St'
+              }
+            }
+          });
+
+          console.log('📡 Order sent to available drivers:', selectedOrder?.id);
+        }
+
+        // If driver is assigned, notify specific driver
+        if (newStatus === 'assigned' && selectedOrder?.assignedDriver) {
+          wsService.send({
+            type: 'admin:assign_order',
+            data: {
+              orderId: selectedOrder.id,
+              driverId: selectedOrder.assignedDriver,
+              orderDetails: statusUpdate
+            }
+          });
+        }
+
+        console.log('✅ Order status updated and notifications sent:', newStatus);
+
+      } catch (error) {
+        console.error('Failed to send status update notifications:', error);
+      }
+    };
+
+    // Helper function to get user-friendly status messages
+    const getStatusMessage = (status) => {
+      const messages = {
+        'pending': 'Order received and pending review',
+        'confirmed': 'Order confirmed and being prepared',
+        'preparing': 'Your order is being prepared',
+        'ready': 'Order ready for pickup - driver will be assigned',
+        'assigned': 'Driver assigned to your order',
+        'en-route': 'Driver is on the way to deliver your order',
+        'delivered': 'Order has been delivered successfully',
+        'cancelled': 'Order has been cancelled'
+      };
+      return messages[status] || `Order status updated to ${status}`;
     };
 
     return (
