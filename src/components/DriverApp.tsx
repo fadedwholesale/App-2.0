@@ -496,21 +496,21 @@ const FadedSkiesDriverApp = () => {
 
     // Send real-time status update notification
     try {
-      // wsService.send({
-      //   type: 'driver:update_order_status',
-      //   data: {
-      //     orderId: activeOrder.id,
-      //     driverId: driver.id,
-      //     driverName: driver.name,
-      //     status: status,
-      //     timestamp: new Date(),
-      //     location: driver.currentLocation,
-      //     message: statusMessages[status] || `Order status updated to ${status}`,
-      //     notes: status === 'delivered' ? 'Package delivered successfully' : undefined
-      //   }
-      // });
+      wsService.send({
+        type: 'driver:update_order_status',
+        data: {
+          orderId: activeOrder.id,
+          driverId: driver.id,
+          driverName: driver.name,
+          status: status,
+          timestamp: new Date(),
+          location: driver.currentLocation,
+          message: statusMessages[status] || `Order status updated to ${status}`,
+          notes: status === 'delivered' ? 'Package delivered successfully' : undefined
+        }
+      });
 
-      console.log('📡 Order status update notification sent (disabled):', status);
+      console.log('📡 Order status update notification sent:', status);
     } catch (error) {
       console.error('Failed to send status update notification:', error);
     }
