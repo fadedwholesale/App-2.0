@@ -1354,7 +1354,7 @@ const ContactModal = React.memo(({
       case 'Feedback':
         return {
           title: 'Share Feedback',
-          icon: '💬',
+          icon: '����',
           description: 'Help us improve our service',
           showForm: true,
           content: null
@@ -2909,7 +2909,7 @@ const FadedSkiesApp = () => {
   const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  const handleAuthSubmit = useCallback(() => {
+  const handleAuthSubmit = useCallback(async () => {
     if (authMode === 'login') {
       if (authForm.email && authForm.email.trim() && authForm.password && authForm.password.trim()) {
         setIsAuthenticated(true);
