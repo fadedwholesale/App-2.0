@@ -2850,7 +2850,16 @@ const FadedSkiesApp = () => {
     }
   ];
 
-  const filteredProducts = products.filter(product => {
+  // Initialize real-time product sync for UserApp
+  useEffect(() => {
+    setupRealTimeSync();
+    console.log('🔄 UserApp connected to real-time product sync - products will update live!');
+  }, [setupRealTimeSync]);
+
+  // Use store products if available, otherwise fall back to local products
+  const activeProducts = products.length > 0 ? products : products;
+
+  const filteredProducts = activeProducts.filter(product => {
     const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesCategory && matchesSearch;
