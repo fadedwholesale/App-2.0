@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import FadedSkiesApp from './components/UserApp'
 import FadedSkiesDriverApp from './components/DriverApp'
 import FadedSkiesTrackingAdmin from './components/AdminApp'
+import { apiService } from './services/api-integration-service'
 
 function App() {
   const [currentApp, setCurrentApp] = useState<'user' | 'driver' | 'admin'>('user')
