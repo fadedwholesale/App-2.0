@@ -567,13 +567,13 @@ const FadedSkiesTrackingAdmin = () => {
         };
 
         // Notify customer of status change
-        // wsService.send({
-        //   type: 'admin:order_status_update',
-        //   data: {
-        //     ...statusUpdate,
-        //     target: 'customer'
-        //   }
-        // });
+        wsService.send({
+          type: 'admin:order_status_update',
+          data: {
+            ...statusUpdate,
+            target: 'customer'
+          }
+        });
 
         // If order is confirmed or ready, notify available drivers
         if (newStatus === 'confirmed' || newStatus === 'ready') {
