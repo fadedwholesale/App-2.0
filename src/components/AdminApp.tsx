@@ -155,6 +155,11 @@ const FadedSkiesTrackingAdmin = () => {
         channels: ['orders', 'drivers', 'system']
       });
 
+      // Register event listeners for real-time notifications
+      wsService.on('order_placed', handleNewOrder);
+      wsService.on('order_update', handleOrderUpdate);
+      wsService.on('driver_status_change', handleDriverStatusChange);
+
       console.log('✅ Admin WebSocket connected');
 
       return () => {
