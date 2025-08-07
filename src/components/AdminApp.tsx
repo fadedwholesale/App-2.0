@@ -1047,7 +1047,13 @@ const FadedSkiesTrackingAdmin = () => {
   // Confirmation Modal
   const ConfirmationModal = () => {
     const handleConfirm = () => {
-      console.log(`Deleting ${deleteTarget.type}:`, deleteTarget.id);
+      if (deleteTarget.type === 'product') {
+        // Delete product with real-time sync
+        broadcastProductDeleted(deleteTarget.id);
+        console.log('✅ Product deleted with real-time sync:', deleteTarget.name);
+      } else {
+        console.log(`Deleting ${deleteTarget.type}:`, deleteTarget.id);
+      }
       closeModal('confirmDelete');
     };
 
