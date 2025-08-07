@@ -82,8 +82,65 @@ export class SimpleWebSocketService {
   }
 
   send(message: any) {
-    console.log('📡 WebSocket message (simulated):', message);
-    // For now just log, actual sending can be added later
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(message));
+      console.log('📡 WebSocket message sent:', message.type);
+    } else {
+      console.log('📡 WebSocket message (simulated):', message.type);
+      // In simulation mode, emit some responses for testing
+      this.simulateResponse(message);
+    }
+  }
+
+  private simulateResponse(message: any) {
+    // Simulate realistic responses based on message type
+    setTimeout(() => {
+      switch (message.type) {
+        case 'customer:order_placed':
+          this.emit('order_placed', message.data);
+          break;
+        case 'admin:order_status_update':
+          this.emit('order_status_update', message.data);
+          break;
+        case 'driver:accept_order':
+          this.emit('driver_accept_order', message.data);
+          break;
+      }
+    }, 100);
+  }
+
+  private handleMessage(message: any) {
+    console.log('📨 WebSocket message received:', message.type);
+
+    switch (message.type) {
+      case 'order_placed':
+        this.emit('order_placed', message.data);
+        break;
+      case 'order_status_update':
+        this.emit('order_status_update', message.data);
+        break;
+      case 'driver_accept_order':
+        this.emit('driver_accept_order', message.data);
+        break;
+      case 'driver_location_update':
+        this.emit('driver_location_update', message.data);
+        break;
+      default:
+        console.log('Unknown message type:', message.type);
+    }
+  }
+
+  private emit(event: string, data: any) {
+    const listeners = this.eventListeners.get(event);
+    if (listeners) {
+      listeners.forEach(callback => {
+        try {
+          callback(data);
+        } catch (error) {
+          console.error(`Error in event listener for ${event}:`, error);
+        }
+      });
+    }
   }
 
   on(event: string, callback: Function) {
