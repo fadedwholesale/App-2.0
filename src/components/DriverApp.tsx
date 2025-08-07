@@ -486,8 +486,11 @@ const FadedSkiesDriverApp = () => {
 
     setGeofenceError(errorMessage);
     setIsWithinDeliveryRadius(false);
-    showToastMessage(errorMessage, 'error');
-  }, [showToastMessage]);
+    setToastMessage(errorMessage);
+    setToastType('error');
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  }, []);
 
   const stopLocationTracking = useCallback(() => {
     if (locationWatchId !== null) {
