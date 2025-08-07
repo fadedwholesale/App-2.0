@@ -72,9 +72,19 @@ class ApiClient {
         message: data.message,
       };
     } catch (error) {
+      let errorMessage = 'Network error';
+
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        // Handle specific connection errors
+        if (error.message.includes('Failed to fetch')) {
+          errorMessage = 'Backend server not available. Please start the backend server on port 3001.';
+        }
+      }
+
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Network error',
+        error: errorMessage,
       };
     }
   }
