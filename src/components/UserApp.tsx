@@ -1498,7 +1498,7 @@ const ContactModal = React.memo(({
                           star <= form.rating ? 'text-yellow-400' : 'text-gray-300'
                         }`}
                       >
-                        ⭐
+                        ��
                       </button>
                     ))}
                     <span className="text-sm text-gray-600 ml-2">({form.rating}/5)</span>
@@ -2850,11 +2850,18 @@ const FadedSkiesApp = () => {
     }
   ];
 
-  // Initialize real-time product sync for UserApp
+  // Initialize real-time product sync and populate store if empty
   useEffect(() => {
     setupRealTimeSync();
+
+    // Initialize store with local products if it's empty
+    if (products.length === 0 && localProducts.length > 0) {
+      setProducts(localProducts);
+      console.log('🌿 UserApp: Initialized store with sample products');
+    }
+
     console.log('🔄 UserApp connected to real-time product sync - products will update live!');
-  }, [setupRealTimeSync]);
+  }, [setupRealTimeSync, products.length, setProducts]);
 
   // Use store products if available, otherwise fall back to local products
   const activeProducts = products.length > 0 ? products : localProducts;
@@ -4381,7 +4388,7 @@ const FadedSkiesApp = () => {
                       { title: 'Order Status', icon: '📦', color: 'from-green-400 to-emerald-500' },
                       { title: 'Payment Issues', icon: '💳', color: 'from-blue-400 to-cyan-500' },
                       { title: 'Product Info', icon: '🌿', color: 'from-purple-400 to-violet-500' },
-                      { title: 'Account Help', icon: '����', color: 'from-orange-400 to-amber-500' }
+                      { title: 'Account Help', icon: '������', color: 'from-orange-400 to-amber-500' }
                     ].map((item, index) => (
                       <button
                         key={index}
