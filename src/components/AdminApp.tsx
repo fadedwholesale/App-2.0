@@ -44,8 +44,8 @@ import {
   Activity
 } from 'lucide-react';
 
-// Import WebSocket service for real-time admin monitoring
-import { wsService } from '../../User app/api-integration-service';
+// WebSocket service temporarily disabled due to import issues
+// import { wsService } from '../../User app/api-integration-service';
 
 const FadedSkiesTrackingAdmin = () => {
   const [currentView, setCurrentView] = useState('dashboard');
