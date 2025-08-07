@@ -408,14 +408,14 @@ const FadedSkiesDriverApp = () => {
         return () => {
           try {
             // Send driver offline status before disconnecting
-            // wsService.send({
-            //   type: 'driver:offline',
-            //   data: {
-            //     driverId: driver.id
-            //   }
-            // });
+            wsService.send({
+              type: 'driver:offline',
+              data: {
+                driverId: driver.id
+              }
+            });
 
-            // wsService.disconnect();
+            wsService.disconnect();
             console.log('🔌 Driver WebSocket disconnected');
           } catch (error) {
             console.warn('WebSocket disconnect error:', error);
@@ -1319,7 +1319,7 @@ const FadedSkiesDriverApp = () => {
 
     const handleSave = () => {
       // Mask account number for display
-      const maskedAccount = `••••${bankData.accountNumber.slice(-4)}`;
+      const maskedAccount = `••��•${bankData.accountNumber.slice(-4)}`;
       const bankDisplay = `${bankData.bankName} ${maskedAccount}`;
 
       setDriver(prev => ({
@@ -1899,7 +1899,7 @@ const FadedSkiesDriverApp = () => {
                     {[
                       { status: 'accepted', label: 'Order Accepted', icon: '✅' },
                       { status: 'picked_up', label: 'Order Picked Up', icon: '📦' },
-                      { status: 'in_transit', label: 'En Route to Customer', icon: '���' },
+                      { status: 'in_transit', label: 'En Route to Customer', icon: '🚗' },
                       { status: 'delivered', label: 'Delivered', icon: '🏠' }
                     ].map((step, index) => {
                       const isCompleted = ['accepted', 'picked_up', 'in_transit', 'delivered'].indexOf(activeOrder.status) >= index;
