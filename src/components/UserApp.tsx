@@ -2930,13 +2930,7 @@ const FadedSkiesApp = () => {
         };
 
         // Subscribe to driver location updates
-        const handleDriverLocationUpdate = (driverUpdate: any) => {
-          setOrders(prev => prev.map(order =>
-            order.id === driverUpdate.orderId
-              ? { ...order, driverLocation: driverUpdate.driverLocation }
-              : order
-          ));
-        };
+        // (function defined below with full implementation)
 
         // Set up real-time event listeners
         const wsConnected = () => {
