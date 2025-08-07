@@ -448,11 +448,33 @@ const FadedSkiesDriverApp = () => {
   }, [driver.isOnline, showToastMessage]);
 
   const acceptOrder = useCallback((order: Order) => {
-    setActiveOrder({ ...order, status: 'accepted' });
+    const acceptedOrder = { ...order, status: 'accepted', acceptedAt: new Date() };
+    setActiveOrder(acceptedOrder);
     setAvailableOrders(prev => prev.filter(o => o.id !== order.id));
+
+    // Send real-time notification to admin and customer
+    try {
+      wsService.send({
+        type: 'driver:accept_order',
+        data: {
+          orderId: order.id,
+          driverId: driver.id,
+          driverName: driver.name,
+          driverPhone: driver.phone,
+          vehicle: `${driver.vehicle?.color} ${driver.vehicle?.make} ${driver.vehicle?.model}`,
+          estimatedArrival: '15-20 minutes',
+          timestamp: new Date()
+        }
+      });
+
+      console.log('📡 Order acceptance notification sent:', order.id);
+    } catch (error) {
+      console.error('Failed to send order acceptance notification:', error);
+    }
+
     showToastMessage(`Order ${order.id} accepted!`, 'success');
     setTimeout(() => setCurrentView('active-delivery'), 500);
-  }, [showToastMessage]);
+  }, [driver.id, driver.name, driver.phone, driver.vehicle, showToastMessage]);
 
   const declineOrder = useCallback((order: Order) => {
     setAvailableOrders(prev => prev.filter(o => o.id !== order.id));
