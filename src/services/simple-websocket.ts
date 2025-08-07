@@ -134,6 +134,15 @@ export class SimpleWebSocketService {
       case 'driver_location_update':
         this.emit('driver_location_update', message.data);
         break;
+      case 'product_added':
+        this.emit('product_added', message.data);
+        break;
+      case 'product_updated':
+        this.emit('product_updated', message.data);
+        break;
+      case 'product_deleted':
+        this.emit('product_deleted', message.data);
+        break;
       default:
         console.log('Unknown message type:', message.type);
     }
