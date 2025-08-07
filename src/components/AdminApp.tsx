@@ -102,6 +102,83 @@ const FadedSkiesTrackingAdmin = () => {
     if (modalName === 'confirmDelete') setDeleteTarget({ type: '', id: null, name: '' });
   };
 
+  // WebSocket connection for real-time admin monitoring
+  useEffect(() => {
+    try {
+      // Connect WebSocket for admin monitoring
+      wsService.connect('admin-session');
+
+      // Set up real-time order notifications
+      const handleNewOrder = (orderData) => {
+        console.log('🔔 New order received:', orderData);
+
+        // Add visual notification
+        const notification = {
+          id: Date.now(),
+          type: 'order',
+          title: 'New Order Received!',
+          message: `Order ${orderData.orderId} from ${orderData.customerName} - $${orderData.total.toFixed(2)}`,
+          timestamp: new Date(),
+          priority: orderData.priority || 'normal'
+        };
+
+        // Show browser notification if permission granted
+        if (Notification.permission === 'granted') {
+          new Notification('New Order - Faded Skies Admin', {
+            body: notification.message,
+            icon: '/favicon.ico',
+            tag: orderData.orderId
+          });
+        }
+
+        // Play notification sound
+        try {
+          const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DwvmEaBy5+zPLZiTYIF2q+8uGVUQwQUarm7bllHgg2jdXxynkpBChxy+/eizEIHWq85OKgUgINeKvgN');
+          audio.volume = 0.3;
+          audio.play().catch(e => console.log('Audio notification failed:', e));
+        } catch (e) {
+          console.log('Audio notification not available');
+        }
+      };
+
+      const handleOrderUpdate = (updateData) => {
+        console.log('📊 Order status updated:', updateData);
+      };
+
+      const handleDriverStatusChange = (driverData) => {
+        console.log('🚗 Driver status changed:', driverData);
+      };
+
+      // Subscribe to admin-specific channels
+      wsService.send({
+        type: 'admin:subscribe',
+        channels: ['orders', 'drivers', 'system']
+      });
+
+      console.log('✅ Admin WebSocket connected');
+
+      return () => {
+        try {
+          wsService.disconnect();
+          console.log('🔌 Admin WebSocket disconnected');
+        } catch (error) {
+          console.warn('WebSocket disconnect error:', error);
+        }
+      };
+    } catch (error) {
+      console.error('Admin WebSocket connection failed:', error);
+    }
+  }, []);
+
+  // Request notification permission on component mount
+  useEffect(() => {
+    if (Notification.permission === 'default') {
+      Notification.requestPermission().then(permission => {
+        console.log('Notification permission:', permission);
+      });
+    }
+  }, []);
+
   const closeAllModals = () => {
     setModals({
       addProduct: false,
