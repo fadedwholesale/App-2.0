@@ -26,7 +26,8 @@ import {
   Edit3
 } from 'lucide-react';
 
-// WebSocket service will be imported dynamically to avoid path issues
+// Import WebSocket service for real-time updates
+import { wsService } from '../services/api-integration-service';
 
 // TypeScript interfaces
 interface Product {
