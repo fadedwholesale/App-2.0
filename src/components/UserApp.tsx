@@ -2953,6 +2953,11 @@ const FadedSkiesApp = () => {
             channel: 'user_orders',
             userId: user.email
           });
+
+          // Register event listeners for real-time updates
+          wsService.on('driver_accept_order', handleOrderAccepted);
+          wsService.on('order_status_update', handleOrderStatusUpdate);
+          wsService.on('driver_location_update', handleDriverLocationUpdate);
         };
 
         // Listen for order acceptance by driver
