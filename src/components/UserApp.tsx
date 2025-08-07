@@ -2916,7 +2916,8 @@ const FadedSkiesApp = () => {
     if (isAuthenticated && user.email) {
       try {
         // Connect WebSocket with user token for authentication
-        wsService.connect(user.email);
+        // Temporarily disabled due to import issues
+        // wsService.connect(user.email);
 
         // Subscribe to order updates
         const handleOrderUpdate = (update: any) => {
