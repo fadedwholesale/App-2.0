@@ -3056,6 +3056,11 @@ const FadedSkiesApp = () => {
         return () => {
           // Cleanup WebSocket connection on logout or unmount
           try {
+            // Remove event listeners
+            wsService.off('driver_accept_order', handleOrderAccepted);
+            wsService.off('order_status_update', handleOrderStatusUpdate);
+            wsService.off('driver_location_update', handleDriverLocationUpdate);
+
             wsService.disconnect();
             console.log('🔌 WebSocket disconnected');
           } catch (error) {
