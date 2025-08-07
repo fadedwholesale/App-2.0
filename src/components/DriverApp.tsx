@@ -45,8 +45,8 @@ import {
   Users
 } from 'lucide-react';
 
-// Import WebSocket service for real-time driver updates
-import { wsService } from '../services/api-integration-service';
+// Import simple WebSocket service for real-time driver updates
+import { wsService } from '../services/simple-websocket';
 
 // TypeScript interfaces
 interface Order {
@@ -1554,7 +1554,7 @@ const FadedSkiesDriverApp = () => {
                   </div>
                   <div>
                     <span className="text-sm text-gray-600">Account Number:</span>
-                    <p className="font-semibold">••••���•{bankData.accountNumber.slice(-4)}</p>
+                    <p className="font-semibold">••••••{bankData.accountNumber.slice(-4)}</p>
                   </div>
                   <div className="col-span-2">
                     <span className="text-sm text-gray-600">Account Holder:</span>
