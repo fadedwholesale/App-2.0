@@ -231,31 +231,55 @@ const FadedSkiesTrackingAdmin = () => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [modals]);
 
-  // Sample data
-  const [products] = useState([
-    {
-      id: 1,
-      name: 'Premium Cannabis Flower - Blue Dream',
-      category: 'Flower',
-      price: 45.00,
-      stock: 150,
-      thc: '18%',
-      cbd: '2%',
-      status: 'active',
-      supplier: 'Green Valley Farms'
-    },
-    {
-      id: 2,
-      name: 'Artisan Edibles - Gummy Bears 10mg',
-      category: 'Edibles',
-      price: 25.00,
-      stock: 85,
-      thc: '10mg per piece',
-      cbd: '0mg',
-      status: 'active',
-      supplier: 'Sweet Relief Co.'
+  // Initialize sample products if store is empty and setup real-time sync
+  useEffect(() => {
+    // Setup real-time sync for products
+    setupRealTimeSync();
+
+    // Initialize with sample data if products array is empty
+    if (products.length === 0) {
+      const initialProducts = [
+        {
+          id: 1,
+          name: 'Premium Cannabis Flower - Blue Dream',
+          category: 'Flower',
+          price: 45.00,
+          originalPrice: null,
+          thc: '18%',
+          cbd: '2%',
+          strain: 'Hybrid',
+          rating: 4.8,
+          reviewCount: 125,
+          imageUrl: 'https://images.unsplash.com/photo-1560448204-61dc36dc98c8?w=400',
+          description: 'Premium quality Blue Dream strain with balanced effects.',
+          effects: ['Relaxed', 'Happy', 'Creative'],
+          labTested: true,
+          inStock: true,
+          featured: true
+        },
+        {
+          id: 2,
+          name: 'Artisan Edibles - Gummy Bears 10mg',
+          category: 'Edibles',
+          price: 25.00,
+          originalPrice: null,
+          thc: '10mg per piece',
+          cbd: '0mg',
+          strain: 'Hybrid',
+          rating: 4.6,
+          reviewCount: 89,
+          imageUrl: 'https://images.unsplash.com/photo-1582049404584-7d92b3e9c21c?w=400',
+          description: 'Delicious gummy bears with precise 10mg THC dosing.',
+          effects: ['Euphoric', 'Relaxed', 'Happy'],
+          labTested: true,
+          inStock: true,
+          featured: false
+        }
+      ];
+      setProducts(initialProducts);
+      console.log('🌿 Initialized admin with sample products');
     }
-  ]);
+  }, [products.length, setProducts, setupRealTimeSync]);
 
   const [customers] = useState([
     {
