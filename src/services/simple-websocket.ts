@@ -105,6 +105,15 @@ export class SimpleWebSocketService {
         case 'driver:accept_order':
           this.emit('driver_accept_order', message.data);
           break;
+        case 'admin:product_added':
+          this.emit('product_added', message.data);
+          break;
+        case 'admin:product_updated':
+          this.emit('product_updated', message.data);
+          break;
+        case 'admin:product_deleted':
+          this.emit('product_deleted', message.data);
+          break;
       }
     }, 100);
   }
