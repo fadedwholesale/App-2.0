@@ -52,6 +52,16 @@ const FadedSkiesTrackingAdmin = () => {
   const [currentView, setCurrentView] = useState('dashboard');
   const [isTrackingLive, setIsTrackingLive] = useState(false);
 
+  // Store integration for real-time product sync
+  const {
+    products,
+    setProducts,
+    broadcastProductAdded,
+    broadcastProductUpdated,
+    broadcastProductDeleted,
+    setupRealTimeSync
+  } = useCannabisDeliveryStore();
+
   // Modal states
   const [modals, setModals] = useState({
     addProduct: false,
