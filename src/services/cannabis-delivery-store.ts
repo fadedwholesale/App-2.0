@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { subscribeWithSelector } from 'zustand/middleware';
+import { wsService } from './simple-websocket';
 
 // ===== TYPES & INTERFACES =====
 
