@@ -38,6 +38,8 @@ model User {
   preferences    Json?
   pushTokens     PushToken[]
   notifications  Notification[]
+  Driver         Driver[]
+  Admin          Admin[]
 
   @@map("users")
 }
