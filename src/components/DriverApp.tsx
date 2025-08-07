@@ -386,6 +386,48 @@ const FadedSkiesDriverApp = () => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [modals]);
 
+  // WebSocket connection for real-time driver updates
+  useEffect(() => {
+    if (isAuthenticated && driver.isOnline) {
+      try {
+        // Connect WebSocket for driver
+        wsService.connect(`driver-${driver.name}`);
+
+        // Send driver online status
+        wsService.send({
+          type: 'driver:online',
+          data: {
+            driverId: driver.id,
+            location: driver.currentLocation,
+            isAvailable: driver.isAvailable
+          }
+        });
+
+        console.log('✅ Driver WebSocket connected for:', driver.name);
+
+        return () => {
+          try {
+            // Send driver offline status before disconnecting
+            wsService.send({
+              type: 'driver:offline',
+              data: {
+                driverId: driver.id
+              }
+            });
+
+            wsService.disconnect();
+            console.log('🔌 Driver WebSocket disconnected');
+          } catch (error) {
+            console.warn('WebSocket disconnect error:', error);
+          }
+        };
+
+      } catch (error) {
+        console.error('Driver WebSocket connection failed:', error);
+      }
+    }
+  }, [isAuthenticated, driver.isOnline, driver.id, driver.name, driver.currentLocation, driver.isAvailable]);
+
   const showToastMessage = useCallback((message: string, type: 'success' | 'error' | 'warning' | 'info' = 'success') => {
     setToastMessage(message);
     setToastType(type);
