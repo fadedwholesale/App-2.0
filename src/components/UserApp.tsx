@@ -2739,7 +2739,7 @@ const FadedSkiesApp = () => {
   ];
 
   // Realistic product system with updateable images
-  const products = [
+  const localProducts = [
     {
       id: 1,
       name: 'Purple Haze Live Resin Cartridge',
