@@ -2918,6 +2918,7 @@ const FadedSkiesApp = () => {
     if (isAuthenticated && user.email) {
       try {
         // Connect WebSocket with user token for authentication
+        setConnectionStatus('connecting');
         wsService.connect(user.email);
 
         // Subscribe to order updates
@@ -3916,7 +3917,7 @@ const FadedSkiesApp = () => {
                       <div className="grid grid-cols-2 gap-3">
                         {[
                           { name: 'Apple Pay', icon: '🍎' },
-                          { name: 'Google Pay', icon: '���' },
+                          { name: 'Google Pay', icon: '🔵' },
                           { name: 'Aeropay', icon: '💳' },
                           { name: 'FS Coin', icon: '🪙' }
                         ].map(method => (
