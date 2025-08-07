@@ -45,8 +45,8 @@ import {
   Users
 } from 'lucide-react';
 
-// WebSocket service temporarily disabled due to import issues
-// import { wsService } from '../../User app/api-integration-service';
+// Import WebSocket service for real-time driver updates
+import { wsService } from '../services/api-integration-service';
 
 // TypeScript interfaces
 interface Order {
