@@ -483,26 +483,47 @@ const FadedSkiesDriverApp = () => {
 
   const updateOrderStatus = useCallback((status: Order['status']) => {
     if (!activeOrder) return;
-    
-    const updatedOrder = { ...activeOrder, status };
+
+    const updatedOrder = { ...activeOrder, status, lastUpdate: new Date() };
     setActiveOrder(updatedOrder);
-    
+
     const statusMessages = {
       picked_up: 'Order picked up! En route to customer.',
       in_transit: 'Delivery in progress',
       delivered: 'Order delivered successfully!',
       cancelled: 'Order was cancelled'
     };
-    
+
+    // Send real-time status update notification
+    try {
+      wsService.send({
+        type: 'driver:update_order_status',
+        data: {
+          orderId: activeOrder.id,
+          driverId: driver.id,
+          driverName: driver.name,
+          status: status,
+          timestamp: new Date(),
+          location: driver.currentLocation,
+          message: statusMessages[status] || `Order status updated to ${status}`,
+          notes: status === 'delivered' ? 'Package delivered successfully' : undefined
+        }
+      });
+
+      console.log('📡 Order status update notification sent:', status);
+    } catch (error) {
+      console.error('Failed to send status update notification:', error);
+    }
+
     if (status === 'delivered') {
       setCompletedOrders(prev => [updatedOrder, ...prev]);
       setActiveOrder(null);
-      
+
       const driverEarnings = updatedOrder.totalDriverPay;
       const mileageEarnings = updatedOrder.mileagePayment;
       const baseEarnings = updatedOrder.basePay;
       const tipEarnings = updatedOrder.tip || 0;
-      
+
       setDriver(prev => ({
         ...prev,
         earnings: {
@@ -517,9 +538,9 @@ const FadedSkiesDriverApp = () => {
       }));
       setCurrentView('home');
     }
-    
+
     showToastMessage(statusMessages[status] || 'Status updated', 'success');
-  }, [activeOrder, showToastMessage]);
+  }, [activeOrder, driver.id, driver.name, driver.currentLocation, showToastMessage]);
 
   const handleAuthSubmit = useCallback(() => {
     if (authMode === 'login') {
