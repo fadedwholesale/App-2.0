@@ -45,6 +45,9 @@ import {
   Users
 } from 'lucide-react';
 
+// Import WebSocket service for real-time driver updates
+import { wsService } from '../../User app/api-integration-service';
+
 // TypeScript interfaces
 interface Order {
   id: string;
