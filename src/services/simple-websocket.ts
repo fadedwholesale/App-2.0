@@ -2,8 +2,8 @@
 // Minimal implementation to avoid import issues
 
 export class SimpleWebSocketService {
-  private ws: WebSocket | null = null;
-  private eventListeners: Map<string, Function[]> = new Map();
+  public ws: WebSocket | null = null; // Made public for testing
+  public eventListeners: Map<string, Function[]> = new Map(); // Made public for testing
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 3;
 
