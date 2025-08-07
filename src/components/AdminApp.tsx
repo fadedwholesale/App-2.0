@@ -4,6 +4,7 @@ import {
   Home,
   Package,
   Users,
+  User,
   ShoppingCart,
   BarChart3,
   Settings,
