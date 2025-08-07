@@ -181,8 +181,8 @@ export async function sendNotificationToUser(
         userId,
         title,
         message: body,
-        type: data?.type || 'SYSTEM',
-        data: data ? JSON.stringify(data) : null
+        type: (data?.type as any) || 'SYSTEM',
+        data: data ? JSON.stringify(data) : undefined
       }
     });
 
@@ -239,8 +239,8 @@ export async function sendNotificationToRole(
           userId: user.id,
           title,
           message: body,
-          type: data?.type || 'SYSTEM',
-          data: data ? JSON.stringify(data) : null
+          type: (data?.type as any) || 'SYSTEM',
+          data: data ? JSON.stringify(data) : undefined
         }
       });
 
