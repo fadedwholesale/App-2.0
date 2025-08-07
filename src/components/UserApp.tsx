@@ -26,6 +26,9 @@ import {
   Edit3
 } from 'lucide-react';
 
+// Import WebSocket service for real-time updates
+import { wsService } from '../../User app/api-integration-service';
+
 // TypeScript interfaces
 interface Product {
   id: number;
@@ -1794,7 +1797,7 @@ const OrderDetailsModal = React.memo(({
       case 'delivered': return '✅';
       case 'in-transit': return '🚚';
       case 'preparing': return '📦';
-      case 'cancelled': return '��';
+      case 'cancelled': return '❌';
       default: return '📋';
     }
   };
