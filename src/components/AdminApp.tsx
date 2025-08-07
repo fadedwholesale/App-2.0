@@ -106,7 +106,7 @@ const FadedSkiesTrackingAdmin = () => {
   useEffect(() => {
     try {
       // Connect WebSocket for admin monitoring
-      wsService.connect('admin-session');
+      // wsService.connect('admin-session');
 
       // Set up real-time order notifications
       const handleNewOrder = (orderData) => {
