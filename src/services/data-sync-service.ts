@@ -48,16 +48,21 @@ export class DataSyncService {
   // Initialize sync listeners
   initialize() {
     if (this.isInitialized) return;
-    
-    console.log('🔄 Initializing Data Sync Service...');
-    
-    this.setupDriverSyncListeners();
-    this.setupCustomerSyncListeners();
-    this.setupOrderSyncListeners();
-    this.setupSettingsSyncListeners();
-    
-    this.isInitialized = true;
-    console.log('✅ Data Sync Service initialized');
+
+    try {
+      console.log('🔄 Initializing Data Sync Service...');
+
+      this.setupDriverSyncListeners();
+      this.setupCustomerSyncListeners();
+      this.setupOrderSyncListeners();
+      this.setupSettingsSyncListeners();
+
+      this.isInitialized = true;
+      console.log('✅ Data Sync Service initialized successfully');
+    } catch (error) {
+      console.error('❌ Failed to initialize Data Sync Service:', error);
+      this.isInitialized = false;
+    }
   }
 
   // ===== DRIVER SYNC METHODS =====
