@@ -474,7 +474,7 @@ const FadedSkiesTrackingAdmin = () => {
         // Add new product with enhanced real-time sync
         broadcastProductAdded(productData);
         console.log('✅ AdminApp: Product added with real-time sync:', productData.name);
-        console.log('���� Broadcasting new product to all connected users...');
+        console.log('📡 Broadcasting new product to all connected users...');
 
         // Show confirmation toast
         setTimeout(() => {
@@ -1750,7 +1750,7 @@ const FadedSkiesTrackingAdmin = () => {
     const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
     const [newMessage, setNewMessage] = useState('');
 
-    const onlineDrivers = drivers.filter(d => d.isOnline);
+    const onlineDrivers = drivers.filter(d => d.online);
     const driverMessages = adminMessages.filter(msg =>
       selectedDriver ? (msg.from === selectedDriver || msg.to === selectedDriver) : false
     );
@@ -2080,7 +2080,7 @@ const FadedSkiesTrackingAdmin = () => {
     const [newGeofence, setNewGeofence] = useState({ name: '', lat: '', lng: '', radius: '100' });
     const [showGeofenceForm, setShowGeofenceForm] = useState(false);
 
-    const onlineDrivers = drivers.filter(d => d.isOnline);
+    const onlineDrivers = drivers.filter(d => d.online);
     const activeDeliveryCount = Object.keys(activeRoutes).length;
 
     const handleCreateGeofence = () => {
