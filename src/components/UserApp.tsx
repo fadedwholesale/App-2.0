@@ -1815,7 +1815,7 @@ const OrderDetailsModal = React.memo(({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'delivered': return '✅';
-      case 'in-transit': return '🚚';
+      case 'in-transit': return '����';
       case 'preparing': return '📦';
       case 'cancelled': return '❌';
       default: return '📋';
@@ -2559,7 +2559,21 @@ const LiveTrackingModal = React.memo(({
                   </button>
                   <button
                     type="button"
-                    onClick={() => alert('SMS functionality would open here')}
+                    onClick={() => {
+                      const activeOrder = orders.find(order =>
+                        ['preparing', 'assigned', 'picked_up', 'in_transit'].includes(order.status)
+                      );
+                      if (activeOrder && activeOrder.driver) {
+                        openModal('sms', {
+                          driver: {
+                            name: activeOrder.driver,
+                            phone: activeOrder.driverPhone || '(512) 555-0001'
+                          }
+                        });
+                      } else {
+                        openModal('sms', {});
+                      }
+                    }}
                     className="bg-blue-500 text-white p-3 rounded-full hover:bg-blue-600 transition-colors"
                   >
                     <MessageCircle className="w-5 h-5" />
