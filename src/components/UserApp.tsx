@@ -2683,6 +2683,7 @@ const ProductCard = React.memo(({ product, addToCart, addingToCart }: {
 const FadedSkiesApp = () => {
   // Store integration for real-time product updates
   const { products, setProducts, setupRealTimeSync } = useCannabisDeliveryStore();
+  const { syncCustomerProfile } = useDataSync();
 
   const [currentView, setCurrentView] = useState<string>('auth');
   const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot'>('login');
