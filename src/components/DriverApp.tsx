@@ -468,7 +468,7 @@ const FadedSkiesDriverApp = () => {
 
       // Show notification when entering/leaving delivery zone
       if (withinRadius && distanceToCustomer && distanceToCustomer > DELIVERY_RADIUS_METERS) {
-        setToastMessage('🎯 You\'re within delivery range! You can now mark as delivered.');
+        setToastMessage('�� You\'re within delivery range! You can now mark as delivered.');
         setToastType('success');
         setShowToast(true);
         setTimeout(() => setShowToast(false), 3000);
@@ -1072,14 +1072,27 @@ const FadedSkiesDriverApp = () => {
     });
 
     const handleSave = () => {
-      setDriver(prev => ({
-        ...prev,
+      const updatedData = {
         name: profileData.name,
         phone: profileData.phone,
         email: profileData.email
+      };
+
+      // Update local state
+      setDriver(prev => ({
+        ...prev,
+        ...updatedData
       }));
+
+      // Sync to admin via sync service
+      const driverId = parseInt(driver.id.replace('driver_', ''));
+      syncDriverProfile(driverId, {
+        ...updatedData,
+        driverName: profileData.name
+      });
+
       closeModal('editProfile');
-      showToastMessage('Profile updated successfully!', 'success');
+      showToastMessage('Profile updated and synced to admin!', 'success');
     };
 
     return (
@@ -2160,7 +2173,7 @@ const FadedSkiesDriverApp = () => {
                   <div>
                     <h4 className="font-semibold text-green-800">🏦 Standard Bank Transfer</h4>
                     <p className="text-sm text-green-700">
-                      • No fees • 2-3 business days • Bank-level security • Enter your banking details below
+                      • No fees • 2-3 business days • Bank-level security ��� Enter your banking details below
                     </p>
                   </div>
                 </div>
