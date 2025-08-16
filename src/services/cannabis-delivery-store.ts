@@ -881,35 +881,70 @@ export const useCannabisDeliveryStore = create<CannabisDeliveryState>()(
           drivers: state.drivers.map(d => d.id === id ? { ...d, ...updates } : d)
         })),
         updateDriverStatus: (driverId, status, location) => {
-          set((state) => ({
-            drivers: state.drivers.map(d =>
-              d.id === driverId ? {
-                ...d,
-                status,
-                online: status === 'online',
-                lastUpdate: new Date().toISOString(),
-                currentLocation: location || d.currentLocation
-              } : d
-            ),
-            driverLocations: location ? {
-              ...state.driverLocations,
-              [driverId]: {
-                lat: location.lat,
-                lng: location.lng,
-                timestamp: new Date().toISOString(),
-                isOnline: status === 'online'
-              }
-            } : state.driverLocations
-          }));
+          set((state) => {
+            const existingDriver = state.drivers.find(d => d.id === driverId);
 
-          // Broadcast driver status to all connected clients
-          wsService.send({
-            type: 'driver:status_update',
-            data: {
-              driverId,
-              status,
-              location,
-              timestamp: new Date().toISOString()
+            if (existingDriver) {
+              // Update existing driver
+              return {
+                drivers: state.drivers.map(d =>
+                  d.id === driverId ? {
+                    ...d,
+                    status,
+                    online: status === 'online',
+                    lastUpdate: new Date().toISOString(),
+                    currentLocation: location ? `${location.lat}, ${location.lng}` : d.currentLocation
+                  } : d
+                ),
+                driverLocations: location ? {
+                  ...state.driverLocations,
+                  [driverId]: {
+                    lat: location.lat,
+                    lng: location.lng,
+                    timestamp: new Date().toISOString(),
+                    isOnline: status === 'online'
+                  }
+                } : state.driverLocations
+              };
+            } else {
+              // Add new driver if not exists
+              console.log(`🚗 Adding new driver ${driverId} to store`);
+              return {
+                drivers: [...state.drivers, {
+                  id: driverId,
+                  name: `Driver ${driverId}`,
+                  email: `driver${driverId}@fadedskies.com`,
+                  phone: "(512) 555-0000",
+                  vehicle: {
+                    make: "Unknown",
+                    model: "Unknown",
+                    year: 2020,
+                    color: "Unknown",
+                    licensePlate: `FDS${String(driverId).padStart(3, '0')}`
+                  },
+                  status,
+                  rating: 4.5,
+                  completedDeliveries: 0,
+                  currentLocation: location ? `${location.lat}, ${location.lng}` : "Unknown",
+                  lastUpdate: new Date().toISOString(),
+                  earnings: {
+                    today: 0,
+                    week: 0,
+                    month: 0,
+                    total: 0
+                  },
+                  online: status === 'online'
+                }],
+                driverLocations: location ? {
+                  ...state.driverLocations,
+                  [driverId]: {
+                    lat: location.lat,
+                    lng: location.lng,
+                    timestamp: new Date().toISOString(),
+                    isOnline: status === 'online'
+                  }
+                } : state.driverLocations
+              };
             }
           });
 
