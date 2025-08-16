@@ -474,7 +474,7 @@ const FadedSkiesTrackingAdmin = () => {
         // Add new product with enhanced real-time sync
         broadcastProductAdded(productData);
         console.log('✅ AdminApp: Product added with real-time sync:', productData.name);
-        console.log('📡 Broadcasting new product to all connected users...');
+        console.log('���� Broadcasting new product to all connected users...');
 
         // Show confirmation toast
         setTimeout(() => {
@@ -1912,7 +1912,7 @@ const FadedSkiesTrackingAdmin = () => {
     const [autoAssign, setAutoAssign] = useState(false);
 
     const pendingOrders = orders.filter(o => ['pending', 'confirmed'].includes(o.status));
-    const availableDrivers = drivers.filter(d => d.isOnline && !d.currentOrderId);
+    const availableDrivers = drivers.filter(d => d.online && d.status === 'online');
 
     const handleProcessOrder = (orderId: string, newStatus: string) => {
       processOrder(orderId, newStatus);
