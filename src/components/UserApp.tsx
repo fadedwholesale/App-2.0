@@ -2938,6 +2938,9 @@ const FadedSkiesApp = () => {
     // Initialize data sync service
     dataSyncService.initialize();
 
+    // Initialize SMS service
+    smsService.setupSMSListeners();
+
     // Setup comprehensive real-time sync
     setupRealTimeSync();
 
@@ -3200,7 +3203,7 @@ const FadedSkiesApp = () => {
 
         // Listen for order status updates
         const handleOrderStatusUpdate = (data: any) => {
-          console.log('�� Order status update:', data);
+          console.log('📊 Order status update:', data);
 
           setOrders(prev => prev.map(order =>
             order.id === data.orderId
