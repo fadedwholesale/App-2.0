@@ -1699,111 +1699,336 @@ const FadedSkiesTrackingAdmin = () => {
     );
   };
 
-  const TrackingView = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Live Tracking & Dispatch</h1>
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={() => setIsTrackingLive(!isTrackingLive)}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-xl font-semibold transition-colors ${
-              isTrackingLive 
-                ? 'bg-red-600 text-white hover:bg-red-700' 
-                : 'bg-green-600 text-white hover:bg-green-700'
-            }`}
-          >
-            {isTrackingLive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-            <span>{isTrackingLive ? 'Stop Tracking' : 'Start Tracking'}</span>
-          </button>
-        </div>
-      </div>
+  const TrackingView = () => {
+    const { driverLocations, drivers, geofences, activeRoutes, createGeofence, updateDriverLocation } = useCannabisDeliveryStore();
+    const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
+    const [newGeofence, setNewGeofence] = useState({ name: '', lat: '', lng: '', radius: '100' });
+    const [showGeofenceForm, setShowGeofenceForm] = useState(false);
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-blue-800 mb-2">Active Deliveries</h3>
-          <p className="text-3xl font-black text-blue-600">{activeDeliveries.length}</p>
-        </div>
-        <div className="bg-green-50 border border-green-200 rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-green-800 mb-2">Drivers Online</h3>
-          <p className="text-3xl font-black text-green-600">{drivers.filter(d => d.online).length}</p>
-        </div>
-        <div className="bg-purple-50 border border-purple-200 rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-purple-800 mb-2">Avg Delivery Time</h3>
-          <p className="text-3xl font-black text-purple-600">15 min</p>
-        </div>
-        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-orange-800 mb-2">Success Rate</h3>
-          <p className="text-3xl font-black text-orange-600">98%</p>
-        </div>
-      </div>
+    const onlineDrivers = drivers.filter(d => d.isOnline);
+    const activeDeliveryCount = Object.keys(activeRoutes).length;
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
-          <div className="p-4 border-b border-gray-100">
-            <h3 className="text-xl font-bold text-gray-900">Live Map View</h3>
+    const handleCreateGeofence = () => {
+      if (newGeofence.name && newGeofence.lat && newGeofence.lng) {
+        createGeofence(newGeofence.name, {
+          lat: parseFloat(newGeofence.lat),
+          lng: parseFloat(newGeofence.lng),
+          radius: parseInt(newGeofence.radius)
+        });
+        setNewGeofence({ name: '', lat: '', lng: '', radius: '100' });
+        setShowGeofenceForm(false);
+      }
+    };
+
+    // Simulate driver location updates
+    useEffect(() => {
+      if (!isTrackingLive) return;
+
+      const interval = setInterval(() => {
+        onlineDrivers.forEach(driver => {
+          const currentLocation = driverLocations[driver.id] || { lat: 30.2672, lng: -97.7431 };
+          const newLocation = {
+            lat: currentLocation.lat + (Math.random() - 0.5) * 0.001,
+            lng: currentLocation.lng + (Math.random() - 0.5) * 0.001
+          };
+          updateDriverLocation(driver.id.toString(), newLocation);
+        });
+      }, 5000);
+
+      return () => clearInterval(interval);
+    }, [isTrackingLive, onlineDrivers.length]);
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Live GPS Tracking & Geofencing</h1>
+            <p className="text-gray-600 mt-1">Real-time driver tracking with geofencing alerts</p>
           </div>
-          
-          <div className="relative h-96 bg-gradient-to-br from-green-100 via-blue-50 to-gray-100">
-            <div className="w-full h-full relative overflow-hidden rounded-b-2xl">
-              {/* Simulated map with delivery markers */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center">
-                  <MapPin className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
-                  <p className="text-lg font-semibold text-gray-700">Live Map Integration</p>
-                  <p className="text-sm text-gray-500">Showing {activeDeliveries.length} active deliveries</p>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setShowGeofenceForm(true)}
+              className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 transition-colors"
+            >
+              <MapPin className="w-4 h-4" />
+              <span>Add Geofence</span>
+            </button>
+            <button
+              onClick={() => setIsTrackingLive(!isTrackingLive)}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-xl font-semibold transition-colors ${
+                isTrackingLive
+                  ? 'bg-red-600 text-white hover:bg-red-700'
+                  : 'bg-green-600 text-white hover:bg-green-700'
+              }`}
+            >
+              {isTrackingLive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              <span>{isTrackingLive ? 'Stop Tracking' : 'Start Live Tracking'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* GPS Status Dashboard */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-blue-800">Active Routes</h3>
+                <p className="text-3xl font-black text-blue-600">{activeDeliveryCount}</p>
+              </div>
+              <Route className="w-8 h-8 text-blue-600" />
+            </div>
+          </div>
+
+          <div className="bg-green-50 border border-green-200 rounded-2xl p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-green-800">Drivers Online</h3>
+                <p className="text-3xl font-black text-green-600">{onlineDrivers.length}</p>
+              </div>
+              <Navigation className="w-8 h-8 text-green-600" />
+            </div>
+          </div>
+
+          <div className="bg-purple-50 border border-purple-200 rounded-2xl p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-purple-800">Geofences</h3>
+                <p className="text-3xl font-black text-purple-600">{geofences.filter(g => g.active).length}</p>
+              </div>
+              <Shield className="w-8 h-8 text-purple-600" />
+            </div>
+          </div>
+
+          <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-orange-800">Tracking Status</h3>
+                <p className="text-lg font-bold text-orange-600">
+                  {isTrackingLive ? 'LIVE' : 'OFFLINE'}
+                </p>
+              </div>
+              <Activity className="w-8 h-8 text-orange-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Interactive Map */}
+          <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg border border-gray-100">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-gray-900">Live Map View</h3>
+                <div className="flex items-center space-x-2">
+                  <div className={`w-3 h-3 rounded-full ${isTrackingLive ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+                  <span className="text-sm text-gray-600">
+                    {isTrackingLive ? 'Live Updates' : 'Static View'}
+                  </span>
                 </div>
               </div>
-              
-              {/* Sample markers */}
-              <div className="absolute top-1/4 left-1/3 w-4 h-4 bg-blue-600 rounded-full border-2 border-white shadow-lg animate-pulse"></div>
-              <div className="absolute top-1/2 right-1/3 w-4 h-4 bg-green-600 rounded-full border-2 border-white shadow-lg"></div>
-              <div className="absolute bottom-1/3 left-1/2 w-4 h-4 bg-orange-600 rounded-full border-2 border-white shadow-lg animate-pulse"></div>
+            </div>
+
+            <div className="relative h-96 bg-gradient-to-br from-green-100 via-blue-50 to-gray-100">
+              <div className="w-full h-full relative overflow-hidden rounded-b-2xl">
+                {/* Map Center */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-center">
+                    <Globe className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
+                    <p className="text-lg font-semibold text-gray-700">Austin, TX Delivery Zone</p>
+                    <p className="text-sm text-gray-500">
+                      {onlineDrivers.length} drivers • {geofences.length} geofences active
+                    </p>
+                  </div>
+                </div>
+
+                {/* Driver Markers */}
+                {onlineDrivers.map((driver, index) => {
+                  const location = driverLocations[driver.id];
+                  if (!location) return null;
+
+                  const x = 20 + (index * 15) % 60;
+                  const y = 20 + (index * 20) % 60;
+
+                  return (
+                    <div
+                      key={driver.id}
+                      className={`absolute w-6 h-6 rounded-full border-2 border-white shadow-lg cursor-pointer transition-all ${
+                        selectedDriver === driver.id.toString() ? 'bg-red-500 scale-125' : 'bg-blue-500'
+                      } ${isTrackingLive ? 'animate-pulse' : ''}`}
+                      style={{ left: `${x}%`, top: `${y}%` }}
+                      onClick={() => setSelectedDriver(driver.id.toString())}
+                      title={`${driver.name} - Last update: ${new Date(location.timestamp).toLocaleTimeString()}`}
+                    >
+                      <Truck className="w-3 h-3 text-white m-0.5" />
+                    </div>
+                  );
+                })}
+
+                {/* Geofence Areas */}
+                {geofences.map((geofence, index) => (
+                  <div
+                    key={geofence.id}
+                    className="absolute border-2 border-purple-400 border-dashed rounded-full bg-purple-200 bg-opacity-30"
+                    style={{
+                      left: `${25 + (index * 20) % 50}%`,
+                      top: `${25 + (index * 25) % 50}%`,
+                      width: '80px',
+                      height: '80px',
+                      transform: 'translate(-50%, -50%)'
+                    }}
+                    title={`${geofence.name} - Radius: ${geofence.radius}m`}
+                  >
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Shield className="w-4 h-4 text-purple-600" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Driver List & Controls */}
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
+              <div className="p-6 border-b border-gray-200">
+                <h3 className="text-xl font-bold text-gray-900">Driver Locations</h3>
+              </div>
+              <div className="max-h-64 overflow-y-auto">
+                {onlineDrivers.map(driver => {
+                  const location = driverLocations[driver.id];
+                  const route = activeRoutes[Object.keys(activeRoutes).find(key =>
+                    activeRoutes[key].driverId === driver.id.toString()
+                  )];
+
+                  return (
+                    <div
+                      key={driver.id}
+                      className={`p-4 border-b border-gray-100 cursor-pointer transition-colors ${
+                        selectedDriver === driver.id.toString() ? 'bg-blue-50' : 'hover:bg-gray-50'
+                      }`}
+                      onClick={() => setSelectedDriver(driver.id.toString())}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-semibold text-gray-900">{driver.name}</h4>
+                          <p className="text-sm text-gray-600">{driver.vehicle?.licensePlate}</p>
+                          {location && (
+                            <p className="text-xs text-green-600">
+                              Updated: {new Date(location.timestamp).toLocaleTimeString()}
+                            </p>
+                          )}
+                          {route && (
+                            <p className="text-xs text-blue-600">
+                              Status: {route.status} • ETA: {route.eta}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <div className="flex items-center space-x-1">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="text-xs text-green-600">Live</span>
+                          </div>
+                          {location?.speed && (
+                            <p className="text-xs text-gray-600">{location.speed} mph</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Geofence Management */}
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
+              <div className="p-6 border-b border-gray-200">
+                <h3 className="text-xl font-bold text-gray-900">Geofences</h3>
+              </div>
+              <div className="p-4 space-y-3">
+                {geofences.map(geofence => (
+                  <div key={geofence.id} className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                    <div>
+                      <h4 className="font-semibold text-gray-900">{geofence.name}</h4>
+                      <p className="text-sm text-gray-600">Radius: {geofence.radius}m</p>
+                    </div>
+                    <div className={`w-3 h-3 rounded-full ${geofence.active ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="space-y-6">
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
-            <div className="p-4 border-b border-gray-100">
-              <h3 className="text-lg font-bold text-gray-900">Active Deliveries</h3>
-            </div>
-            <div className="p-4 space-y-4 max-h-96 overflow-y-auto">
-              {activeDeliveries.map(delivery => (
-                <div key={delivery.orderId} className={`rounded-xl p-4 border-2 ${
-                  delivery.priority === 'high' ? 'bg-orange-50 border-orange-200' : 'bg-blue-50 border-blue-200'
-                }`}>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="font-bold text-blue-600">{delivery.orderId}</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      delivery.priority === 'high' ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {delivery.priority.toUpperCase()}
-                    </span>
+        {/* Geofence Creation Modal */}
+        {showGeofenceForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Create New Geofence</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                  <input
+                    type="text"
+                    value={newGeofence.name}
+                    onChange={(e) => setNewGeofence({...newGeofence, name: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    placeholder="e.g., Downtown Zone"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Latitude</label>
+                    <input
+                      type="number"
+                      step="any"
+                      value={newGeofence.lat}
+                      onChange={(e) => setNewGeofence({...newGeofence, lat: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                      placeholder="30.2672"
+                    />
                   </div>
-                  <div className="space-y-2">
-                    <p className="font-semibold text-gray-900">{delivery.customer}</p>
-                    <p className="text-sm text-gray-600">{delivery.address}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">ETA: {delivery.estimatedTime}</span>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-16 bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
-                            style={{ width: `${delivery.progress}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-sm font-semibold text-gray-700">{delivery.progress}%</span>
-                      </div>
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Longitude</label>
+                    <input
+                      type="number"
+                      step="any"
+                      value={newGeofence.lng}
+                      onChange={(e) => setNewGeofence({...newGeofence, lng: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                      placeholder="-97.7431"
+                    />
                   </div>
                 </div>
-              ))}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Radius (meters)</label>
+                  <input
+                    type="number"
+                    value={newGeofence.radius}
+                    onChange={(e) => setNewGeofence({...newGeofence, radius: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    placeholder="100"
+                  />
+                </div>
+              </div>
+              <div className="flex space-x-3 mt-6">
+                <button
+                  onClick={() => setShowGeofenceForm(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateGeofence}
+                  className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                >
+                  Create Geofence
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   const AnalyticsView = () => (
     <div className="space-y-6">
