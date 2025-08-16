@@ -3026,7 +3026,12 @@ const FadedSkiesDriverApp = () => {
                             alert('Only Standard Transfer is available');
                           }
                         }}
-                        className={`w-full bg-gradient-to-r ${option.color} text-white p-4 rounded-2xl text-left hover:scale-105 transition-all shadow-lg hover:shadow-xl`}
+                        disabled={option.title !== 'Standard Transfer'}
+                        className={`w-full bg-gradient-to-r ${option.color} text-white p-4 rounded-2xl text-left transition-all shadow-lg ${
+                          option.title === 'Standard Transfer'
+                            ? 'hover:scale-105 hover:shadow-xl'
+                            : 'opacity-50 cursor-not-allowed'
+                        }`}
                       >
                         <div className="flex items-center space-x-4">
                           <span className="text-2xl">{option.icon}</span>
