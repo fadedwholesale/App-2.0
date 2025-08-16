@@ -359,7 +359,8 @@ const FadedSkiesDriverApp = () => {
     manageSchedule: false,
     payoutSettings: false,
     changeBankAccount: false,
-    settings: false
+    settings: false,
+    bankingTransfer: false
   });
 
   // Modal management functions
