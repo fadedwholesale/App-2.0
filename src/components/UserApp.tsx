@@ -3200,7 +3200,7 @@ const FadedSkiesApp = () => {
 
         // Listen for order status updates
         const handleOrderStatusUpdate = (data: any) => {
-          console.log('📊 Order status update:', data);
+          console.log('�� Order status update:', data);
 
           setOrders(prev => prev.map(order =>
             order.id === data.orderId
@@ -3669,7 +3669,7 @@ const FadedSkiesApp = () => {
     setTimeout(() => setShowToast(false), 3000);
   }, []);
 
-  const sendChatMessage = useCallback((message: string) => {
+  const sendChatMessage = useCallback(async (message: string) => {
     const newMessage = {
       id: chatMessages.length + 1,
       sender: 'user',
@@ -3678,6 +3678,27 @@ const FadedSkiesApp = () => {
     };
 
     setChatMessages(prev => [...prev, newMessage]);
+
+    // Check if there's an active delivery and send SMS to driver
+    const activeOrder = orders.find(order =>
+      ['preparing', 'assigned', 'picked_up', 'in_transit'].includes(order.status)
+    );
+
+    if (activeOrder && message.toLowerCase().includes('driver')) {
+      try {
+        // Send SMS to driver about customer message
+        await sendCustomerToDriver(
+          user.phone || '(512) 555-0000',
+          '(512) 555-0001', // Driver phone - would be from order.driverPhone in real app
+          message,
+          activeOrder.id
+        );
+
+        showToastMessage('Message sent to your driver via SMS!');
+      } catch (error) {
+        console.error('Failed to send SMS to driver:', error);
+      }
+    }
 
     // Simulate agent typing
     setIsTyping(true);
@@ -3691,7 +3712,7 @@ const FadedSkiesApp = () => {
       };
       setChatMessages(prev => [...prev, agentResponse]);
     }, 1500 + Math.random() * 1000);
-  }, [chatMessages]);
+  }, [chatMessages, orders, user.phone, sendCustomerToDriver]);
 
   const getAgentResponse = (userMessage: string) => {
     const lowerMessage = userMessage.toLowerCase();
