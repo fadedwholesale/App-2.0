@@ -4827,6 +4827,9 @@ const FadedSkiesApp = () => {
             </div>
           )}
 
+          {/* Location Permission Modal */}
+          <LocationPermissionModal />
+
           {/* Bottom Navigation */}
           <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-200 p-4 flex justify-around shadow-xl">
             {[
