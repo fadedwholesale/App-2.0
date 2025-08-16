@@ -3703,6 +3703,20 @@ const FadedSkiesApp = () => {
   return (
     <div className="max-w-md mx-auto bg-gray-50 min-h-screen">
       <Toast showToast={showToast} toastMessage={toastMessage} />
+
+      {/* Real-time Sync Toast */}
+      {syncToast.show && (
+        <div className="fixed top-32 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300">
+          <div className={`px-6 py-4 rounded-2xl shadow-xl border flex items-center space-x-3 ${
+            syncToast.type === 'success' ? 'bg-green-600 text-white border-green-500' :
+            syncToast.type === 'warning' ? 'bg-orange-600 text-white border-orange-500' :
+            'bg-blue-600 text-white border-blue-500'
+          }`}>
+            <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+            <span className="font-semibold">{syncToast.message}</span>
+          </div>
+        </div>
+      )}
       
       {!isAuthenticated ? (
         <div className="min-h-screen bg-gradient-to-br from-emerald-600 via-green-600 to-teal-700 flex items-center justify-center p-4">
