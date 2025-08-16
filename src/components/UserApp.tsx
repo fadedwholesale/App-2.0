@@ -2688,6 +2688,8 @@ const FadedSkiesApp = () => {
   const { products, setProducts, setupRealTimeSync, addOrder } = useCannabisDeliveryStore();
   const { syncCustomerProfile } = useDataSync();
   const { sendCustomerToDriver, sendDeliveryNotification } = useSMS();
+  const { requestPermission, startTracking, getCurrentLocation } = useLocation();
+  const { createSession, sendMessage, getSession } = useSecureChat();
 
   const [currentView, setCurrentView] = useState<string>('auth');
   const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot'>('login');
@@ -4659,7 +4661,7 @@ const FadedSkiesApp = () => {
                   <div className="grid grid-cols-2 gap-4">
                     {[
                       { title: 'Order Status', icon: '📦', color: 'from-green-400 to-emerald-500' },
-                      { title: 'Payment Issues', icon: '💳', color: 'from-blue-400 to-cyan-500' },
+                      { title: 'Payment Issues', icon: '����', color: 'from-blue-400 to-cyan-500' },
                       { title: 'Product Info', icon: '🌿', color: 'from-purple-400 to-violet-500' },
                       { title: 'Account Help', icon: '������', color: 'from-orange-400 to-amber-500' }
                     ].map((item, index) => (
