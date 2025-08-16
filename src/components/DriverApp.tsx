@@ -824,6 +824,7 @@ const FadedSkiesDriverApp = () => {
 
             // Stop location tracking on disconnect
             stopLocationTracking();
+            stopTracking();
 
             wsService.disconnect();
             console.log('🔌 Driver WebSocket disconnected');
