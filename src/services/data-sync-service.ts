@@ -221,16 +221,24 @@ export class DataSyncService {
 
   // Sync customer profile updates to admin
   syncCustomerProfile(customerId: number, profileData: any) {
-    console.log('📡 Broadcasting customer profile update:', customerId);
-    
-    wsService.send({
-      type: 'customer:profile_update',
-      data: {
-        customerId,
-        ...profileData,
-        timestamp: new Date().toISOString()
+    try {
+      console.log('📡 Broadcasting customer profile update:', customerId);
+
+      if (wsService && typeof wsService.send === 'function') {
+        wsService.send({
+          type: 'customer:profile_update',
+          data: {
+            customerId,
+            ...profileData,
+            timestamp: new Date().toISOString()
+          }
+        });
+      } else {
+        console.warn('WebSocket service not available for customer profile sync');
       }
-    });
+    } catch (error) {
+      console.error('Failed to sync customer profile:', error);
+    }
   }
 
   // Sync order updates across all apps
