@@ -2008,6 +2008,18 @@ const FadedSkiesTrackingAdmin = () => {
                     placeholder="100"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Alert Type</label>
+                  <select
+                    value={newGeofence.alertType}
+                    onChange={(e) => setNewGeofence({...newGeofence, alertType: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="both">Entry & Exit</option>
+                    <option value="entry">Entry Only</option>
+                    <option value="exit">Exit Only</option>
+                  </select>
+                </div>
               </div>
               <div className="flex space-x-3 mt-6">
                 <button
