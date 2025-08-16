@@ -44,7 +44,10 @@ import {
   Award,
   Target,
   Activity,
-  MessageCircle
+  MessageCircle,
+  UserPlus,
+  RotateCcw,
+  Search
 } from 'lucide-react';
 
 // Import simple WebSocket service for real-time admin monitoring
