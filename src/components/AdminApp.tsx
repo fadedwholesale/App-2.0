@@ -50,6 +50,7 @@ import {
 
 // Import simple WebSocket service for real-time admin monitoring
 import { wsService } from '../services/simple-websocket';
+import { dataSyncService } from '../services/data-sync-service';
 
 const FadedSkiesTrackingAdmin = () => {
   const [currentView, setCurrentView] = useState('dashboard');
