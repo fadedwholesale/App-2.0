@@ -243,6 +243,9 @@ const FadedSkiesTrackingAdmin = () => {
 
   // Initialize sample products if store is empty and setup real-time sync
   useEffect(() => {
+    // Initialize data sync service
+    dataSyncService.initialize();
+
     // Setup real-time sync for products
     setupRealTimeSync();
 
