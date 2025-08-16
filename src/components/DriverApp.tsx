@@ -270,6 +270,8 @@ const FadedSkiesDriverApp = () => {
     licenseNumber: ''
   });
 
+  const { updateDriverStatus } = useCannabisDeliveryStore();
+
   const [driver, setDriver] = useState<Driver>({
     id: 'driver_001',
     name: 'Marcus Chen',
