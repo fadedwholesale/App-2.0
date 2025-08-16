@@ -2682,7 +2682,7 @@ const ProductCard = React.memo(({ product, addToCart, addingToCart }: {
 
 const FadedSkiesApp = () => {
   // Store integration for real-time product updates
-  const { products, setProducts, setupRealTimeSync } = useCannabisDeliveryStore();
+  const { products, setProducts, setupRealTimeSync, addOrder } = useCannabisDeliveryStore();
   const { syncCustomerProfile } = useDataSync();
 
   const [currentView, setCurrentView] = useState<string>('auth');
@@ -4489,7 +4489,7 @@ const FadedSkiesApp = () => {
                     <div className="flex items-center justify-between py-3">
                       <span className="font-medium text-gray-700">ID Verification</span>
                       <span className={`font-semibold ${user.idVerified ? 'text-green-600' : 'text-amber-600'}`}>
-                        {user.idVerified ? '✅ Verified' : '⏳ Pending'}
+                        {user.idVerified ? '✅ Verified' : '��� Pending'}
                       </span>
                     </div>
                   </div>
