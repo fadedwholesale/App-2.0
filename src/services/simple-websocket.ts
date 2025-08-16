@@ -102,8 +102,26 @@ export class SimpleWebSocketService {
         case 'admin:order_status_update':
           this.emit('order_status_update', message.data);
           break;
+        case 'admin:assign_driver':
+          this.emit('driver_assigned', message.data);
+          break;
         case 'driver:accept_order':
           this.emit('driver_accept_order', message.data);
+          break;
+        case 'driver:pickup_complete':
+          this.emit('pickup_complete', message.data);
+          break;
+        case 'driver:location_update':
+          this.emit('driver_location_update', message.data);
+          break;
+        case 'admin:send_message':
+          this.emit('admin_message', message.data);
+          break;
+        case 'driver:send_message':
+          this.emit('driver_message', message.data);
+          break;
+        case 'admin:geofence_alert':
+          this.emit('geofence_alert', message.data);
           break;
         case 'admin:product_added':
           this.emit('product_added', message.data);
