@@ -1707,7 +1707,7 @@ const SubmitTicketModal = React.memo(({
                   {attachments.map((file, index) => (
                     <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded-lg">
                       <span className="text-sm text-gray-700 flex items-center">
-                        <span className="mr-2">��</span>
+                        <span className="mr-2">📄</span>
                         {file}
                       </span>
                       <button
@@ -2685,6 +2685,7 @@ const FadedSkiesApp = () => {
   // Store integration for real-time product updates
   const { products, setProducts, setupRealTimeSync, addOrder } = useCannabisDeliveryStore();
   const { syncCustomerProfile } = useDataSync();
+  const { sendCustomerToDriver, sendDeliveryNotification } = useSMS();
 
   const [currentView, setCurrentView] = useState<string>('auth');
   const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot'>('login');
