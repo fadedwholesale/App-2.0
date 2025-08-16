@@ -1331,7 +1331,7 @@ const ContactModal = React.memo(({
                   onClick={() => window.open('tel:5554203233', '_self')}
                   className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-xl font-bold hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
                 >
-                  <span>📞</span>
+                  <span>���</span>
                   <span>Call Now</span>
                 </button>
               </div>
@@ -3572,6 +3572,16 @@ const FadedSkiesApp = () => {
         addOrder(storeOrder);
         setCart([]);
 
+        // Send SMS confirmation to customer
+        try {
+          await sendDeliveryNotification(user.phone || '(512) 555-0000', {
+            type: 'order_confirmed',
+            orderId: newOrder.id
+          });
+        } catch (error) {
+          console.error('Failed to send SMS confirmation:', error);
+        }
+
         // Send real-time notification to admin and drivers
         try {
           wsService.send({
@@ -4261,7 +4271,7 @@ const FadedSkiesApp = () => {
                         { name: "Driver's License", icon: "🚗" },
                         { name: "State ID Card", icon: "��" },
                         { name: "Passport", icon: "📘" },
-                        { name: "Military ID", icon: "🎖️" }
+                        { name: "Military ID", icon: "���️" }
                       ].map(idType => (
                         <div key={idType.name} className="bg-white border-2 border-gray-100 rounded-2xl p-4 text-center hover:border-emerald-200 transition-colors shadow-sm">
                           <div className="text-2xl mb-2">{idType.icon}</div>
