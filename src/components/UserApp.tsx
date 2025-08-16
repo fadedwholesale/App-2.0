@@ -3010,6 +3010,7 @@ const FadedSkiesApp = () => {
   const updateQuantity = useCallback((id: number, change: number) => {
     // Preserve scroll position during cart updates
     const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+    setPreserveScrollPosition(scrollPosition);
 
     setCart(prev => {
       const updatedCart = prev.map(item => {
@@ -3035,20 +3036,6 @@ const FadedSkiesApp = () => {
 
       return updatedCart;
     });
-
-    // Multiple scroll restoration attempts to ensure it works
-    const restoreScroll = () => {
-      window.scrollTo({ top: scrollPosition, behavior: 'instant' });
-    };
-
-    // Immediate restoration
-    requestAnimationFrame(restoreScroll);
-
-    // Backup restorations with increasing delays
-    setTimeout(restoreScroll, 0);
-    setTimeout(restoreScroll, 10);
-    setTimeout(restoreScroll, 50);
-    setTimeout(restoreScroll, 100);
   }, []);
 
   const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
