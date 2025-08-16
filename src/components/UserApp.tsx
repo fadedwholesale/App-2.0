@@ -2668,12 +2668,6 @@ const FadedSkiesApp = () => {
     description: ''
   });
 
-  // Live chat state
-  const [chatMessages, setChatMessages] = useState([
-    { id: 1, sender: 'agent', message: 'Hi! How can I help you today?', timestamp: new Date() }
-  ]);
-  const [chatInput, setChatInput] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
 
   // Order modal state
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -4520,7 +4514,7 @@ const FadedSkiesApp = () => {
                       <p className="font-bold text-lg text-gray-900">{user.rewards}</p>
                     </div>
                     <div className="bg-white rounded-2xl p-4 text-center shadow-sm">
-                      <div className="text-2xl mb-1">📦</div>
+                      <div className="text-2xl mb-1">���</div>
                       <p className="text-sm font-semibold text-gray-600">Orders</p>
                       <p className="font-bold text-lg text-gray-900">{orders.length}</p>
                     </div>
