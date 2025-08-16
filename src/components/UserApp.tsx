@@ -3784,7 +3784,10 @@ const FadedSkiesApp = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-gray-50 min-h-screen">
+    <div
+      className={`max-w-md mx-auto bg-gray-50 min-h-screen ${isCartOperation ? 'overflow-hidden' : ''}`}
+      style={isCartOperation ? { position: 'fixed', width: '100%', top: `-${preserveScrollPosition || 0}px` } : {}}
+    >
       <Toast showToast={showToast} toastMessage={toastMessage} />
 
       {/* Real-time Sync Toast */}
