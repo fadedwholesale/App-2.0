@@ -1909,16 +1909,14 @@ const OrderDetailsModal = React.memo(({
                 {['preparing', 'assigned', 'picked_up', 'in_transit'].includes(order.status) && (
                   <button
                     type="button"
-                    onClick={() => openModal('sms', {
-                      driver: {
-                        name: order.driver,
-                        phone: order.driverPhone
-                      }
-                    })}
+                    onClick={() => {
+                      const message = `Hi ${order.driver}, I have a question about my delivery (Order #${order.id}).`;
+                      window.location.href = `sms:${order.driverPhone}?body=${encodeURIComponent(message)}`;
+                    }}
                     className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
                   >
                     <MessageCircle className="w-4 h-4" />
-                    <span>Send SMS to Driver</span>
+                    <span>Text Driver</span>
                   </button>
                 )}
               </div>
@@ -4489,7 +4487,7 @@ const FadedSkiesApp = () => {
                                 ? 'bg-amber-100 text-amber-800'
                                 : 'bg-gray-100 text-gray-800'
                             }`}>
-                              {order.status === 'delivered' && '�� Delivered'}
+                              {order.status === 'delivered' && '��� Delivered'}
                               {order.status === 'in-transit' && '🚚 In Transit'}
                               {order.status === 'preparing' && '📦 Preparing'}
                               {order.status === 'cancelled' && '❌ Cancelled'}
