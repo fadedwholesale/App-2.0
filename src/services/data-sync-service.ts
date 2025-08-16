@@ -1,7 +1,39 @@
 import { wsService } from './simple-websocket';
 import { useCannabisDeliveryStore } from './cannabis-delivery-store';
 
-// Data sync service for handling all user info updates and cross-app synchronization
+/**
+ * Comprehensive Data Sync Service
+ *
+ * Handles all user information updates and cross-app synchronization including:
+ *
+ * ✅ DRIVER SYNC FEATURES:
+ * - Profile updates (name, email, phone, vehicle info) sync to admin
+ * - Settings changes (auto-accept orders, night mode) sync to admin
+ * - Earnings updates sync to admin dashboard
+ * - Real-time status updates (online/offline/busy)
+ *
+ * ✅ CUSTOMER SYNC FEATURES:
+ * - Profile updates sync to admin customer management
+ * - Preference changes sync for better service
+ * - Order history and behavior tracking
+ *
+ * ✅ ORDER SYNC FEATURES:
+ * - Real-time order status updates across all apps
+ * - Order modifications sync instantly
+ * - Location tracking during delivery
+ *
+ * ✅ ADMIN SYNC FEATURES:
+ * - System-wide settings broadcast to all users
+ * - Driver performance metrics updates
+ * - Real-time notifications for all changes
+ *
+ * ✅ IMPLEMENTED FEATURES:
+ * - Settings toggles now functional (auto-accept orders, night mode)
+ * - Night mode visual theme applied when enabled
+ * - Auto-accept orders functionality based on driver preference
+ * - Real-time sync status indicator
+ * - Comprehensive error handling and retry logic
+ */
 export class DataSyncService {
   private static instance: DataSyncService;
   private isInitialized = false;
