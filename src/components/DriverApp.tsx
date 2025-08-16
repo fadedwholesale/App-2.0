@@ -570,11 +570,17 @@ const FadedSkiesDriverApp = () => {
         secureChatService.initialize();
 
         // Request location permission for GPS tracking
-        const locationPermission = await requestPermission();
-        if (locationPermission.granted) {
-          await startTracking('driver', driver.id);
-          console.log('📍 Driver location tracking started');
-        }
+        requestPermission().then(locationPermission => {
+          if (locationPermission.granted) {
+            startTracking('driver', driver.id).then(success => {
+              if (success) {
+                console.log('📍 Driver location tracking started');
+              }
+            });
+          }
+        }).catch(error => {
+          console.warn('Location permission error:', error);
+        });
 
         // Setup real-time sync for driver communication
         setupRealTimeSync();
@@ -2853,7 +2859,7 @@ const FadedSkiesDriverApp = () => {
                     {[
                       { status: 'accepted', label: 'Order Accepted', icon: '✅' },
                       { status: 'picked_up', label: 'Order Picked Up', icon: '📦' },
-                      { status: 'in_transit', label: 'En Route to Customer', icon: '🚗' },
+                      { status: 'in_transit', label: 'En Route to Customer', icon: '���' },
                       { status: 'delivered', label: 'Delivered', icon: '🏠' }
                     ].map((step, index) => {
                       const isCompleted = ['accepted', 'picked_up', 'in_transit', 'delivered'].indexOf(activeOrder.status) >= index;
