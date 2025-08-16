@@ -257,7 +257,42 @@ export const useCannabisDeliveryStore = create<CannabisDeliveryState>()(
         // Initial State
         products: [],
         customers: [],
-        orders: [],
+        orders: [
+          {
+            id: 1,
+            orderId: "FS2025001",
+            customer: "Sarah Johnson",
+            customerEmail: "sarah@example.com",
+            items: ["Blue Dream 3.5g", "CBD Gummies 10mg"],
+            total: 89.50,
+            status: "pending",
+            date: new Date().toLocaleDateString(),
+            time: new Date().toLocaleTimeString(),
+            deliveryAddress: "1234 Austin St, Austin, TX 78701",
+            paymentMethod: "Credit Card",
+            estimatedDelivery: "45-60 minutes",
+            notes: "Please call upon arrival",
+            priority: "normal",
+            location: "Austin Downtown"
+          },
+          {
+            id: 2,
+            orderId: "FS2025002",
+            customer: "Mike Chen",
+            customerEmail: "mike@example.com",
+            items: ["Sour Diesel 1/8oz", "Vape Cartridge"],
+            total: 125.00,
+            status: "pending",
+            date: new Date().toLocaleDateString(),
+            time: new Date().toLocaleTimeString(),
+            deliveryAddress: "5678 South Lamar, Austin, TX 78704",
+            paymentMethod: "Cash",
+            estimatedDelivery: "30-45 minutes",
+            notes: "Apartment 205, buzz #205",
+            priority: "high",
+            location: "Austin South"
+          }
+        ],
         drivers: [
           {
             id: 1,
