@@ -2950,11 +2950,34 @@ const FadedSkiesApp = () => {
     return matchesCategory && matchesSearch;
   });
 
+  // State to track and preserve scroll position during operations
+  const [preserveScrollPosition, setPreserveScrollPosition] = useState<number | null>(null);
+
+  // Effect to restore scroll position when needed
+  useEffect(() => {
+    if (preserveScrollPosition !== null) {
+      const restoreScroll = () => {
+        window.scrollTo({ top: preserveScrollPosition, behavior: 'instant' });
+      };
+
+      // Multiple restoration attempts
+      requestAnimationFrame(restoreScroll);
+      setTimeout(restoreScroll, 0);
+      setTimeout(restoreScroll, 10);
+      setTimeout(restoreScroll, 50);
+      setTimeout(restoreScroll, 100);
+
+      // Clear the preserved position after restoration
+      setTimeout(() => setPreserveScrollPosition(null), 200);
+    }
+  }, [preserveScrollPosition]);
+
   const addToCart = useCallback((product: Product) => {
     if (!product.inStock) return;
 
     // Preserve scroll position during cart updates
     const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+    setPreserveScrollPosition(scrollPosition);
 
     // Set loading state for visual feedback
     setAddingToCart(product.id);
