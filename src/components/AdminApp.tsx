@@ -248,6 +248,9 @@ const FadedSkiesTrackingAdmin = () => {
     // Initialize data sync service
     dataSyncService.initialize();
 
+    // Initialize SMS service
+    smsService.setupSMSListeners();
+
     // Setup real-time sync for products
     setupRealTimeSync();
 
