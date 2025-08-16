@@ -180,6 +180,33 @@ export class SimpleWebSocketService {
         case 'admin:auto_assign_order':
           this.emit('order_auto_assigned', message.data);
           break;
+        case 'driver:profile_update':
+          this.emit('driver:profile_update', message.data);
+          break;
+        case 'driver:settings_update':
+          this.emit('driver:settings_update', message.data);
+          break;
+        case 'driver:earnings_update':
+          this.emit('driver:earnings_update', message.data);
+          break;
+        case 'customer:profile_update':
+          this.emit('customer:profile_update', message.data);
+          break;
+        case 'customer:preferences_update':
+          this.emit('customer:preferences_update', message.data);
+          break;
+        case 'order:status_update':
+          this.emit('order:status_update', message.data);
+          break;
+        case 'order:details_update':
+          this.emit('order:details_update', message.data);
+          break;
+        case 'admin:settings_update':
+          this.emit('admin:settings_update', message.data);
+          break;
+        case 'sync:batch_update':
+          this.emit('sync:batch_update', message.data);
+          break;
         case 'admin:product_updated':
           this.emit('product_updated', message.data);
           break;
