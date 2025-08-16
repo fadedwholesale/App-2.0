@@ -13,36 +13,41 @@ export const errorHandler = (error: any, req: Request, res: Response, next: Next
 
   // Prisma errors
   if (error.code === 'P2002') {
-    return res.status(409).json({
+    res.status(409).json({
       error: 'A record with this information already exists'
     });
+    return;
   }
 
   if (error.code === 'P2025') {
-    return res.status(404).json({
+    res.status(404).json({
       error: 'Record not found'
     });
+    return;
   }
 
   // JWT errors
   if (error.name === 'JsonWebTokenError') {
-    return res.status(401).json({
+    res.status(401).json({
       error: 'Invalid token'
     });
+    return;
   }
 
   if (error.name === 'TokenExpiredError') {
-    return res.status(401).json({
+    res.status(401).json({
       error: 'Token expired'
     });
+    return;
   }
 
   // Validation errors
   if (error.name === 'ValidationError') {
-    return res.status(400).json({
+    res.status(400).json({
       error: 'Validation failed',
       details: error.message
     });
+    return;
   }
 
   // Default error
