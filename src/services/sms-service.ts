@@ -216,25 +216,33 @@ export const useSMS = () => {
   };
 };
 
+// Helper function to safely access environment variables
+const getEnvVar = (key: string, defaultValue: string = ''): string => {
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    return import.meta.env[key] || defaultValue;
+  }
+  return defaultValue;
+};
+
 // Production SMS API integration template
 export const SMS_API_CONFIG = {
   // Twilio configuration example
   twilio: {
-    accountSid: import.meta.env?.VITE_TWILIO_ACCOUNT_SID || '',
-    authToken: import.meta.env?.VITE_TWILIO_AUTH_TOKEN || '',
-    fromPhone: import.meta.env?.VITE_TWILIO_PHONE_NUMBER || ''
+    accountSid: getEnvVar('VITE_TWILIO_ACCOUNT_SID'),
+    authToken: getEnvVar('VITE_TWILIO_AUTH_TOKEN'),
+    fromPhone: getEnvVar('VITE_TWILIO_PHONE_NUMBER')
   },
 
   // AWS SNS configuration example
   aws: {
-    region: import.meta.env?.VITE_AWS_REGION || 'us-east-1',
-    accessKeyId: import.meta.env?.VITE_AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: import.meta.env?.VITE_AWS_SECRET_ACCESS_KEY || ''
+    region: getEnvVar('VITE_AWS_REGION', 'us-east-1'),
+    accessKeyId: getEnvVar('VITE_AWS_ACCESS_KEY_ID'),
+    secretAccessKey: getEnvVar('VITE_AWS_SECRET_ACCESS_KEY')
   },
 
   // MessageBird configuration example
   messageBird: {
-    apiKey: import.meta.env?.VITE_MESSAGEBIRD_API_KEY || '',
+    apiKey: getEnvVar('VITE_MESSAGEBIRD_API_KEY'),
     originator: 'FadedSkies'
   }
 };
