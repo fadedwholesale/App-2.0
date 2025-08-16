@@ -27,7 +27,7 @@ router.post('/', [
   body('paymentMethod').notEmpty(),
   body('specialInstructions').optional().isString(),
   body('tip').optional().isFloat({ min: 0 })
-], async (req: AuthenticatedRequest, res): Promise<void> => {
+], async (req: AuthenticatedRequest, res): Promise<any> => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -241,7 +241,7 @@ router.get('/', [
   query('status').optional().isIn(['PENDING', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'ASSIGNED', 'ACCEPTED', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED']),
   query('page').optional().isInt({ min: 1 }),
   query('limit').optional().isInt({ min: 1, max: 100 })
-], async (req: AuthenticatedRequest, res): Promise<void> => {
+], async (req: AuthenticatedRequest, res): Promise<any> => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -336,7 +336,7 @@ router.get('/', [
 });
 
 // Get specific order
-router.get('/:orderId', async (req: AuthenticatedRequest, res): Promise<void> => {
+router.get('/:orderId', async (req: AuthenticatedRequest, res): Promise<any> => {
   try {
     const { orderId } = req.params;
     const userId = req.user!.userId;
@@ -414,7 +414,7 @@ router.get('/:orderId', async (req: AuthenticatedRequest, res): Promise<void> =>
 router.patch('/:orderId/status', [
   body('status').isIn(['CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'ASSIGNED', 'ACCEPTED', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED']),
   body('notes').optional().isString()
-], async (req: AuthenticatedRequest, res): Promise<void> => {
+], async (req: AuthenticatedRequest, res): Promise<any> => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -600,7 +600,7 @@ router.patch('/:orderId/status', [
 // Cancel order (customers only, within certain time window)
 router.patch('/:orderId/cancel', [
   body('reason').optional().isString()
-], async (req: AuthenticatedRequest, res): Promise<void> => {
+], async (req: AuthenticatedRequest, res): Promise<any> => {
   try {
     const { orderId } = req.params;
     const { reason } = req.body;

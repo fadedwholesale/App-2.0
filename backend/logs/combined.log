@@ -1,0 +1,9 @@
+2025-08-16T16:16:14.717Z [[32minfo[39m]: No Redis URL provided, using in-memory cache
+2025-08-16T16:16:14.719Z [[32minfo[39m]: Redis connected successfully
+2025-08-16T16:16:14.720Z [[32minfo[39m]: Initializing background jobs...
+2025-08-16T16:16:14.720Z [[32minfo[39m]: Background jobs initialized successfully
+2025-08-16T16:16:14.720Z [[32minfo[39m]: Background jobs initialized
+2025-08-16T16:16:14.722Z [[32minfo[39m]: 🚀 Server running on port 3002
+2025-08-16T16:16:14.722Z [[32minfo[39m]: 📱 Environment: development
+2025-08-16T16:16:14.722Z [[32minfo[39m]: 🔗 Socket.IO enabled
+2025-08-16T16:16:14.722Z [[32minfo[39m]: 📋 API Documentation: http://localhost:3002/health
