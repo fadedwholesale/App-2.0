@@ -1049,6 +1049,355 @@ const FadedSkiesTrackingAdmin = () => {
     );
   };
 
+  // Create User Modal
+  const CreateUserModal = () => {
+    const [formData, setFormData] = useState({
+      email: '',
+      password: '',
+      name: '',
+      phone: '',
+      role: 'CUSTOMER',
+      isVerified: true,
+      driverData: {
+        licenseNumber: '',
+        vehicleMake: '',
+        vehicleModel: '',
+        vehicleYear: new Date().getFullYear(),
+        vehicleColor: '',
+        licensePlate: ''
+      }
+    });
+
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+
+      try {
+        const response = await fetch('/api/admin/users/create', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(formData)
+        });
+
+        if (response.ok) {
+          console.log('User created successfully');
+          closeModal('createUser');
+          // Refresh user list here
+        } else {
+          const error = await response.json();
+          console.error('Create user error:', error);
+        }
+      } catch (error) {
+        console.error('Create user error:', error);
+      }
+    };
+
+    return (
+      <Modal
+        isOpen={modals.createUser}
+        onClose={() => closeModal('createUser')}
+        title="Create New User"
+        size="lg"
+      >
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+              <input
+                type="password"
+                value={formData.password}
+                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                minLength={6}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Phone</label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Role</label>
+              <select
+                value={formData.role}
+                onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              >
+                <option value="CUSTOMER">Customer</option>
+                <option value="DRIVER">Driver</option>
+                <option value="ADMIN">Admin</option>
+              </select>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              <input
+                type="checkbox"
+                id="isVerified"
+                checked={formData.isVerified}
+                onChange={(e) => setFormData(prev => ({ ...prev, isVerified: e.target.checked }))}
+                className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+              />
+              <label htmlFor="isVerified" className="text-sm font-medium text-gray-700">
+                Verified Account
+              </label>
+            </div>
+          </div>
+
+          {formData.role === 'DRIVER' && (
+            <div className="border-t border-gray-200 pt-6">
+              <h4 className="text-lg font-semibold text-gray-900 mb-4">Driver Information</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">License Number</label>
+                  <input
+                    type="text"
+                    value={formData.driverData.licenseNumber}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      driverData: { ...prev.driverData, licenseNumber: e.target.value }
+                    }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">License Plate</label>
+                  <input
+                    type="text"
+                    value={formData.driverData.licensePlate}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      driverData: { ...prev.driverData, licensePlate: e.target.value }
+                    }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Vehicle Make</label>
+                  <input
+                    type="text"
+                    value={formData.driverData.vehicleMake}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      driverData: { ...prev.driverData, vehicleMake: e.target.value }
+                    }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Vehicle Model</label>
+                  <input
+                    type="text"
+                    value={formData.driverData.vehicleModel}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      driverData: { ...prev.driverData, vehicleModel: e.target.value }
+                    }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Vehicle Year</label>
+                  <input
+                    type="number"
+                    value={formData.driverData.vehicleYear}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      driverData: { ...prev.driverData, vehicleYear: parseInt(e.target.value) }
+                    }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Vehicle Color</label>
+                  <input
+                    type="text"
+                    value={formData.driverData.vehicleColor}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      driverData: { ...prev.driverData, vehicleColor: e.target.value }
+                    }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={() => closeModal('createUser')}
+              className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors"
+            >
+              Create User
+            </button>
+          </div>
+        </form>
+      </Modal>
+    );
+  };
+
+  // User Details Modal
+  const UserDetailsModal = () => {
+    const user = selectedUser;
+
+    if (!user) return null;
+
+    return (
+      <Modal
+        isOpen={modals.userDetails}
+        onClose={() => closeModal('userDetails')}
+        title={`User Details - ${user.name || user.user?.name}`}
+        size="xl"
+      >
+        <div className="space-y-6">
+          {/* User Basic Info */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-gray-50 rounded-xl p-4">
+              <h4 className="text-lg font-bold text-gray-900 mb-3">Basic Information</h4>
+              <div className="space-y-2">
+                <p><span className="font-semibold">Name:</span> {user.name || user.user?.name}</p>
+                <p><span className="font-semibold">Email:</span> {user.email || user.user?.email}</p>
+                <p><span className="font-semibold">Phone:</span> {user.phone || user.user?.phone || 'N/A'}</p>
+                <p><span className="font-semibold">Role:</span> {user.role || user.user?.role}</p>
+                <p><span className="font-semibold">Joined:</span> {new Date(user.createdAt || user.user?.createdAt).toLocaleDateString()}</p>
+              </div>
+            </div>
+
+            <div className="bg-green-50 rounded-xl p-4">
+              <h4 className="text-lg font-bold text-gray-900 mb-3">Account Status</h4>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <span className="font-semibold">Active:</span>
+                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                    (user.isActive ?? user.user?.isActive) ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                    {(user.isActive ?? user.user?.isActive) ? 'Yes' : 'No'}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="font-semibold">Verified:</span>
+                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                    (user.isVerified ?? user.user?.isVerified) ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {(user.isVerified ?? user.user?.isVerified) ? 'Yes' : 'No'}
+                  </span>
+                </div>
+                {user.loyaltyPoints !== undefined && (
+                  <p><span className="font-semibold">Loyalty Points:</span> {user.loyaltyPoints}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Driver Specific Information */}
+          {(user.role === 'DRIVER' || user.user?.role === 'DRIVER') && (
+            <div className="bg-blue-50 rounded-xl p-4">
+              <h4 className="text-lg font-bold text-gray-900 mb-3">Driver Information</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p><span className="font-semibold">License:</span> {user.licenseNumber || 'N/A'}</p>
+                  <p><span className="font-semibold">Vehicle:</span> {user.vehicleYear} {user.vehicleMake} {user.vehicleModel}</p>
+                  <p><span className="font-semibold">Color:</span> {user.vehicleColor}</p>
+                  <p><span className="font-semibold">License Plate:</span> {user.licensePlate}</p>
+                </div>
+                <div>
+                  <p><span className="font-semibold">Online:</span> {user.isOnline ? 'Yes' : 'No'}</p>
+                  <p><span className="font-semibold">Rating:</span> ⭐ {user.rating || 'N/A'}</p>
+                  <p><span className="font-semibold">Total Deliveries:</span> {user.totalDeliveries || 0}</p>
+                  <p><span className="font-semibold">Total Earnings:</span> ${user.totalEarnings || 0}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Order History */}
+          {user.totalOrders > 0 && (
+            <div className="bg-purple-50 rounded-xl p-4">
+              <h4 className="text-lg font-bold text-gray-900 mb-3">Order Statistics</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-purple-600">{user.totalOrders}</p>
+                  <p className="text-sm text-gray-600">Total Orders</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-purple-600">${user.totalSpent || 0}</p>
+                  <p className="text-sm text-gray-600">Total Spent</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-purple-600">
+                    ${user.totalOrders > 0 ? ((user.totalSpent || 0) / user.totalOrders).toFixed(2) : '0'}
+                  </p>
+                  <p className="text-sm text-gray-600">Avg Order Value</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
+            <button
+              onClick={() => closeModal('userDetails')}
+              className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+            >
+              Close
+            </button>
+            <button
+              onClick={() => {
+                closeModal('userDetails');
+                openModal('editUser', user);
+              }}
+              className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors"
+            >
+              Edit User
+            </button>
+          </div>
+        </div>
+      </Modal>
+    );
+  };
+
   // Confirmation Modal
   const ConfirmationModal = () => {
     const handleConfirm = () => {
