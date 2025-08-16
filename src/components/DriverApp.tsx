@@ -270,7 +270,7 @@ const FadedSkiesDriverApp = () => {
     licenseNumber: ''
   });
 
-  const { updateDriverStatus } = useCannabisDeliveryStore();
+  const { updateDriverStatus, setupRealTimeSync } = useCannabisDeliveryStore();
 
   const [driver, setDriver] = useState<Driver>({
     id: 'driver_001',
@@ -1676,7 +1676,7 @@ const FadedSkiesDriverApp = () => {
 
     const handleSave = () => {
       // Mask account number for display
-      const maskedAccount = `���•••${bankData.accountNumber.slice(-4)}`;
+      const maskedAccount = `••••${bankData.accountNumber.slice(-4)}`;
       const bankDisplay = `${bankData.bankName} ${maskedAccount}`;
 
       setDriver(prev => ({
