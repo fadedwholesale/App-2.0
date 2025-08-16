@@ -2774,6 +2774,7 @@ const FadedSkiesApp = () => {
   const [toastMessage, setToastMessage] = useState<string>('');
   const [showToast, setShowToast] = useState<boolean>(false);
   const [addingToCart, setAddingToCart] = useState<number | null>(null);
+  const [syncToast, setSyncToast] = useState({ show: false, message: '', type: 'success' });
 
   // Modal states
   const [currentModal, setCurrentModal] = useState<string | null>(null);
