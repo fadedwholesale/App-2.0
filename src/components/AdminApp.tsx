@@ -51,6 +51,7 @@ import {
 // Import simple WebSocket service for real-time admin monitoring
 import { wsService } from '../services/simple-websocket';
 import { dataSyncService } from '../services/data-sync-service';
+import { useSMS, smsService } from '../services/sms-service';
 
 const FadedSkiesTrackingAdmin = () => {
   const [currentView, setCurrentView] = useState('dashboard');
@@ -478,7 +479,7 @@ const FadedSkiesTrackingAdmin = () => {
         // Add new product with enhanced real-time sync
         broadcastProductAdded(productData);
         console.log('✅ AdminApp: Product added with real-time sync:', productData.name);
-        console.log('📡 Broadcasting new product to all connected users...');
+        console.log('���� Broadcasting new product to all connected users...');
 
         // Show confirmation toast
         setTimeout(() => {
