@@ -215,7 +215,10 @@ const FadedSkiesTrackingAdmin = () => {
       orderDetails: false,
       customerDetails: false,
       userManagement: false,
-      confirmDelete: false
+      confirmDelete: false,
+      createUser: false,
+      editUser: false,
+      userDetails: false
     });
     setSelectedProduct(null);
     setSelectedOrder(null);
