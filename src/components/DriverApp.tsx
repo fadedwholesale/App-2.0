@@ -812,6 +812,38 @@ const FadedSkiesDriverApp = () => {
   }, [stopLocationTracking]);
 
 
+  const toggleSetting = useCallback((settingKey: keyof typeof driver.settings) => {
+    setDriver(prev => ({
+      ...prev,
+      settings: {
+        ...prev.settings,
+        [settingKey]: !prev.settings[settingKey]
+      }
+    }));
+
+    // Sync to store and broadcast to admin
+    const newValue = !driver.settings[settingKey];
+
+    // Send settings update via WebSocket
+    wsService.send({
+      type: 'driver:settings_update',
+      data: {
+        driverId: parseInt(driver.id.replace('driver_', '')),
+        driverName: driver.name,
+        settings: {
+          ...driver.settings,
+          [settingKey]: newValue
+        },
+        timestamp: new Date().toISOString()
+      }
+    });
+
+    showToastMessage(
+      `${settingKey.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())} ${newValue ? 'enabled' : 'disabled'}`,
+      'info'
+    );
+  }, [driver.settings, driver.id, driver.name, showToastMessage]);
+
   const toggleOnlineStatus = useCallback(() => {
     const newStatus = !driver.isOnline;
 
