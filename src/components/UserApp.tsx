@@ -1088,11 +1088,11 @@ const QuickHelpModal = React.memo(({
               type="button"
               onClick={() => {
                 onClose();
-                // This would open live chat
+                window.open('tel:5554203233', '_self');
               }}
               className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-sm"
             >
-              Start Live Chat
+              Call Support
             </button>
             <button
               type="button"
