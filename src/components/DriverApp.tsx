@@ -49,6 +49,8 @@ import {
 import { wsService } from '../services/simple-websocket';
 import { useCannabisDeliveryStore } from '../services/cannabis-delivery-store';
 import { useDataSync, dataSyncService } from '../services/data-sync-service';
+import { useLocation, locationService } from '../services/location-service';
+import { useSecureChat, secureChatService } from '../services/secure-chat-service';
 
 // TypeScript interfaces
 interface Order {
