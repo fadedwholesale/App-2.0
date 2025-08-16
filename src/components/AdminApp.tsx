@@ -2431,16 +2431,15 @@ const FadedSkiesTrackingAdmin = () => {
   const renderCurrentView = () => {
     switch (currentView) {
       case 'dashboard': return <DashboardView />;
-      case 'products': return <ProductsView />;
       case 'orders': return <OrdersView />;
+      case 'dispatcher': return <DispatcherView />;
       case 'tracking': return <TrackingView />;
+      case 'messaging': return <MessagingView />;
+      case 'products': return <ProductsView />;
       case 'customers': return <CustomersView />;
-      case 'analytics':
-        return <AnalyticsView />;
-      case 'settings':
-        return <SettingsView />;
-      default:
-        return <DashboardView />;
+      case 'analytics': return <AnalyticsView />;
+      case 'settings': return <SettingsView />;
+      default: return <DashboardView />;
     }
   };
 
