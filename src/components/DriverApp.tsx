@@ -272,6 +272,7 @@ const FadedSkiesDriverApp = () => {
   });
 
   const { updateDriverStatus, setupRealTimeSync } = useCannabisDeliveryStore();
+  const { syncDriverProfile, syncSettingsUpdate } = useDataSync();
 
   const [driver, setDriver] = useState<Driver>({
     id: 'driver_001',
