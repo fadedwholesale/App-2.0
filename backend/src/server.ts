@@ -80,6 +80,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/drivers', authenticateToken, driverRoutes);
 app.use('/api/admin', authenticateToken, adminRoutes);
+app.use('/api/admin/users', authenticateToken, adminUsersRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', authenticateToken, orderRoutes);
 app.use('/api/payments', authenticateToken, paymentRoutes);
