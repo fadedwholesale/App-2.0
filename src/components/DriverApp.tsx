@@ -561,30 +561,146 @@ const FadedSkiesDriverApp = () => {
           }
         });
 
-        // Register event listeners for real-time notifications
+        // Register comprehensive event listeners for real-time notifications
+
+        // New order pickup notifications
         wsService.on('order_available_for_pickup', (orderData) => {
-          console.log('🆕 New order available:', orderData);
+          console.log('🆕 New order available for pickup:', orderData);
+
+          const newOrder = {
+            id: orderData.orderId,
+            customerName: orderData.customerName || 'Customer',
+            customerPhone: orderData.customerPhone || '',
+            address: orderData.location || 'Customer Address',
+            items: orderData.items || [],
+            total: orderData.total || 0,
+            distance: parseFloat(orderData.estimatedDistance) || 2.3,
+            estimatedTime: 20,
+            paymentMethod: orderData.paymentMethod || 'Card',
+            specialInstructions: orderData.notes || '',
+            priority: orderData.priority || 'normal',
+            status: 'assigned' as const,
+            timestamp: new Date().toISOString(),
+            lat: orderData.customerLat || 30.2672,
+            lng: orderData.customerLng || -97.7431,
+            zone: orderData.zone || 'Central',
+            mileagePayment: parseFloat(orderData.estimatedDistance) * 0.65 || 1.50,
+            basePay: 3.50,
+            totalDriverPay: 3.50 + (parseFloat(orderData.estimatedDistance) * 0.65 || 1.50)
+          };
+
           setAvailableOrders(prev => {
             const exists = prev.some(order => order.id === orderData.orderId);
             if (!exists) {
-              const newOrder = {
-                id: orderData.orderId,
-                customer: orderData.customerName || 'Customer',
-                pickup: orderData.pickupLocation || 'Faded Skies Dispensary',
-                dropoff: orderData.location,
-                distance: orderData.estimatedDistance || '2.3 miles',
-                value: orderData.total || 0,
-                items: orderData.items?.length || 3,
-                estimatedTime: '15-20 min',
-                priority: orderData.priority || 'normal'
-              };
+              // Show browser notification for new pickup alert
+              if (Notification.permission === 'granted') {
+                new Notification('🚚 New Pickup Available!', {
+                  body: `Order ${orderData.orderId} - $${orderData.total} (${orderData.estimatedDistance || '2.3 mi'})`,
+                  icon: '/favicon.ico',
+                  tag: orderData.orderId,
+                  requireInteraction: true
+                });
+              }
 
-              showToastMessage(`New order available: ${orderData.orderId} - $${orderData.total}`, 'info');
+              // Show in-app notification
+              showToastMessage(`🚚 New pickup: ${orderData.orderId} - $${orderData.total}`, 'info');
+
+              // Play notification sound
+              try {
+                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DwvmEaBy5+zPLZiTYIF2q+8uGVUQwQUarm7bllHgg2jdXxynkpBChxy+/eizEIHWq85OKgUg==');
+                audio.volume = 0.3;
+                audio.play().catch(e => console.log('Audio notification failed:', e));
+              } catch (e) {
+                console.log('Audio notification not available');
+              }
+
               return [...prev, newOrder];
             }
             return prev;
           });
         });
+
+        // Admin direct assignment notifications
+        wsService.on('admin:assign_order', (assignmentData) => {
+          console.log('📋 Order directly assigned by admin:', assignmentData);
+
+          if (assignmentData.driverId === driver.id) {
+            const assignedOrder = {
+              ...assignmentData.orderDetails,
+              status: 'assigned' as const,
+              timestamp: new Date().toISOString()
+            };
+
+            setAvailableOrders(prev => [...prev, assignedOrder]);
+
+            // High priority notification for direct assignment
+            if (Notification.permission === 'granted') {
+              new Notification('⚡ Order Assigned by Admin!', {
+                body: `You've been assigned order ${assignmentData.orderId}`,
+                icon: '/favicon.ico',
+                tag: `assigned_${assignmentData.orderId}`,
+                requireInteraction: true
+              });
+            }
+
+            showToastMessage(`⚡ Admin assigned order ${assignmentData.orderId} to you!`, 'warning');
+          }
+        });
+
+        // Admin messages
+        wsService.on('admin_message', (messageData) => {
+          console.log('💬 Message from admin:', messageData);
+
+          if (messageData.to === driver.id.toString()) {
+            // Show admin message notification
+            if (Notification.permission === 'granted') {
+              new Notification('💬 Message from Admin', {
+                body: messageData.message,
+                icon: '/favicon.ico',
+                tag: `admin_msg_${Date.now()}`,
+                requireInteraction: false
+              });
+            }
+
+            showToastMessage(`💬 Admin: ${messageData.message}`, 'info');
+          }
+        });
+
+        // Pickup confirmation requests
+        wsService.on('driver_pickup_notification', (pickupData) => {
+          console.log('📦 Pickup notification received:', pickupData);
+
+          if (pickupData.driverId === driver.id && activeOrder?.id === pickupData.orderId) {
+            showToastMessage('📦 Order ready for pickup at dispensary!', 'success');
+          }
+        });
+
+        // Emergency stop/alerts
+        wsService.on('emergency_stop', (emergencyData) => {
+          console.log('🚨 Emergency stop received:', emergencyData);
+
+          showToastMessage('🚨 EMERGENCY: Stop all deliveries immediately!', 'error');
+
+          if (Notification.permission === 'granted') {
+            new Notification('🚨 EMERGENCY STOP', {
+              body: 'Stop all deliveries immediately and contact dispatch',
+              icon: '/favicon.ico',
+              tag: 'emergency',
+              requireInteraction: true
+            });
+          }
+        });
+
+        // Geofence alerts from admin
+        wsService.on('geofence_alert', (alertData) => {
+          console.log('🗺️ Geofence alert:', alertData);
+
+          if (alertData.driverId === driver.id.toString()) {
+            showToastMessage(`🗺️ Geofence Alert: ${alertData.eventType} ${alertData.geofenceName}`, 'warning');
+          }
+        });
+
+        console.log('✅ Comprehensive driver WebSocket events registered for:', driver.name);
 
         console.log('✅ Driver WebSocket connected for:', driver.name);
 
