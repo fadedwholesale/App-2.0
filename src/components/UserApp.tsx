@@ -3693,6 +3693,28 @@ const FadedSkiesApp = () => {
     setTimeout(() => setShowToast(false), 3000);
   }, []);
 
+  // Request location permission for delivery and geofencing
+  const requestLocationPermission = useCallback(async () => {
+    try {
+      const permission = await requestPermission();
+
+      if (permission.granted) {
+        // Start location tracking for delivery zone validation
+        const trackingStarted = await startTracking('customer', user.id || 'customer_001');
+
+        if (trackingStarted) {
+          console.log('📍 Location tracking started for delivery zone validation');
+          showToastMessage('Location access granted - we can now provide accurate delivery estimates!');
+        }
+      } else if (permission.denied) {
+        console.log('📍 Location permission denied');
+        showToastMessage('Location access denied - delivery estimates may be less accurate');
+      }
+    } catch (error) {
+      console.error('Location permission error:', error);
+    }
+  }, [requestPermission, startTracking, user.id]);
+
   const sendChatMessage = useCallback(async (message: string) => {
     const newMessage = {
       id: chatMessages.length + 1,
