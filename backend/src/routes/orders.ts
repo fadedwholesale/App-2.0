@@ -6,6 +6,14 @@ import { calculateDeliveryFee, calculateTax } from '../utils/calculations';
 import { sendPushNotification } from '../services/notifications';
 import { io } from '../server';
 
+interface AuthenticatedRequest extends express.Request {
+  user?: {
+    userId: string;
+    email: string;
+    role: string;
+  };
+}
+
 const router = express.Router();
 
 // Create new order
@@ -43,7 +51,7 @@ router.post('/', [
 
     // Verify all products exist and calculate totals
     let subtotal = 0;
-    const orderItems = [];
+    const orderItems: any[] = [];
 
     for (const item of items) {
       const product = await prisma.product.findUnique({
