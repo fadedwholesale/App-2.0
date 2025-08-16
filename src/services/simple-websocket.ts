@@ -207,6 +207,24 @@ export class SimpleWebSocketService {
         case 'sync:batch_update':
           this.emit('sync:batch_update', message.data);
           break;
+        case 'sms:send_to_driver':
+          this.emit('sms:send_to_driver', message.data);
+          break;
+        case 'sms:customer_to_driver':
+          this.emit('sms:customer_to_driver', message.data);
+          break;
+        case 'sms:send':
+          this.emit('sms:send', message.data);
+          break;
+        case 'sms:delivery_confirmation':
+          this.emit('sms:delivery_confirmation', message.data);
+          break;
+        case 'sms:delivery_failed':
+          this.emit('sms:delivery_failed', message.data);
+          break;
+        case 'sms:reply_received':
+          this.emit('sms:reply_received', message.data);
+          break;
         case 'admin:product_updated':
           this.emit('product_updated', message.data);
           break;
