@@ -3560,6 +3560,8 @@ const FadedSkiesTrackingAdmin = () => {
       <OrderDetailsModal />
       <CustomerDetailsModal />
       <UserManagementModal />
+      <CreateUserModal />
+      <UserDetailsModal />
       <ConfirmationModal />
     </div>
   );
