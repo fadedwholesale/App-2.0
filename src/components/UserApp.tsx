@@ -1148,7 +1148,7 @@ const ContactModal = React.memo(({
       case 'Call Support':
         return {
           title: 'Call Support',
-          icon: '📞',
+          icon: '����',
           description: 'Speak directly with our support team',
           showForm: false,
           content: (
@@ -4958,7 +4958,6 @@ const FadedSkiesApp = () => {
           <SMSModal
             isOpen={currentModal === 'sms'}
             onClose={closeModal}
-            onSuccess={showToastMessage}
             driver={modalData.driver}
           />
 
