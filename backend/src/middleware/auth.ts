@@ -37,15 +37,17 @@ export const authenticateToken = (req: AuthenticatedRequest, res: Response, next
 export const requireRole = (roles: string[]) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
-      return res.status(401).json({
+      res.status(401).json({
         error: 'Authentication required'
       });
+      return;
     }
 
     if (!roles.includes(req.user.role)) {
-      return res.status(403).json({
+      res.status(403).json({
         error: 'Insufficient permissions'
       });
+      return;
     }
 
     next();
