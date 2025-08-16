@@ -3005,21 +3005,7 @@ const FadedSkiesApp = () => {
 
       return [...prev, { ...product, quantity: 1 }];
     });
-
-    // Multiple scroll restoration attempts to ensure it works
-    const restoreScroll = () => {
-      window.scrollTo({ top: scrollPosition, behavior: 'instant' });
-    };
-
-    // Immediate restoration
-    requestAnimationFrame(restoreScroll);
-
-    // Backup restorations with increasing delays
-    setTimeout(restoreScroll, 0);
-    setTimeout(restoreScroll, 10);
-    setTimeout(restoreScroll, 50);
-    setTimeout(restoreScroll, 100);
-  }, []);
+  }, [preserveScrollPosition]);
 
   const updateQuantity = useCallback((id: number, change: number) => {
     // Preserve scroll position during cart updates
