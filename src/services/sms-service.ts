@@ -15,12 +15,105 @@ export interface SMSMessage {
 
 export class SMSService {
   private static instance: SMSService;
-  
+  private phoneNumberMasks: Map<string, string> = new Map(); // Store masked phone numbers
+  private messageHistory: Map<string, SMSMessage[]> = new Map(); // Temporary message storage
+  private readonly MESSAGE_RETENTION_HOURS = 24;
+
   static getInstance(): SMSService {
     if (!this.instance) {
       this.instance = new SMSService();
     }
     return this.instance;
+  }
+
+  // Initialize SMS service with privacy protection
+  initialize(): void {
+    console.log('🔒 Initializing Secure SMS Service...');
+
+    // Set up message cleanup
+    setInterval(() => {
+      this.cleanupExpiredMessages();
+    }, 60 * 60 * 1000); // Every hour
+
+    console.log('✅ Secure SMS Service initialized with privacy protection');
+  }
+
+  // Mask phone number for privacy
+  private maskPhoneNumber(phone: string): string {
+    if (phone.length < 10) return phone;
+
+    // Keep only last 4 digits visible
+    const lastFour = phone.slice(-4);
+    const masked = phone.slice(0, -4).replace(/\d/g, '*') + lastFour;
+
+    // Store mapping for internal use (would be encrypted in production)
+    this.phoneNumberMasks.set(masked, phone);
+
+    return masked;
+  }
+
+  // Get actual phone number from mask (for internal use only)
+  private getActualPhoneNumber(maskedPhone: string): string {
+    return this.phoneNumberMasks.get(maskedPhone) || maskedPhone;
+  }
+
+  // Sanitize message content to prevent info leaks
+  private sanitizeMessage(message: string): { sanitized: string; isSecure: boolean } {
+    let sanitized = message;
+    let isSecure = true;
+
+    // Remove potential personal information
+    const sensitivePatterns = [
+      { pattern: /\b\d{3}-\d{2}-\d{4}\b/g, replacement: '[SSN_REDACTED]' }, // SSN
+      { pattern: /\b\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\b/g, replacement: '[CARD_REDACTED]' }, // Credit card
+      { pattern: /\b[\w\.-]+@[\w\.-]+\.\w+\b/g, replacement: '[EMAIL_REDACTED]' }, // Email
+      { pattern: /\b\d{1,5}\s\w+\s(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|boulevard|blvd)\b/gi, replacement: '[ADDRESS_REDACTED]' }, // Street address
+      { pattern: /\$\d+(?:\.\d{2})?/g, replacement: '[AMOUNT_REDACTED]' }, // Money amounts
+    ];
+
+    for (const { pattern, replacement } of sensitivePatterns) {
+      if (pattern.test(sanitized)) {
+        sanitized = sanitized.replace(pattern, replacement);
+        isSecure = false; // Mark as containing sensitive data
+        console.warn('SMS: Sensitive data detected and redacted');
+      }
+    }
+
+    // Limit message length for security
+    if (sanitized.length > 160) {
+      sanitized = sanitized.substring(0, 157) + '...';
+    }
+
+    return { sanitized, isSecure };
+  }
+
+  // Clean up expired messages
+  private cleanupExpiredMessages(): void {
+    const now = new Date();
+    let cleanedCount = 0;
+
+    for (const [sessionId, messages] of this.messageHistory.entries()) {
+      const validMessages = messages.filter(msg => {
+        if (msg.expiresAt) {
+          const expiresAt = new Date(msg.expiresAt);
+          if (now > expiresAt) {
+            cleanedCount++;
+            return false;
+          }
+        }
+        return true;
+      });
+
+      if (validMessages.length === 0) {
+        this.messageHistory.delete(sessionId);
+      } else {
+        this.messageHistory.set(sessionId, validMessages);
+      }
+    }
+
+    if (cleanedCount > 0) {
+      console.log(`🧹 SMS: Cleaned up ${cleanedCount} expired messages`);
+    }
   }
 
   // Send SMS to driver
