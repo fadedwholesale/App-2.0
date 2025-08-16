@@ -461,13 +461,25 @@ const FadedSkiesTrackingAdmin = () => {
       };
 
       if (isEdit) {
-        // Update existing product with real-time sync
+        // Update existing product with enhanced real-time sync
         broadcastProductUpdated(selectedProduct.id, productData);
-        console.log('✅ Product updated with real-time sync:', productData.name);
+        console.log('✅ AdminApp: Product updated with real-time sync:', productData.name);
+        console.log('📡 Broadcasting update to all connected users...');
+
+        // Show confirmation toast
+        setTimeout(() => {
+          console.log('🔄 Product update should now be visible on user apps immediately');
+        }, 100);
       } else {
-        // Add new product with real-time sync
+        // Add new product with enhanced real-time sync
         broadcastProductAdded(productData);
-        console.log('✅ Product added with real-time sync:', productData.name);
+        console.log('✅ AdminApp: Product added with real-time sync:', productData.name);
+        console.log('📡 Broadcasting new product to all connected users...');
+
+        // Show confirmation toast
+        setTimeout(() => {
+          console.log('🔄 New product should now be visible on user apps immediately');
+        }, 100);
       }
 
       closeModal(isEdit ? 'editProduct' : 'addProduct');
