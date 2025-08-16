@@ -1933,9 +1933,26 @@ const OrderDetailsModal = React.memo(({
               <span className="font-medium text-blue-900">{order.vehicle}</span>
             </div>
             {order.driverPhone && (
-              <div className="flex justify-between">
-                <span className="text-blue-800">Driver Phone:</span>
-                <span className="font-medium text-blue-900">{order.driverPhone}</span>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-blue-800">Driver Phone:</span>
+                  <span className="font-medium text-blue-900">{order.driverPhone}</span>
+                </div>
+                {['preparing', 'assigned', 'picked_up', 'in_transit'].includes(order.status) && (
+                  <button
+                    type="button"
+                    onClick={() => openModal('sms', {
+                      driver: {
+                        name: order.driver,
+                        phone: order.driverPhone
+                      }
+                    })}
+                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>Send SMS to Driver</span>
+                  </button>
+                )}
               </div>
             )}
             {order.deliveryAddress && (
