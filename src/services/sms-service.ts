@@ -1,0 +1,240 @@
+import { wsService } from './simple-websocket';
+
+export interface SMSMessage {
+  to: string;
+  from: string;
+  message: string;
+  timestamp: string;
+  type: 'customer_to_driver' | 'admin_to_driver' | 'driver_to_customer' | 'admin_notification';
+  orderId?: string;
+  driverId?: string;
+  customerId?: string;
+}
+
+export class SMSService {
+  private static instance: SMSService;
+  
+  static getInstance(): SMSService {
+    if (!this.instance) {
+      this.instance = new SMSService();
+    }
+    return this.instance;
+  }
+
+  // Send SMS to driver
+  async sendToDriver(driverPhone: string, message: string, options: {
+    orderId?: string;
+    customerId?: string;
+    priority?: 'low' | 'normal' | 'high' | 'urgent';
+  } = {}) {
+    const smsData: SMSMessage = {
+      to: driverPhone,
+      from: 'Faded Skies',
+      message,
+      timestamp: new Date().toISOString(),
+      type: 'admin_to_driver',
+      orderId: options.orderId,
+      customerId: options.customerId
+    };
+
+    try {
+      // Send via WebSocket for real-time delivery
+      wsService.send({
+        type: 'sms:send_to_driver',
+        data: {
+          ...smsData,
+          priority: options.priority || 'normal'
+        }
+      });
+
+      // In production, integrate with SMS provider (Twilio, AWS SNS, etc.)
+      console.log('📱 SMS sent to driver:', {
+        to: driverPhone,
+        message: message.substring(0, 50) + '...',
+        orderId: options.orderId
+      });
+
+      return { success: true, messageId: `sms_${Date.now()}` };
+    } catch (error) {
+      console.error('Failed to send SMS to driver:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Send SMS from customer to driver
+  async sendCustomerToDriver(customerPhone: string, driverPhone: string, message: string, orderId: string) {
+    const smsData: SMSMessage = {
+      to: driverPhone,
+      from: customerPhone,
+      message: `[Customer Message] ${message}`,
+      timestamp: new Date().toISOString(),
+      type: 'customer_to_driver',
+      orderId,
+      customerId: customerPhone
+    };
+
+    try {
+      wsService.send({
+        type: 'sms:customer_to_driver',
+        data: smsData
+      });
+
+      console.log('📱 Customer SMS sent to driver:', {
+        from: customerPhone,
+        to: driverPhone,
+        orderId
+      });
+
+      return { success: true, messageId: `sms_${Date.now()}` };
+    } catch (error) {
+      console.error('Failed to send customer SMS to driver:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Send delivery notifications
+  async sendDeliveryNotification(phone: string, notification: {
+    type: 'order_confirmed' | 'driver_assigned' | 'out_for_delivery' | 'delivered' | 'delayed';
+    orderId: string;
+    driverName?: string;
+    eta?: string;
+    location?: string;
+  }) {
+    let message = '';
+
+    switch (notification.type) {
+      case 'order_confirmed':
+        message = `🌿 Your Faded Skies order ${notification.orderId} has been confirmed! We're preparing your items now.`;
+        break;
+      case 'driver_assigned':
+        message = `🚚 Great news! ${notification.driverName} has been assigned to deliver your order ${notification.orderId}. ETA: ${notification.eta}`;
+        break;
+      case 'out_for_delivery':
+        message = `📦 Your order ${notification.orderId} is out for delivery! ${notification.driverName} is on the way. Track: ${window.location.origin}`;
+        break;
+      case 'delivered':
+        message = `✅ Your order ${notification.orderId} has been delivered! Thank you for choosing Faded Skies. Rate your experience in the app.`;
+        break;
+      case 'delayed':
+        message = `⏰ Your order ${notification.orderId} is slightly delayed. New ETA: ${notification.eta}. We apologize for any inconvenience.`;
+        break;
+    }
+
+    return this.sendSMS(phone, message, {
+      type: 'admin_notification',
+      orderId: notification.orderId
+    });
+  }
+
+  // Generic SMS sending method
+  private async sendSMS(to: string, message: string, metadata: any = {}) {
+    const smsData: SMSMessage = {
+      to,
+      from: 'Faded Skies',
+      message,
+      timestamp: new Date().toISOString(),
+      type: metadata.type || 'admin_notification',
+      ...metadata
+    };
+
+    try {
+      // Send via WebSocket
+      wsService.send({
+        type: 'sms:send',
+        data: smsData
+      });
+
+      // Simulate SMS API call (replace with real SMS provider in production)
+      console.log('📱 SMS sent:', {
+        to: to.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3'),
+        message: message.substring(0, 100) + (message.length > 100 ? '...' : ''),
+        timestamp: new Date().toLocaleTimeString()
+      });
+
+      return { success: true, messageId: `sms_${Date.now()}` };
+    } catch (error) {
+      console.error('Failed to send SMS:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Batch SMS for multiple recipients
+  async sendBatchSMS(recipients: string[], message: string, metadata: any = {}) {
+    const results = [];
+    
+    for (const phone of recipients) {
+      const result = await this.sendSMS(phone, message, {
+        ...metadata,
+        batchId: `batch_${Date.now()}`
+      });
+      results.push({ phone, ...result });
+      
+      // Add small delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    return results;
+  }
+
+  // Emergency broadcast to all drivers
+  async emergencyBroadcast(message: string, driverPhones: string[]) {
+    const emergencyMessage = `🚨 URGENT: ${message}`;
+    
+    return this.sendBatchSMS(driverPhones, emergencyMessage, {
+      type: 'emergency_broadcast',
+      priority: 'urgent'
+    });
+  }
+
+  // Setup SMS event listeners
+  setupSMSListeners() {
+    wsService.on('sms:delivery_confirmation', (data) => {
+      console.log('📱 SMS delivery confirmed:', data);
+    });
+
+    wsService.on('sms:delivery_failed', (data) => {
+      console.error('📱 SMS delivery failed:', data);
+    });
+
+    wsService.on('sms:reply_received', (data) => {
+      console.log('📱 SMS reply received:', data);
+      // Handle driver/customer replies
+    });
+  }
+}
+
+// Export singleton instance
+export const smsService = SMSService.getInstance();
+
+// React hook for SMS functionality
+export const useSMS = () => {
+  return {
+    sendToDriver: smsService.sendToDriver.bind(smsService),
+    sendCustomerToDriver: smsService.sendCustomerToDriver.bind(smsService),
+    sendDeliveryNotification: smsService.sendDeliveryNotification.bind(smsService),
+    emergencyBroadcast: smsService.emergencyBroadcast.bind(smsService)
+  };
+};
+
+// Production SMS API integration template
+export const SMS_API_CONFIG = {
+  // Twilio configuration example
+  twilio: {
+    accountSid: process.env.TWILIO_ACCOUNT_SID,
+    authToken: process.env.TWILIO_AUTH_TOKEN,
+    fromPhone: process.env.TWILIO_PHONE_NUMBER
+  },
+  
+  // AWS SNS configuration example
+  aws: {
+    region: process.env.AWS_REGION,
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+  },
+  
+  // MessageBird configuration example
+  messageBird: {
+    apiKey: process.env.MESSAGEBIRD_API_KEY,
+    originator: 'FadedSkies'
+  }
+};
