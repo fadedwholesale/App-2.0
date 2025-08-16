@@ -574,6 +574,52 @@ const FadedSkiesDriverApp = () => {
 
         // Register comprehensive event listeners for real-time notifications
 
+        // Admin order assignment notifications
+        wsService.on('driver_assigned', (orderData) => {
+          console.log('📋 Order assigned by admin:', orderData);
+
+          const assignedOrder = {
+            id: orderData.orderId,
+            customerName: orderData.customerName || 'Customer',
+            customerPhone: orderData.customerPhone || '',
+            address: orderData.location || 'Customer Address',
+            items: orderData.items || [],
+            total: orderData.total || 0,
+            distance: parseFloat(orderData.estimatedDistance) || 2.3,
+            estimatedTime: 20,
+            paymentMethod: orderData.paymentMethod || 'Card',
+            specialInstructions: orderData.notes || '',
+            priority: orderData.priority || 'normal',
+            status: 'assigned' as const,
+            timestamp: new Date().toISOString(),
+            lat: orderData.customerLat || 30.2672,
+            lng: orderData.customerLng || -97.7431,
+            zone: orderData.zone || 'Central',
+            mileagePayment: parseFloat(orderData.estimatedDistance) * 0.65 || 1.50,
+            basePay: 3.50,
+            totalDriverPay: 3.50 + (parseFloat(orderData.estimatedDistance) * 0.65 || 1.50)
+          };
+
+          // Auto-accept the assigned order for demo
+          setTimeout(() => {
+            setActiveOrder(assignedOrder);
+            showToastMessage(
+              `Order ${orderData.orderId} assigned and accepted! Starting pickup.`,
+              'success'
+            );
+
+            // Send acceptance notification
+            wsService.send({
+              type: 'driver:accept_order',
+              data: {
+                orderId: orderData.orderId,
+                driverId: driver.id,
+                driverName: driver.name
+              }
+            });
+          }, 1000);
+        });
+
         // New order pickup notifications
         wsService.on('order_available_for_pickup', (orderData) => {
           console.log('🆕 New order available for pickup:', orderData);
@@ -2679,7 +2725,7 @@ const FadedSkiesDriverApp = () => {
                     {geofenceError && (
                       <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl">
                         <p className="text-sm text-red-700">
-                          ⚠️ {geofenceError}
+                          ���️ {geofenceError}
                         </p>
                         <button
                           type="button"
