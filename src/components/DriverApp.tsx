@@ -1472,7 +1472,7 @@ const FadedSkiesDriverApp = () => {
                   title: 'Daily Payout',
                   desc: 'Next business day',
                   fee: 'No fees',
-                  icon: '📅'
+                  icon: '��'
                 },
                 {
                   value: 'three_day',
@@ -2939,6 +2939,7 @@ const FadedSkiesDriverApp = () => {
           <ScheduleModal />
           <PayoutSettingsModal />
           <ChangeBankAccountModal />
+          <BankingTransferModal />
         </>
       )}
     </div>
