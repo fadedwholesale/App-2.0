@@ -1918,6 +1918,396 @@ const FadedSkiesDriverApp = () => {
     );
   };
 
+  // Banking Transfer Modal
+  const BankingTransferModal = () => {
+    const [transferData, setTransferData] = useState({
+      amount: driver.earnings.pending.toString(),
+      bankName: '',
+      routingNumber: '',
+      accountNumber: '',
+      confirmAccountNumber: '',
+      accountHolderName: driver.name,
+      accountType: 'checking',
+      memo: ''
+    });
+
+    const [step, setStep] = useState(1);
+    const [errors, setErrors] = useState<{[key: string]: string}>({});
+
+    const validateBankingInfo = () => {
+      const newErrors: {[key: string]: string} = {};
+
+      if (!transferData.amount || parseFloat(transferData.amount) <= 0) {
+        newErrors.amount = 'Amount must be greater than $0';
+      } else if (parseFloat(transferData.amount) > driver.earnings.pending) {
+        newErrors.amount = 'Amount cannot exceed available earnings';
+      }
+
+      if (!transferData.bankName.trim()) {
+        newErrors.bankName = 'Bank name is required';
+      }
+
+      if (!transferData.routingNumber.trim()) {
+        newErrors.routingNumber = 'Routing number is required';
+      } else if (transferData.routingNumber.length !== 9) {
+        newErrors.routingNumber = 'Routing number must be 9 digits';
+      }
+
+      if (!transferData.accountNumber.trim()) {
+        newErrors.accountNumber = 'Account number is required';
+      } else if (transferData.accountNumber.length < 4) {
+        newErrors.accountNumber = 'Account number too short';
+      }
+
+      if (transferData.accountNumber !== transferData.confirmAccountNumber) {
+        newErrors.confirmAccountNumber = 'Account numbers do not match';
+      }
+
+      if (!transferData.accountHolderName.trim()) {
+        newErrors.accountHolderName = 'Account holder name is required';
+      }
+
+      setErrors(newErrors);
+      return Object.keys(newErrors).length === 0;
+    };
+
+    const handleNext = () => {
+      if (validateBankingInfo()) {
+        setStep(2);
+      }
+    };
+
+    const handleTransfer = () => {
+      const amount = parseFloat(transferData.amount);
+
+      // Update driver earnings
+      setDriver(prev => ({
+        ...prev,
+        earnings: {
+          ...prev.earnings,
+          pending: prev.earnings.pending - amount
+        }
+      }));
+
+      closeModal('bankingTransfer');
+      showToastMessage(`$${amount.toFixed(2)} transfer initiated! Funds will arrive in 2-3 business days.`, 'success');
+    };
+
+    const resetModal = () => {
+      setStep(1);
+      setErrors({});
+      setTransferData({
+        amount: driver.earnings.pending.toString(),
+        bankName: '',
+        routingNumber: '',
+        accountNumber: '',
+        confirmAccountNumber: '',
+        accountHolderName: driver.name,
+        accountType: 'checking',
+        memo: ''
+      });
+    };
+
+    const handleClose = () => {
+      resetModal();
+      closeModal('bankingTransfer');
+    };
+
+    return (
+      <Modal
+        isOpen={modals.bankingTransfer}
+        onClose={handleClose}
+        title={`Standard Bank Transfer - Step ${step} of 2`}
+        size="lg"
+      >
+        <div className="space-y-6">
+          {/* Progress Steps */}
+          <div className="flex items-center space-x-4 mb-6">
+            <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${
+              step >= 1 ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-600'
+            }`}>
+              1
+            </div>
+            <div className={`flex-1 h-1 rounded ${step >= 2 ? 'bg-green-600' : 'bg-gray-200'}`}></div>
+            <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${
+              step >= 2 ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-600'
+            }`}>
+              2
+            </div>
+          </div>
+
+          {step === 1 && (
+            <div className="space-y-6">
+              {/* Security Notice */}
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                <div className="flex items-start space-x-3">
+                  <Shield className="w-5 h-5 text-green-600 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-green-800">🏦 Standard Bank Transfer</h4>
+                    <p className="text-sm text-green-700">
+                      • No fees • 2-3 business days • Bank-level security • Enter your banking details below
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Transfer Amount */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Transfer Amount</label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={transferData.amount}
+                    onChange={(e) => setTransferData({...transferData, amount: e.target.value})}
+                    className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
+                      errors.amount ? 'border-red-300' : 'border-gray-200'
+                    }`}
+                    placeholder="0.00"
+                    max={driver.earnings.pending}
+                  />
+                </div>
+                {errors.amount && <p className="text-red-600 text-sm mt-1">{errors.amount}</p>}
+                <p className="text-sm text-gray-600 mt-1">Available: ${driver.earnings.pending.toFixed(2)}</p>
+              </div>
+
+              {/* Account Type */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">Account Type</label>
+                <div className="grid grid-cols-2 gap-3">
+                  {['checking', 'savings'].map((type) => (
+                    <label key={type} className={`flex items-center p-4 border rounded-xl cursor-pointer transition-colors ${
+                      transferData.accountType === type ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-gray-300'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="accountType"
+                        value={type}
+                        checked={transferData.accountType === type}
+                        onChange={(e) => setTransferData({...transferData, accountType: e.target.value})}
+                        className="w-4 h-4 text-green-600 mr-3"
+                      />
+                      <span className="font-medium text-gray-900 capitalize">{type} Account</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bank Name */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Bank Name</label>
+                <input
+                  type="text"
+                  value={transferData.bankName}
+                  onChange={(e) => setTransferData({...transferData, bankName: e.target.value})}
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
+                    errors.bankName ? 'border-red-300' : 'border-gray-200'
+                  }`}
+                  placeholder="e.g., Chase Bank, Wells Fargo, Bank of America"
+                />
+                {errors.bankName && <p className="text-red-600 text-sm mt-1">{errors.bankName}</p>}
+              </div>
+
+              {/* Routing Number */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Routing Number</label>
+                <input
+                  type="text"
+                  value={transferData.routingNumber}
+                  onChange={(e) => setTransferData({...transferData, routingNumber: e.target.value.replace(/\D/g, '').slice(0, 9)})}
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
+                    errors.routingNumber ? 'border-red-300' : 'border-gray-200'
+                  }`}
+                  placeholder="9-digit routing number"
+                  maxLength={9}
+                />
+                {errors.routingNumber && <p className="text-red-600 text-sm mt-1">{errors.routingNumber}</p>}
+                <p className="text-xs text-gray-500 mt-1">Found on the bottom left of your checks</p>
+              </div>
+
+              {/* Account Number */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Account Number</label>
+                <input
+                  type="text"
+                  value={transferData.accountNumber}
+                  onChange={(e) => setTransferData({...transferData, accountNumber: e.target.value.replace(/\D/g, '')})}
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
+                    errors.accountNumber ? 'border-red-300' : 'border-gray-200'
+                  }`}
+                  placeholder="Account number"
+                />
+                {errors.accountNumber && <p className="text-red-600 text-sm mt-1">{errors.accountNumber}</p>}
+              </div>
+
+              {/* Confirm Account Number */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Confirm Account Number</label>
+                <input
+                  type="text"
+                  value={transferData.confirmAccountNumber}
+                  onChange={(e) => setTransferData({...transferData, confirmAccountNumber: e.target.value.replace(/\D/g, '')})}
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
+                    errors.confirmAccountNumber ? 'border-red-300' : 'border-gray-200'
+                  }`}
+                  placeholder="Re-enter account number"
+                />
+                {errors.confirmAccountNumber && <p className="text-red-600 text-sm mt-1">{errors.confirmAccountNumber}</p>}
+              </div>
+
+              {/* Account Holder Name */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Account Holder Name</label>
+                <input
+                  type="text"
+                  value={transferData.accountHolderName}
+                  onChange={(e) => setTransferData({...transferData, accountHolderName: e.target.value})}
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
+                    errors.accountHolderName ? 'border-red-300' : 'border-gray-200'
+                  }`}
+                  placeholder="Full name on account"
+                />
+                {errors.accountHolderName && <p className="text-red-600 text-sm mt-1">{errors.accountHolderName}</p>}
+              </div>
+
+              {/* Memo */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Memo (Optional)</label>
+                <input
+                  type="text"
+                  value={transferData.memo}
+                  onChange={(e) => setTransferData({...transferData, memo: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  placeholder="e.g., Driver earnings - [your name]"
+                  maxLength={50}
+                />
+                <p className="text-xs text-gray-500 mt-1">This will appear on your bank statement</p>
+              </div>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="space-y-6">
+              {/* Confirmation Summary */}
+              <div className="bg-gray-50 rounded-xl p-6">
+                <h4 className="font-bold text-xl text-gray-900 mb-4">Transfer Summary</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Transfer Amount:</span>
+                    <p className="font-bold text-2xl text-green-600">${parseFloat(transferData.amount || '0').toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Account Type:</span>
+                    <p className="font-semibold capitalize">{transferData.accountType}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Bank Name:</span>
+                    <p className="font-semibold">{transferData.bankName}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Routing Number:</span>
+                    <p className="font-semibold">{transferData.routingNumber}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Account Number:</span>
+                    <p className="font-semibold">••••••{transferData.accountNumber.slice(-4)}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Account Holder:</span>
+                    <p className="font-semibold">{transferData.accountHolderName}</p>
+                  </div>
+                  {transferData.memo && (
+                    <div className="col-span-2">
+                      <span className="text-gray-600">Memo:</span>
+                      <p className="font-semibold">{transferData.memo}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Banking API Integration Notice */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <div className="flex items-start space-x-3">
+                  <Shield className="w-5 h-5 text-blue-600 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-blue-800">🔌 Banking API Integration</h4>
+                    <p className="text-sm text-blue-700 mb-3">
+                      This transfer will be processed through our secure banking API partner.
+                      No fees applied and funds typically arrive in 2-3 business days.
+                    </p>
+                    <div className="bg-blue-100 rounded-lg p-3 mt-2">
+                      <h5 className="font-semibold text-blue-900 mb-2">How To Setup Banking API:</h5>
+                      <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+                        <li>Sign up with a banking API provider (Plaid, Dwolla, Stripe Connect)</li>
+                        <li>Obtain API credentials and sandbox/production keys</li>
+                        <li>Configure webhook endpoints for transfer status updates</li>
+                        <li>Implement ACH transfer endpoints in your backend</li>
+                        <li>Add proper error handling and retry logic</li>
+                        <li>Test thoroughly in sandbox before going live</li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Legal Notice */}
+              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                <div className="flex items-start space-x-3">
+                  <Shield className="w-5 h-5 text-yellow-600 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-yellow-800">Important Notice</h4>
+                    <p className="text-sm text-yellow-700">
+                      By confirming this transfer, you authorize Faded Skies to transfer the specified amount
+                      to your bank account. Transfers are final and cannot be reversed once processed.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex items-center justify-between pt-6 border-t border-gray-200">
+            <button
+              onClick={handleClose}
+              className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+
+            <div className="flex space-x-3">
+              {step === 2 && (
+                <button
+                  onClick={() => setStep(1)}
+                  className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+                >
+                  Back
+                </button>
+              )}
+
+              {step === 1 ? (
+                <button
+                  onClick={handleNext}
+                  className="px-6 py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition-colors"
+                >
+                  Next
+                </button>
+              ) : (
+                <button
+                  onClick={handleTransfer}
+                  className="px-6 py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition-colors"
+                >
+                  Confirm Transfer
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </Modal>
+    );
+  };
+
   return (
     <div className="max-w-md mx-auto bg-gray-50 min-h-screen">
       <Toast showToast={showToast} toastMessage={toastMessage} type={toastType} />
