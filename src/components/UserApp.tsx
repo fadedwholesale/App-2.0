@@ -1611,7 +1611,7 @@ const SubmitTicketModal = React.memo(({
             <li>• You\'ll receive a confirmation email with your ticket number</li>
             <li>• Our team will review your issue within 2-4 hours</li>
             <li>• We\'ll respond with a solution or follow-up questions</li>
-            <li>• You can track your ticket status in your account</li>
+            <li>�� You can track your ticket status in your account</li>
           </ul>
         </div>
 
@@ -2804,8 +2804,6 @@ const FadedSkiesApp = () => {
     smsService.initialize();
     smsService.setupSMSListeners();
 
-    // Initialize secure chat service
-    secureChatService.initialize();
 
     // Setup comprehensive real-time sync
     setupRealTimeSync();
