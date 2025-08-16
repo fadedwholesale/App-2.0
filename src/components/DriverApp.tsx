@@ -758,16 +758,37 @@ const FadedSkiesDriverApp = () => {
 
 
   const toggleOnlineStatus = useCallback(() => {
+    const newStatus = !driver.isOnline;
+
     setDriver(prev => ({
       ...prev,
-      isOnline: !prev.isOnline
+      isOnline: newStatus
     }));
-    
-    showToastMessage(
-      driver.isOnline ? 'You are now offline' : 'You are now online and ready for deliveries!',
-      driver.isOnline ? 'warning' : 'success'
+
+    // Update global store
+    updateDriverStatus(
+      parseInt(driver.id.replace('driver_', '')),
+      newStatus ? 'online' : 'offline',
+      driverLocation || { lat: 30.2672, lng: -97.7431 }
     );
-  }, [driver.isOnline, showToastMessage]);
+
+    // Send WebSocket update
+    wsService.send({
+      type: newStatus ? 'driver:online' : 'driver:offline',
+      data: {
+        driverId: parseInt(driver.id.replace('driver_', '')),
+        driverName: driver.name,
+        status: newStatus ? 'online' : 'offline',
+        location: driverLocation || { lat: 30.2672, lng: -97.7431 },
+        timestamp: new Date().toISOString()
+      }
+    });
+
+    showToastMessage(
+      newStatus ? 'You are now online and ready for deliveries!' : 'You are now offline',
+      newStatus ? 'success' : 'warning'
+    );
+  }, [driver, driverLocation, updateDriverStatus, showToastMessage]);
 
   const acceptOrder = useCallback((order: Order) => {
     const acceptedOrder = { ...order, status: 'accepted', acceptedAt: new Date() };
@@ -1655,7 +1676,7 @@ const FadedSkiesDriverApp = () => {
 
     const handleSave = () => {
       // Mask account number for display
-      const maskedAccount = `••••${bankData.accountNumber.slice(-4)}`;
+      const maskedAccount = `���•••${bankData.accountNumber.slice(-4)}`;
       const bankDisplay = `${bankData.bankName} ${maskedAccount}`;
 
       setDriver(prev => ({
