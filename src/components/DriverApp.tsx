@@ -2628,7 +2628,13 @@ const FadedSkiesDriverApp = () => {
                       <button
                         key={index}
                         type="button"
-                        onClick={() => alert(`${option.title} selected`)}
+                        onClick={() => {
+                          if (option.title === 'Standard Transfer') {
+                            openModal('bankingTransfer');
+                          } else {
+                            alert(`${option.title} selected`);
+                          }
+                        }}
                         className={`w-full bg-gradient-to-r ${option.color} text-white p-4 rounded-2xl text-left hover:scale-105 transition-all shadow-lg hover:shadow-xl`}
                       >
                         <div className="flex items-center space-x-4">
