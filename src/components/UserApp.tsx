@@ -2947,7 +2947,15 @@ const FadedSkiesApp = () => {
           return updated;
         });
 
-        // Show immediate user notification
+        // Show sync toast notification
+        setSyncToast({
+          show: true,
+          message: `🆕 New product added: ${data.product.name}`,
+          type: 'success'
+        });
+        setTimeout(() => setSyncToast(prev => ({ ...prev, show: false })), 3000);
+
+        // Show browser notification
         if ('Notification' in window && Notification.permission === 'granted') {
           new Notification('🌿 New Product Available!', {
             body: `${data.product.name} is now available for order`,
@@ -2958,20 +2966,38 @@ const FadedSkiesApp = () => {
 
       const handleProductUpdated = (data: any) => {
         console.log('✏️ UserApp: Product updated immediately:', data.id);
+        const productName = products.find(p => p.id === data.id)?.name || 'Product';
         setProducts(prev => {
           const updated = prev.map(p => p.id === data.id ? { ...p, ...data.updates } : p);
           console.log('📦 UserApp: Product updated in list');
           return updated;
         });
+
+        // Show sync toast notification
+        setSyncToast({
+          show: true,
+          message: `✏️ ${productName} updated`,
+          type: 'success'
+        });
+        setTimeout(() => setSyncToast(prev => ({ ...prev, show: false })), 3000);
       };
 
       const handleProductDeleted = (data: any) => {
         console.log('🗑️ UserApp: Product deleted immediately:', data.id);
+        const productName = products.find(p => p.id === data.id)?.name || 'Product';
         setProducts(prev => {
           const updated = prev.filter(p => p.id !== data.id);
           console.log('📦 UserApp: Product removed from list, now showing', updated.length, 'products');
           return updated;
         });
+
+        // Show sync toast notification
+        setSyncToast({
+          show: true,
+          message: `🗑️ ${productName} removed`,
+          type: 'warning'
+        });
+        setTimeout(() => setSyncToast(prev => ({ ...prev, show: false })), 3000);
       };
 
       // Register enhanced event listeners for immediate updates
