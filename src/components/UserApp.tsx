@@ -2967,6 +2967,9 @@ const FadedSkiesApp = () => {
   }, []);
 
   const updateQuantity = useCallback((id: number, change: number) => {
+    // Preserve scroll position during cart updates
+    const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+
     setCart(prev => {
       const updatedCart = prev.map(item => {
         if (item.id === id) {
@@ -2988,7 +2991,12 @@ const FadedSkiesApp = () => {
         }
         return item;
       }).filter(Boolean) as CartItem[];
-      
+
+      // Restore scroll position after state update
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: scrollPosition, behavior: 'instant' });
+      });
+
       return updatedCart;
     });
   }, []);
@@ -4312,7 +4320,7 @@ const FadedSkiesApp = () => {
                       onClick={() => setCurrentView('home')}
                       className="bg-gradient-to-r from-emerald-600 to-green-600 text-white px-10 py-5 rounded-2xl font-bold text-lg hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
                     >
-                      🌿 Start Shopping
+                      ��� Start Shopping
                     </button>
                   </div>
                 ) : (
