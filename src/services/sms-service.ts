@@ -128,6 +128,12 @@ export class SMSService {
 
   // Generic SMS sending method
   private async sendSMS(to: string, message: string, metadata: any = {}) {
+    // Validate inputs
+    if (!to || !message) {
+      console.error('SMS validation failed: missing phone or message');
+      return { success: false, error: 'Missing required parameters' };
+    }
+
     const smsData: SMSMessage = {
       to,
       from: 'Faded Skies',
@@ -138,11 +144,15 @@ export class SMSService {
     };
 
     try {
-      // Send via WebSocket
-      wsService.send({
-        type: 'sms:send',
-        data: smsData
-      });
+      // Send via WebSocket with safety check
+      if (wsService && typeof wsService.send === 'function') {
+        wsService.send({
+          type: 'sms:send',
+          data: smsData
+        });
+      } else {
+        console.warn('WebSocket service not available for SMS');
+      }
 
       // Simulate SMS API call (replace with real SMS provider in production)
       console.log('📱 SMS sent:', {
@@ -154,7 +164,10 @@ export class SMSService {
       return { success: true, messageId: `sms_${Date.now()}` };
     } catch (error) {
       console.error('Failed to send SMS:', error);
-      return { success: false, error: error.message };
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      };
     }
   }
 
