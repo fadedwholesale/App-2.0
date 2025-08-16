@@ -2950,9 +2950,6 @@ const FadedSkiesApp = () => {
     // Initialize data sync service
     dataSyncService.initialize();
 
-    // Initialize SMS service
-    smsService.initialize();
-    smsService.setupSMSListeners();
 
 
     // Setup comprehensive real-time sync
