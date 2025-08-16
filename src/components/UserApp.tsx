@@ -2985,13 +2985,13 @@ const FadedSkiesApp = () => {
         return item;
       }).filter(Boolean) as CartItem[];
 
-      // Restore scroll position after state update
-      requestAnimationFrame(() => {
-        window.scrollTo({ top: scrollPosition, behavior: 'instant' });
-      });
-
       return updatedCart;
     });
+
+    // Restore scroll position after all state updates complete
+    setTimeout(() => {
+      window.scrollTo({ top: scrollPosition, behavior: 'instant' });
+    }, 0);
   }, []);
 
   const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -4157,7 +4157,7 @@ const FadedSkiesApp = () => {
                           { name: 'Apple Pay', icon: '🍎' },
                           { name: 'Google Pay', icon: '🔵' },
                           { name: 'Aeropay', icon: '💳' },
-                          { name: 'FS Coin', icon: '����' }
+                          { name: 'FS Coin', icon: '🪙' }
                         ].map(method => (
                           <button
                             key={method.name}
