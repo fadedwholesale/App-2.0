@@ -45,8 +45,6 @@ import {
   Target,
   Activity,
   MessageCircle,
-  UserPlus,
-  RotateCcw,
   Search
 } from 'lucide-react';
 
