@@ -74,7 +74,10 @@ const FadedSkiesTrackingAdmin = () => {
     orderDetails: false,
     customerDetails: false,
     userManagement: false,
-    confirmDelete: false
+    confirmDelete: false,
+    createUser: false,
+    editUser: false,
+    userDetails: false
   });
 
   // Selected items for modals
