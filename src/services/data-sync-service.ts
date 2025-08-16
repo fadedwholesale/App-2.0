@@ -199,16 +199,24 @@ export class DataSyncService {
 
   // Sync driver profile updates to admin
   syncDriverProfile(driverId: number, profileData: any) {
-    console.log('📡 Broadcasting driver profile update:', driverId);
-    
-    wsService.send({
-      type: 'driver:profile_update',
-      data: {
-        driverId,
-        ...profileData,
-        timestamp: new Date().toISOString()
+    try {
+      console.log('📡 Broadcasting driver profile update:', driverId);
+
+      if (wsService && typeof wsService.send === 'function') {
+        wsService.send({
+          type: 'driver:profile_update',
+          data: {
+            driverId,
+            ...profileData,
+            timestamp: new Date().toISOString()
+          }
+        });
+      } else {
+        console.warn('WebSocket service not available for driver profile sync');
       }
-    });
+    } catch (error) {
+      console.error('Failed to sync driver profile:', error);
+    }
   }
 
   // Sync customer profile updates to admin
