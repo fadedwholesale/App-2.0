@@ -169,6 +169,15 @@ interface CannabisDeliveryState {
   broadcastProductUpdated: (id: number, updates: Partial<Product>) => void;
   broadcastProductDeleted: (id: number) => void;
   setupRealTimeSync: () => void;
+
+  // Order workflow actions
+  placeOrder: (orderData: any) => void;
+  processOrder: (orderId: string, status: string) => void;
+  assignDriver: (orderId: string, driverId: string) => void;
+  updateDriverLocation: (driverId: string, location: { lat: number; lng: number }) => void;
+  sendAdminMessage: (driverId: string, message: string) => void;
+  sendDriverMessage: (adminId: string, message: string) => void;
+  createGeofence: (name: string, coords: { lat: number; lng: number; radius: number }) => void;
   
   setCustomers: (customers: Customer[]) => void;
   addCustomer: (customer: Customer) => void;
