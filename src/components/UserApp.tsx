@@ -1148,7 +1148,7 @@ const ContactModal = React.memo(({
       case 'Call Support':
         return {
           title: 'Call Support',
-          icon: '����',
+          icon: '📞',
           description: 'Speak directly with our support team',
           showForm: false,
           content: (
@@ -2548,18 +2548,23 @@ const LiveTrackingModal = React.memo(({
                       const activeOrder = orders.find(order =>
                         ['preparing', 'assigned', 'picked_up', 'in_transit'].includes(order.status)
                       );
-                      if (activeOrder && activeOrder.driver) {
-                        openModal('sms', {
-                          driver: {
-                            name: activeOrder.driver,
-                            phone: activeOrder.driverPhone || '(512) 555-0001'
-                          }
-                        });
+                      if (activeOrder && activeOrder.driver && activeOrder.driverPhone) {
+                        // Open SMS to driver with pre-filled message
+                        const message = `Hi ${activeOrder.driver}, I have a question about my delivery.`;
+                        window.location.href = `sms:${activeOrder.driverPhone}?body=${encodeURIComponent(message)}`;
                       } else {
-                        openModal('sms', {});
+                        // Open SMS to support
+                        const message = 'Hi, I need assistance with my order.';
+                        window.location.href = `sms:5554203233?body=${encodeURIComponent(message)}`;
                       }
                     }}
                     className="bg-blue-500 text-white p-3 rounded-full hover:bg-blue-600 transition-colors"
+                    title={(() => {
+                      const activeOrder = orders.find(order =>
+                        ['preparing', 'assigned', 'picked_up', 'in_transit'].includes(order.status)
+                      );
+                      return activeOrder?.driver ? `Text ${activeOrder.driver}` : 'Text Support';
+                    })()}
                   >
                     <MessageCircle className="w-5 h-5" />
                   </button>
