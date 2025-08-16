@@ -1418,9 +1418,15 @@ const FadedSkiesTrackingAdmin = () => {
   const ConfirmationModal = () => {
     const handleConfirm = () => {
       if (deleteTarget.type === 'product') {
-        // Delete product with real-time sync
+        // Delete product with enhanced real-time sync
         broadcastProductDeleted(deleteTarget.id);
-        console.log('✅ Product deleted with real-time sync:', deleteTarget.name);
+        console.log('✅ AdminApp: Product deleted with real-time sync:', deleteTarget.name);
+        console.log('📡 Broadcasting deletion to all connected users...');
+
+        // Show confirmation
+        setTimeout(() => {
+          console.log('🔄 Product deletion should now be reflected on user apps immediately');
+        }, 100);
       } else {
         console.log(`Deleting ${deleteTarget.type}:`, deleteTarget.id);
       }
