@@ -30,6 +30,7 @@ import {
 import { wsService } from '../services/simple-websocket';
 import { useCannabisDeliveryStore } from '../services/cannabis-delivery-store';
 import { dataSyncService, useDataSync } from '../services/data-sync-service';
+import { useSMS, smsService } from '../services/sms-service';
 
 // TypeScript interfaces
 interface Product {
@@ -1706,7 +1707,7 @@ const SubmitTicketModal = React.memo(({
                   {attachments.map((file, index) => (
                     <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded-lg">
                       <span className="text-sm text-gray-700 flex items-center">
-                        <span className="mr-2">📄</span>
+                        <span className="mr-2">��</span>
                         {file}
                       </span>
                       <button
