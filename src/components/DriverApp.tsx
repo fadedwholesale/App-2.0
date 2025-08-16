@@ -48,6 +48,7 @@ import {
 // Import simple WebSocket service for real-time driver updates
 import { wsService } from '../services/simple-websocket';
 import { useCannabisDeliveryStore } from '../services/cannabis-delivery-store';
+import { useDataSync, dataSyncService } from '../services/data-sync-service';
 
 // TypeScript interfaces
 interface Order {
