@@ -716,7 +716,10 @@ const FadedSkiesDriverApp = () => {
             wsService.send({
               type: 'driver:offline',
               data: {
-                driverId: driver.id
+                driverId: driver.id,
+                driverName: driver.name,
+                status: 'offline',
+                timestamp: new Date().toISOString()
               }
             });
 
