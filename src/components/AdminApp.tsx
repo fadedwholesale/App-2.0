@@ -2753,79 +2753,427 @@ const FadedSkiesTrackingAdmin = () => {
     </div>
   );
 
-  const CustomersView = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Customer Management</h1>
-        <button
-          onClick={() => openModal('customerDetails')}
-          className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-emerald-700 transition-colors"
-        >
-          Add Customer
-        </button>
-      </div>
+  const CustomersView = () => {
+    const [userList, setUserList] = useState([]);
+    const [driverList, setDriverList] = useState([]);
+    const [userStats, setUserStats] = useState({});
+    const [loading, setLoading] = useState(false);
+    const [currentTab, setCurrentTab] = useState('customers');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filters, setFilters] = useState({
+      isVerified: 'all',
+      isActive: 'all',
+      role: 'all'
+    });
+    const [pagination, setPagination] = useState({
+      page: 1,
+      limit: 20,
+      totalPages: 1
+    });
 
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Customer</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Contact</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Orders</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Total Spent</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Status</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {customers.map(customer => (
-                <tr key={customer.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div>
-                      <h4 className="font-semibold text-gray-900">{customer.name}</h4>
-                      <p className="text-sm text-gray-600">{customer.address}</p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-700">
-                      <div>{customer.email}</div>
-                      <div>{customer.phone}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-900">{customer.totalOrders}</td>
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-900">${customer.totalSpent}</td>
-                  <td className="px-6 py-4">
-                    <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
-                      {customer.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => openModal('customerDetails', customer)}
-                        className="text-blue-600 hover:text-blue-700 p-1"
-                        title="Edit Customer"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => openModal('customerDetails', customer)}
-                        className="text-green-600 hover:text-green-700 p-1"
-                        title="View Customer Details"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+    // Fetch users data
+    const fetchUsers = useCallback(async () => {
+      setLoading(true);
+      try {
+        const endpoint = currentTab === 'customers' ? '/api/admin/users/customers' : '/api/admin/users/drivers';
+        const params = new URLSearchParams({
+          page: pagination.page.toString(),
+          limit: pagination.limit.toString(),
+          ...(searchTerm && { search: searchTerm }),
+          ...(filters.isVerified !== 'all' && { isVerified: filters.isVerified }),
+          ...(filters.isActive !== 'all' && { isActive: filters.isActive }),
+          ...(filters.role !== 'all' && { role: filters.role })
+        });
+
+        const response = await fetch(`${endpoint}?${params}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (currentTab === 'customers') {
+            setUserList(data.users || []);
+          } else {
+            setDriverList(data.drivers || []);
+          }
+          setPagination(prev => ({
+            ...prev,
+            totalPages: data.pagination?.totalPages || 1
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to fetch users:', error);
+      } finally {
+        setLoading(false);
+      }
+    }, [currentTab, pagination.page, pagination.limit, searchTerm, filters]);
+
+    // Fetch user statistics
+    const fetchUserStats = useCallback(async () => {
+      try {
+        const response = await fetch('/api/admin/users/stats/dashboard', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setUserStats(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user stats:', error);
+      }
+    }, []);
+
+    // Load data on component mount and when dependencies change
+    useEffect(() => {
+      fetchUsers();
+    }, [fetchUsers]);
+
+    useEffect(() => {
+      fetchUserStats();
+    }, [fetchUserStats]);
+
+    // Handle user actions
+    const handleResetPassword = async (userId: string) => {
+      try {
+        const newPassword = prompt('Enter new password (min 6 characters):');
+        if (!newPassword || newPassword.length < 6) return;
+
+        const response = await fetch(`/api/admin/users/${userId}/reset-password`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ newPassword, sendNotification: true })
+        });
+
+        if (response.ok) {
+          showToastMessage('Password reset successfully', 'success');
+        } else {
+          throw new Error('Failed to reset password');
+        }
+      } catch (error) {
+        console.error('Reset password error:', error);
+        showToastMessage('Failed to reset password', 'error');
+      }
+    };
+
+    const handleUpdateEmail = async (userId: string, currentEmail: string) => {
+      try {
+        const newEmail = prompt('Enter new email address:', currentEmail);
+        if (!newEmail || newEmail === currentEmail) return;
+
+        const response = await fetch(`/api/admin/users/${userId}/update-email`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ newEmail, sendNotification: true })
+        });
+
+        if (response.ok) {
+          showToastMessage('Email updated successfully', 'success');
+          fetchUsers(); // Refresh the list
+        } else {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to update email');
+        }
+      } catch (error) {
+        console.error('Update email error:', error);
+        showToastMessage(error.message || 'Failed to update email', 'error');
+      }
+    };
+
+    const handleToggleStatus = async (userId: string, isActive: boolean) => {
+      try {
+        const reason = isActive ? '' : prompt('Reason for deactivation (optional):') || '';
+
+        const response = await fetch(`/api/admin/users/${userId}/toggle-status`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ isActive: !isActive, reason })
+        });
+
+        if (response.ok) {
+          showToastMessage(`User ${!isActive ? 'activated' : 'deactivated'} successfully`, 'success');
+          fetchUsers(); // Refresh the list
+        } else {
+          throw new Error('Failed to toggle user status');
+        }
+      } catch (error) {
+        console.error('Toggle status error:', error);
+        showToastMessage('Failed to update user status', 'error');
+      }
+    };
+
+    const showToastMessage = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+      // You can implement your toast notification here
+      console.log(`${type.toUpperCase()}: ${message}`);
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
+            <p className="text-gray-600 mt-1">Manage customers, drivers, and admin users</p>
+          </div>
+          <button
+            onClick={() => openModal('createUser')}
+            className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-emerald-700 transition-colors flex items-center space-x-2"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Add User</span>
+          </button>
+        </div>
+
+        {/* User Statistics Dashboard */}
+        {userStats.overview && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
+              <h3 className="text-lg font-bold text-blue-800">Total Users</h3>
+              <p className="text-3xl font-black text-blue-600">{userStats.overview.totalUsers}</p>
+              <p className="text-xs text-blue-600 mt-1">{userStats.overview.recentSignups} new this week</p>
+            </div>
+            <div className="bg-green-50 border border-green-200 rounded-2xl p-6">
+              <h3 className="text-lg font-bold text-green-800">Customers</h3>
+              <p className="text-3xl font-black text-green-600">{userStats.overview.totalCustomers}</p>
+              <p className="text-xs text-green-600 mt-1">{userStats.verificationRate}% verified</p>
+            </div>
+            <div className="bg-purple-50 border border-purple-200 rounded-2xl p-6">
+              <h3 className="text-lg font-bold text-purple-800">Drivers</h3>
+              <p className="text-3xl font-black text-purple-600">{userStats.overview.totalDrivers}</p>
+              <p className="text-xs text-purple-600 mt-1">{userStats.overview.onlineDrivers} online now</p>
+            </div>
+            <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6">
+              <h3 className="text-lg font-bold text-orange-800">Active Rate</h3>
+              <p className="text-3xl font-black text-orange-600">{userStats.activeRate}%</p>
+              <p className="text-xs text-orange-600 mt-1">of all users</p>
+            </div>
+          </div>
+        )}
+
+        {/* Tab Navigation */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
+          <div className="border-b border-gray-200">
+            <nav className="flex space-x-8 px-6">
+              {[
+                { id: 'customers', label: 'Customers', icon: Users },
+                { id: 'drivers', label: 'Drivers', icon: Truck },
+                { id: 'admins', label: 'Admins', icon: Shield }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setCurrentTab(tab.id)}
+                  className={`flex items-center space-x-2 py-4 border-b-2 font-medium text-sm ${
+                    currentTab === tab.id
+                      ? 'border-emerald-500 text-emerald-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <tab.icon className="w-4 h-4" />
+                  <span>{tab.label}</span>
+                </button>
               ))}
-            </tbody>
-          </table>
+            </nav>
+          </div>
+
+          {/* Filters and Search */}
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+              <div className="flex items-center space-x-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search users..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 w-64"
+                  />
+                </div>
+                <select
+                  value={filters.isVerified}
+                  onChange={(e) => setFilters(prev => ({ ...prev, isVerified: e.target.value }))}
+                  className="px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="all">All Verification</option>
+                  <option value="true">Verified Only</option>
+                  <option value="false">Unverified Only</option>
+                </select>
+                <select
+                  value={filters.isActive}
+                  onChange={(e) => setFilters(prev => ({ ...prev, isActive: e.target.value }))}
+                  className="px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="all">All Status</option>
+                  <option value="true">Active Only</option>
+                  <option value="false">Inactive Only</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* User List */}
+          <div className="overflow-x-auto">
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+              </div>
+            ) : (
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">User</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Contact</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
+                      {currentTab === 'customers' ? 'Orders' : currentTab === 'drivers' ? 'Deliveries' : 'Role'}
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Status</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Joined</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {(currentTab === 'customers' ? userList : driverList).map((user: any) => (
+                    <tr key={user.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                            <User className="w-5 h-5 text-gray-500" />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-900">{user.name || user.user?.name}</h4>
+                            <p className="text-sm text-gray-600">{user.email || user.user?.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-700">
+                          <div>{user.phone || user.user?.phone || 'N/A'}</div>
+                          <div className="text-xs text-gray-500">
+                            {user.address || user.user?.address || 'No address'}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                        {currentTab === 'customers'
+                          ? `${user.totalOrders || 0} orders`
+                          : currentTab === 'drivers'
+                          ? `${user.completedOrders || 0} deliveries`
+                          : user.role || 'Admin'
+                        }
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col space-y-1">
+                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                            (user.isActive ?? user.user?.isActive)
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {(user.isActive ?? user.user?.isActive) ? 'Active' : 'Inactive'}
+                          </span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                            (user.isVerified ?? user.user?.isVerified)
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {(user.isVerified ?? user.user?.isVerified) ? 'Verified' : 'Unverified'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {new Date(user.createdAt || user.user?.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => openModal('userDetails', user)}
+                            className="text-blue-600 hover:text-blue-700 p-1"
+                            title="View Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => openModal('editUser', user)}
+                            className="text-green-600 hover:text-green-700 p-1"
+                            title="Edit User"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleResetPassword(user.id || user.user?.id)}
+                            className="text-orange-600 hover:text-orange-700 p-1"
+                            title="Reset Password"
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleUpdateEmail(user.id || user.user?.id, user.email || user.user?.email)}
+                            className="text-purple-600 hover:text-purple-700 p-1"
+                            title="Update Email"
+                          >
+                            <Mail className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleToggleStatus(user.id || user.user?.id, user.isActive ?? user.user?.isActive)}
+                            className={`p-1 ${
+                              (user.isActive ?? user.user?.isActive)
+                                ? 'text-red-600 hover:text-red-700'
+                                : 'text-green-600 hover:text-green-700'
+                            }`}
+                            title={`${(user.isActive ?? user.user?.isActive) ? 'Deactivate' : 'Activate'} User`}
+                          >
+                            {(user.isActive ?? user.user?.isActive) ? <X className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* Pagination */}
+          {pagination.totalPages > 1 && (
+            <div className="px-6 py-4 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+                  disabled={pagination.page === 1}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-gray-700">
+                  Page {pagination.page} of {pagination.totalPages}
+                </span>
+                <button
+                  onClick={() => setPagination(prev => ({ ...prev, page: Math.min(prev.totalPages, prev.page + 1) }))}
+                  disabled={pagination.page === pagination.totalPages}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderCurrentView = () => {
     switch (currentView) {
