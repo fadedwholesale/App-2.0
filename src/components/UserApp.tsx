@@ -2983,10 +2983,19 @@ const FadedSkiesApp = () => {
       return [...prev, { ...product, quantity: 1 }];
     });
 
-    // Restore scroll position after all state updates complete
-    setTimeout(() => {
+    // Multiple scroll restoration attempts to ensure it works
+    const restoreScroll = () => {
       window.scrollTo({ top: scrollPosition, behavior: 'instant' });
-    }, 0);
+    };
+
+    // Immediate restoration
+    requestAnimationFrame(restoreScroll);
+
+    // Backup restorations with increasing delays
+    setTimeout(restoreScroll, 0);
+    setTimeout(restoreScroll, 10);
+    setTimeout(restoreScroll, 50);
+    setTimeout(restoreScroll, 100);
   }, []);
 
   const updateQuantity = useCallback((id: number, change: number) => {
