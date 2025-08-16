@@ -43,7 +43,8 @@ import {
   Truck,
   Award,
   Target,
-  Activity
+  Activity,
+  MessageCircle
 } from 'lucide-react';
 
 // Import simple WebSocket service for real-time admin monitoring
