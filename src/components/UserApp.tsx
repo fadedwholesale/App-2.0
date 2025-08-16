@@ -2926,9 +2926,78 @@ const FadedSkiesApp = () => {
     }
   ];
 
-  // Initialize real-time product sync and populate store if empty
+  // Enhanced real-time product sync with immediate updates
   useEffect(() => {
+    console.log('🔄 UserApp initializing enhanced real-time product sync...');
+
+    // Setup comprehensive real-time sync
     setupRealTimeSync();
+
+    // Connect to WebSocket for immediate product updates
+    try {
+      wsService.connect('user-product-sync');
+
+      // Enhanced product sync event handlers for immediate UI updates
+      const handleProductAdded = (data: any) => {
+        console.log('🆕 UserApp: Product added immediately:', data.product.name);
+        setProducts(prev => {
+          const updated = [...prev, data.product];
+          console.log('📦 UserApp: Product list updated, now showing', updated.length, 'products');
+          return updated;
+        });
+
+        // Show immediate user notification
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('🌿 New Product Available!', {
+            body: `${data.product.name} is now available for order`,
+            icon: '/favicon.ico'
+          });
+        }
+      };
+
+      const handleProductUpdated = (data: any) => {
+        console.log('✏️ UserApp: Product updated immediately:', data.id);
+        setProducts(prev => {
+          const updated = prev.map(p => p.id === data.id ? { ...p, ...data.updates } : p);
+          console.log('📦 UserApp: Product updated in list');
+          return updated;
+        });
+      };
+
+      const handleProductDeleted = (data: any) => {
+        console.log('🗑️ UserApp: Product deleted immediately:', data.id);
+        setProducts(prev => {
+          const updated = prev.filter(p => p.id !== data.id);
+          console.log('📦 UserApp: Product removed from list, now showing', updated.length, 'products');
+          return updated;
+        });
+      };
+
+      // Register enhanced event listeners for immediate updates
+      wsService.on('product_added', handleProductAdded);
+      wsService.on('product_updated', handleProductUpdated);
+      wsService.on('product_deleted', handleProductDeleted);
+
+      // Request browser notification permission for product updates
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().then(permission => {
+          console.log('🔔 Notification permission:', permission);
+        });
+      }
+
+      console.log('✅ UserApp: Enhanced real-time product sync connected - immediate updates enabled!');
+
+      // Cleanup function
+      return () => {
+        wsService.off('product_added', handleProductAdded);
+        wsService.off('product_updated', handleProductUpdated);
+        wsService.off('product_deleted', handleProductDeleted);
+        console.log('🔌 UserApp: Real-time product sync disconnected');
+      };
+
+    } catch (error) {
+      console.error('❌ UserApp: Failed to connect real-time product sync:', error);
+    }
 
     // Initialize store with local products if it's empty
     if (products.length === 0 && localProducts.length > 0) {
@@ -2936,8 +3005,7 @@ const FadedSkiesApp = () => {
       console.log('🌿 UserApp: Initialized store with sample products');
     }
 
-    console.log('🔄 UserApp connected to real-time product sync - products will update live!');
-  }, [setupRealTimeSync, products.length, setProducts]);
+  }, [setupRealTimeSync, setProducts]);
 
   // Use store products if available, otherwise fall back to local products
   const activeProducts = products.length > 0 ? products : localProducts;
