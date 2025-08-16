@@ -234,7 +234,6 @@ interface CannabisDeliveryState {
   setActiveDeliveries: (deliveries: ActiveDelivery[]) => void;
   updateDeliveryProgress: (orderId: string, progress: number) => void;
   updateDeliveryStatus: (orderId: string, status: ActiveDelivery['status']) => void;
-  assignDriver: (orderId: string, driverId: number) => void;
   
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'>) => void;
   markAsRead: (id: string) => void;
