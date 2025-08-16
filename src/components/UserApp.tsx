@@ -4798,15 +4798,6 @@ const FadedSkiesApp = () => {
           />
 
           {/* Support Modals */}
-          <LiveChatModal
-            isOpen={currentModal === 'liveChat'}
-            onClose={closeModal}
-            messages={chatMessages}
-            onSendMessage={sendChatMessage}
-            chatInput={chatInput}
-            setChatInput={setChatInput}
-            isTyping={isTyping}
-          />
 
           <QuickHelpModal
             isOpen={currentModal === 'quickHelp'}
