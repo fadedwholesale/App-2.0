@@ -115,8 +115,50 @@ export class SimpleWebSocketService {
           this.emit('driver_location_update', message.data);
           break;
         case 'admin:send_message':
-          this.emit('admin_message', message.data);
-          break;
+        this.emit('admin_message', message.data);
+        break;
+
+      // Production GPS Tracking Events
+      case 'driver:location_broadcast':
+        this.emit('driver_location_broadcast', message.data);
+        break;
+
+      case 'admin:geofence_created':
+        this.emit('geofence_created', message.data);
+        break;
+
+      case 'admin:geofence_alert':
+        this.emit('geofence_alert', message.data);
+        break;
+
+      case 'admin:emergency_stop':
+        this.emit('emergency_stop', message.data);
+        break;
+
+      case 'driver:arrival_notification':
+        this.emit('driver_arrival', message.data);
+        break;
+
+      case 'customer:delivery_eta_update':
+        this.emit('delivery_eta_update', message.data);
+        break;
+
+      // Driver Pickup and Delivery Notifications
+      case 'admin:notify_driver_pickup':
+        this.emit('driver_pickup_notification', message.data);
+        break;
+
+      case 'driver:confirm_pickup':
+        this.emit('pickup_confirmed', message.data);
+        break;
+
+      case 'driver:start_delivery':
+        this.emit('delivery_started', message.data);
+        break;
+
+      case 'driver:delivery_complete':
+        this.emit('delivery_completed', message.data);
+        break;
         case 'driver:send_message':
           this.emit('driver_message', message.data);
           break;
