@@ -1,0 +1,41 @@
+2025-08-16T16:16:14.717Z [[32minfo[39m]: No Redis URL provided, using in-memory cache
+2025-08-16T16:16:14.719Z [[32minfo[39m]: Redis connected successfully
+2025-08-16T16:16:14.720Z [[32minfo[39m]: Initializing background jobs...
+2025-08-16T16:16:14.720Z [[32minfo[39m]: Background jobs initialized successfully
+2025-08-16T16:16:14.720Z [[32minfo[39m]: Background jobs initialized
+2025-08-16T16:16:14.722Z [[32minfo[39m]: 🚀 Server running on port 3002
+2025-08-16T16:16:14.722Z [[32minfo[39m]: 📱 Environment: development
+2025-08-16T16:16:14.722Z [[32minfo[39m]: 🔗 Socket.IO enabled
+2025-08-16T16:16:14.722Z [[32minfo[39m]: 📋 API Documentation: http://localhost:3002/health
+2025-08-16T16:16:24.434Z [[32minfo[39m]: ::ffff:127.0.0.1 - - [16/Aug/2025:16:16:24 +0000] "GET /health HTTP/1.1" 200 109 "-" "curl/7.88.1"
+2025-08-16T17:27:33.006Z [[32minfo[39m]: No Redis URL provided, using in-memory cache
+2025-08-16T17:27:33.010Z [[32minfo[39m]: Redis connected successfully
+2025-08-16T17:27:33.010Z [[32minfo[39m]: Initializing background jobs...
+2025-08-16T17:27:33.011Z [[32minfo[39m]: Background jobs initialized successfully
+2025-08-16T17:27:33.011Z [[32minfo[39m]: Background jobs initialized
+2025-08-16T17:27:33.013Z [[32minfo[39m]: 🚀 Server running on port 3002
+2025-08-16T17:27:33.014Z [[32minfo[39m]: 📱 Environment: development
+2025-08-16T17:27:33.015Z [[32minfo[39m]: 🔗 Socket.IO enabled
+2025-08-16T17:27:33.015Z [[32minfo[39m]: 📋 API Documentation: http://localhost:3002/health
+2025-08-16T17:31:42.372Z [[32minfo[39m]: No Redis URL provided, using in-memory cache
+2025-08-16T17:31:42.375Z [[32minfo[39m]: Redis connected successfully
+2025-08-16T17:31:42.375Z [[32minfo[39m]: Initializing background jobs...
+2025-08-16T17:31:42.375Z [[32minfo[39m]: Background jobs initialized successfully
+2025-08-16T17:31:42.376Z [[32minfo[39m]: Background jobs initialized
+2025-08-16T17:31:42.377Z [[32minfo[39m]: 🚀 Server running on port 3002
+2025-08-16T17:31:42.378Z [[32minfo[39m]: 📱 Environment: development
+2025-08-16T17:31:42.378Z [[32minfo[39m]: 🔗 Socket.IO enabled
+2025-08-16T17:31:42.378Z [[32minfo[39m]: 📋 API Documentation: http://localhost:3002/health
+2025-08-16T17:31:58.189Z [[31merror[39m]: TSError: ⨯ Unable to compile TypeScript:
+src/routes/admin/users.ts(7,10): error TS2305: Module '"../../middleware/auth"' has no exported member 'auth'.
+
+    at createTSError (/app/code/backend/node_modules/ts-node/src/index.ts:859:12)
+    at reportTSError (/app/code/backend/node_modules/ts-node/src/index.ts:863:19)
+    at getOutput (/app/code/backend/node_modules/ts-node/src/index.ts:1077:36)
+    at Object.compile (/app/code/backend/node_modules/ts-node/src/index.ts:1433:41)
+    at Module.m._compile (/app/code/backend/node_modules/ts-node/src/index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (/app/code/backend/node_modules/ts-node/src/index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)

@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useCannabisDeliveryStore } from '../services/cannabis-delivery-store';
 import {
   Home,
   Package,
   Users,
+  User,
   ShoppingCart,
   BarChart3,
   Settings,
@@ -41,15 +43,30 @@ import {
   Truck,
   Award,
   Target,
-  Activity
+  Activity,
+  MessageCircle,
+  Search
 } from 'lucide-react';
 
 // Import simple WebSocket service for real-time admin monitoring
 import { wsService } from '../services/simple-websocket';
+import { dataSyncService } from '../services/data-sync-service';
+import { useSMS, smsService } from '../services/sms-service';
 
 const FadedSkiesTrackingAdmin = () => {
   const [currentView, setCurrentView] = useState('dashboard');
   const [isTrackingLive, setIsTrackingLive] = useState(false);
+  const { sendToDriver, sendDeliveryNotification, emergencyBroadcast } = useSMS();
+
+  // Store integration for real-time product sync
+  const {
+    products,
+    setProducts,
+    broadcastProductAdded,
+    broadcastProductUpdated,
+    broadcastProductDeleted,
+    setupRealTimeSync
+  } = useCannabisDeliveryStore();
 
   // Modal states
   const [modals, setModals] = useState({
@@ -58,7 +75,10 @@ const FadedSkiesTrackingAdmin = () => {
     orderDetails: false,
     customerDetails: false,
     userManagement: false,
-    confirmDelete: false
+    confirmDelete: false,
+    createUser: false,
+    editUser: false,
+    userDetails: false
   });
 
   // Selected items for modals
@@ -196,7 +216,10 @@ const FadedSkiesTrackingAdmin = () => {
       orderDetails: false,
       customerDetails: false,
       userManagement: false,
-      confirmDelete: false
+      confirmDelete: false,
+      createUser: false,
+      editUser: false,
+      userDetails: false
     });
     setSelectedProduct(null);
     setSelectedOrder(null);
@@ -220,31 +243,61 @@ const FadedSkiesTrackingAdmin = () => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [modals]);
 
-  // Sample data
-  const [products] = useState([
-    {
-      id: 1,
-      name: 'Premium Cannabis Flower - Blue Dream',
-      category: 'Flower',
-      price: 45.00,
-      stock: 150,
-      thc: '18%',
-      cbd: '2%',
-      status: 'active',
-      supplier: 'Green Valley Farms'
-    },
-    {
-      id: 2,
-      name: 'Artisan Edibles - Gummy Bears 10mg',
-      category: 'Edibles',
-      price: 25.00,
-      stock: 85,
-      thc: '10mg per piece',
-      cbd: '0mg',
-      status: 'active',
-      supplier: 'Sweet Relief Co.'
+  // Initialize sample products if store is empty and setup real-time sync
+  useEffect(() => {
+    // Initialize data sync service
+    dataSyncService.initialize();
+
+    // Initialize SMS service
+    smsService.setupSMSListeners();
+
+    // Setup real-time sync for products
+    setupRealTimeSync();
+
+    // Initialize with sample data if products array is empty
+    if (products.length === 0) {
+      const initialProducts = [
+        {
+          id: 1,
+          name: 'Premium Cannabis Flower - Blue Dream',
+          category: 'Flower',
+          price: 45.00,
+          originalPrice: null,
+          thc: '18%',
+          cbd: '2%',
+          strain: 'Hybrid',
+          rating: 4.8,
+          reviewCount: 125,
+          imageUrl: 'https://images.unsplash.com/photo-1560448204-61dc36dc98c8?w=400',
+          description: 'Premium quality Blue Dream strain with balanced effects.',
+          effects: ['Relaxed', 'Happy', 'Creative'],
+          labTested: true,
+          inStock: true,
+          featured: true
+        },
+        {
+          id: 2,
+          name: 'Artisan Edibles - Gummy Bears 10mg',
+          category: 'Edibles',
+          price: 25.00,
+          originalPrice: null,
+          thc: '10mg per piece',
+          cbd: '0mg',
+          strain: 'Hybrid',
+          rating: 4.6,
+          reviewCount: 89,
+          imageUrl: 'https://images.unsplash.com/photo-1582049404584-7d92b3e9c21c?w=400',
+          description: 'Delicious gummy bears with precise 10mg THC dosing.',
+          effects: ['Euphoric', 'Relaxed', 'Happy'],
+          labTested: true,
+          inStock: true,
+          featured: false
+        }
+      ];
+      setProducts(initialProducts);
+      console.log('🌿 Initialized admin with sample products');
     }
-  ]);
+  }, [products.length, setProducts, setupRealTimeSync]);
 
   const [customers] = useState([
     {
@@ -395,8 +448,49 @@ const FadedSkiesTrackingAdmin = () => {
 
     const handleSubmit = (e) => {
       e.preventDefault();
-      // Handle form submission
-      console.log('Product data:', formData);
+
+      // Create product object with proper structure
+      const productData = {
+        id: isEdit ? selectedProduct.id : Date.now(), // Use timestamp as ID for new products
+        name: formData.name,
+        category: formData.category,
+        price: parseFloat(formData.price),
+        originalPrice: null,
+        thc: formData.thc,
+        cbd: formData.cbd,
+        strain: 'Hybrid', // Default value
+        rating: isEdit ? selectedProduct.rating : 5.0,
+        reviewCount: isEdit ? selectedProduct.reviewCount : 0,
+        imageUrl: 'https://images.unsplash.com/photo-1560448204-61dc36dc98c8?w=400', // Default image
+        description: formData.description || 'Premium cannabis product',
+        effects: ['Relaxed', 'Happy'], // Default effects
+        labTested: true,
+        inStock: parseInt(formData.stock) > 0,
+        featured: formData.featured
+      };
+
+      if (isEdit) {
+        // Update existing product with enhanced real-time sync
+        broadcastProductUpdated(selectedProduct.id, productData);
+        console.log('✅ AdminApp: Product updated with real-time sync:', productData.name);
+        console.log('📡 Broadcasting update to all connected users...');
+
+        // Show confirmation toast
+        setTimeout(() => {
+          console.log('🔄 Product update should now be visible on user apps immediately');
+        }, 100);
+      } else {
+        // Add new product with enhanced real-time sync
+        broadcastProductAdded(productData);
+        console.log('✅ AdminApp: Product added with real-time sync:', productData.name);
+        console.log('📡 Broadcasting new product to all connected users...');
+
+        // Show confirmation toast
+        setTimeout(() => {
+          console.log('🔄 New product should now be visible on user apps immediately');
+        }, 100);
+      }
+
       closeModal(isEdit ? 'editProduct' : 'addProduct');
     };
 
@@ -980,10 +1074,371 @@ const FadedSkiesTrackingAdmin = () => {
     );
   };
 
+  // Create User Modal
+  const CreateUserModal = () => {
+    const [formData, setFormData] = useState({
+      email: '',
+      password: '',
+      name: '',
+      phone: '',
+      role: 'CUSTOMER',
+      isVerified: true,
+      driverData: {
+        licenseNumber: '',
+        vehicleMake: '',
+        vehicleModel: '',
+        vehicleYear: new Date().getFullYear(),
+        vehicleColor: '',
+        licensePlate: ''
+      }
+    });
+
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+
+      try {
+        const response = await fetch('/api/admin/users/create', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(formData)
+        });
+
+        if (response.ok) {
+          console.log('User created successfully');
+          closeModal('createUser');
+          // Refresh user list here
+        } else {
+          const error = await response.json();
+          console.error('Create user error:', error);
+        }
+      } catch (error) {
+        console.error('Create user error:', error);
+      }
+    };
+
+    return (
+      <Modal
+        isOpen={modals.createUser}
+        onClose={() => closeModal('createUser')}
+        title="Create New User"
+        size="lg"
+      >
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+              <input
+                type="password"
+                value={formData.password}
+                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                minLength={6}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Phone</label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Role</label>
+              <select
+                value={formData.role}
+                onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              >
+                <option value="CUSTOMER">Customer</option>
+                <option value="DRIVER">Driver</option>
+                <option value="ADMIN">Admin</option>
+              </select>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              <input
+                type="checkbox"
+                id="isVerified"
+                checked={formData.isVerified}
+                onChange={(e) => setFormData(prev => ({ ...prev, isVerified: e.target.checked }))}
+                className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+              />
+              <label htmlFor="isVerified" className="text-sm font-medium text-gray-700">
+                Verified Account
+              </label>
+            </div>
+          </div>
+
+          {formData.role === 'DRIVER' && (
+            <div className="border-t border-gray-200 pt-6">
+              <h4 className="text-lg font-semibold text-gray-900 mb-4">Driver Information</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">License Number</label>
+                  <input
+                    type="text"
+                    value={formData.driverData.licenseNumber}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      driverData: { ...prev.driverData, licenseNumber: e.target.value }
+                    }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">License Plate</label>
+                  <input
+                    type="text"
+                    value={formData.driverData.licensePlate}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      driverData: { ...prev.driverData, licensePlate: e.target.value }
+                    }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Vehicle Make</label>
+                  <input
+                    type="text"
+                    value={formData.driverData.vehicleMake}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      driverData: { ...prev.driverData, vehicleMake: e.target.value }
+                    }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Vehicle Model</label>
+                  <input
+                    type="text"
+                    value={formData.driverData.vehicleModel}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      driverData: { ...prev.driverData, vehicleModel: e.target.value }
+                    }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Vehicle Year</label>
+                  <input
+                    type="number"
+                    value={formData.driverData.vehicleYear}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      driverData: { ...prev.driverData, vehicleYear: parseInt(e.target.value) }
+                    }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Vehicle Color</label>
+                  <input
+                    type="text"
+                    value={formData.driverData.vehicleColor}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      driverData: { ...prev.driverData, vehicleColor: e.target.value }
+                    }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={() => closeModal('createUser')}
+              className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors"
+            >
+              Create User
+            </button>
+          </div>
+        </form>
+      </Modal>
+    );
+  };
+
+  // User Details Modal
+  const UserDetailsModal = () => {
+    const user = selectedUser;
+
+    if (!user) return null;
+
+    return (
+      <Modal
+        isOpen={modals.userDetails}
+        onClose={() => closeModal('userDetails')}
+        title={`User Details - ${user.name || user.user?.name}`}
+        size="xl"
+      >
+        <div className="space-y-6">
+          {/* User Basic Info */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-gray-50 rounded-xl p-4">
+              <h4 className="text-lg font-bold text-gray-900 mb-3">Basic Information</h4>
+              <div className="space-y-2">
+                <p><span className="font-semibold">Name:</span> {user.name || user.user?.name}</p>
+                <p><span className="font-semibold">Email:</span> {user.email || user.user?.email}</p>
+                <p><span className="font-semibold">Phone:</span> {user.phone || user.user?.phone || 'N/A'}</p>
+                <p><span className="font-semibold">Role:</span> {user.role || user.user?.role}</p>
+                <p><span className="font-semibold">Joined:</span> {new Date(user.createdAt || user.user?.createdAt).toLocaleDateString()}</p>
+              </div>
+            </div>
+
+            <div className="bg-green-50 rounded-xl p-4">
+              <h4 className="text-lg font-bold text-gray-900 mb-3">Account Status</h4>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <span className="font-semibold">Active:</span>
+                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                    (user.isActive ?? user.user?.isActive) ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                    {(user.isActive ?? user.user?.isActive) ? 'Yes' : 'No'}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="font-semibold">Verified:</span>
+                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                    (user.isVerified ?? user.user?.isVerified) ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {(user.isVerified ?? user.user?.isVerified) ? 'Yes' : 'No'}
+                  </span>
+                </div>
+                {user.loyaltyPoints !== undefined && (
+                  <p><span className="font-semibold">Loyalty Points:</span> {user.loyaltyPoints}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Driver Specific Information */}
+          {(user.role === 'DRIVER' || user.user?.role === 'DRIVER') && (
+            <div className="bg-blue-50 rounded-xl p-4">
+              <h4 className="text-lg font-bold text-gray-900 mb-3">Driver Information</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p><span className="font-semibold">License:</span> {user.licenseNumber || 'N/A'}</p>
+                  <p><span className="font-semibold">Vehicle:</span> {user.vehicleYear} {user.vehicleMake} {user.vehicleModel}</p>
+                  <p><span className="font-semibold">Color:</span> {user.vehicleColor}</p>
+                  <p><span className="font-semibold">License Plate:</span> {user.licensePlate}</p>
+                </div>
+                <div>
+                  <p><span className="font-semibold">Online:</span> {user.isOnline ? 'Yes' : 'No'}</p>
+                  <p><span className="font-semibold">Rating:</span> ⭐ {user.rating || 'N/A'}</p>
+                  <p><span className="font-semibold">Total Deliveries:</span> {user.totalDeliveries || 0}</p>
+                  <p><span className="font-semibold">Total Earnings:</span> ${user.totalEarnings || 0}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Order History */}
+          {user.totalOrders > 0 && (
+            <div className="bg-purple-50 rounded-xl p-4">
+              <h4 className="text-lg font-bold text-gray-900 mb-3">Order Statistics</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-purple-600">{user.totalOrders}</p>
+                  <p className="text-sm text-gray-600">Total Orders</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-purple-600">${user.totalSpent || 0}</p>
+                  <p className="text-sm text-gray-600">Total Spent</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-purple-600">
+                    ${user.totalOrders > 0 ? ((user.totalSpent || 0) / user.totalOrders).toFixed(2) : '0'}
+                  </p>
+                  <p className="text-sm text-gray-600">Avg Order Value</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
+            <button
+              onClick={() => closeModal('userDetails')}
+              className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+            >
+              Close
+            </button>
+            <button
+              onClick={() => {
+                closeModal('userDetails');
+                openModal('editUser', user);
+              }}
+              className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors"
+            >
+              Edit User
+            </button>
+          </div>
+        </div>
+      </Modal>
+    );
+  };
+
   // Confirmation Modal
   const ConfirmationModal = () => {
     const handleConfirm = () => {
-      console.log(`Deleting ${deleteTarget.type}:`, deleteTarget.id);
+      if (deleteTarget.type === 'product') {
+        // Delete product with enhanced real-time sync
+        broadcastProductDeleted(deleteTarget.id);
+        console.log('✅ AdminApp: Product deleted with real-time sync:', deleteTarget.name);
+        console.log('📡 Broadcasting deletion to all connected users...');
+
+        // Show confirmation
+        setTimeout(() => {
+          console.log('🔄 Product deletion should now be reflected on user apps immediately');
+        }, 100);
+      } else {
+        console.log(`Deleting ${deleteTarget.type}:`, deleteTarget.id);
+      }
       closeModal('confirmDelete');
     };
 
@@ -1043,9 +1498,11 @@ const FadedSkiesTrackingAdmin = () => {
       <nav className="space-y-2">
         {[
           { id: 'dashboard', icon: Home, label: 'Dashboard' },
+          { id: 'orders', icon: ShoppingCart, label: 'Order Management' },
+          { id: 'dispatcher', icon: Truck, label: 'Dispatcher' },
+          { id: 'tracking', icon: Navigation, label: 'Live GPS Tracking' },
+          { id: 'messaging', icon: Mail, label: 'Driver Messages' },
           { id: 'products', icon: Package, label: 'Products' },
-          { id: 'orders', icon: ShoppingCart, label: 'Orders' },
-          { id: 'tracking', icon: Navigation, label: 'Live Tracking' },
           { id: 'customers', icon: Users, label: 'Customers' },
           { id: 'analytics', icon: BarChart3, label: 'Analytics' },
           { id: 'settings', icon: Settings, label: 'Settings' }
@@ -1297,111 +1754,677 @@ const FadedSkiesTrackingAdmin = () => {
     </div>
   );
 
-  const TrackingView = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Live Tracking & Dispatch</h1>
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={() => setIsTrackingLive(!isTrackingLive)}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-xl font-semibold transition-colors ${
-              isTrackingLive 
-                ? 'bg-red-600 text-white hover:bg-red-700' 
-                : 'bg-green-600 text-white hover:bg-green-700'
-            }`}
-          >
-            {isTrackingLive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-            <span>{isTrackingLive ? 'Stop Tracking' : 'Start Tracking'}</span>
-          </button>
-        </div>
-      </div>
+  const MessagingView = () => {
+    const { adminMessages, drivers, driverLocations, sendAdminMessage } = useCannabisDeliveryStore();
+    const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
+    const [newMessage, setNewMessage] = useState('');
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-blue-800 mb-2">Active Deliveries</h3>
-          <p className="text-3xl font-black text-blue-600">{activeDeliveries.length}</p>
-        </div>
-        <div className="bg-green-50 border border-green-200 rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-green-800 mb-2">Drivers Online</h3>
-          <p className="text-3xl font-black text-green-600">{drivers.filter(d => d.online).length}</p>
-        </div>
-        <div className="bg-purple-50 border border-purple-200 rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-purple-800 mb-2">Avg Delivery Time</h3>
-          <p className="text-3xl font-black text-purple-600">15 min</p>
-        </div>
-        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-orange-800 mb-2">Success Rate</h3>
-          <p className="text-3xl font-black text-orange-600">98%</p>
-        </div>
-      </div>
+    const onlineDrivers = drivers.filter(d => d.online);
+    const driverMessages = adminMessages.filter(msg =>
+      selectedDriver ? (msg.from === selectedDriver || msg.to === selectedDriver) : false
+    );
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
-          <div className="p-4 border-b border-gray-100">
-            <h3 className="text-xl font-bold text-gray-900">Live Map View</h3>
+    const handleSendMessage = () => {
+      if (selectedDriver && newMessage.trim()) {
+        sendAdminMessage(selectedDriver, newMessage.trim());
+        setNewMessage('');
+      }
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Driver Communication</h1>
+            <p className="text-gray-600 mt-1">Send messages and communicate with drivers in real-time</p>
           </div>
-          
-          <div className="relative h-96 bg-gradient-to-br from-green-100 via-blue-50 to-gray-100">
-            <div className="w-full h-full relative overflow-hidden rounded-b-2xl">
-              {/* Simulated map with delivery markers */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center">
-                  <MapPin className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
-                  <p className="text-lg font-semibold text-gray-700">Live Map Integration</p>
-                  <p className="text-sm text-gray-500">Showing {activeDeliveries.length} active deliveries</p>
-                </div>
-              </div>
-              
-              {/* Sample markers */}
-              <div className="absolute top-1/4 left-1/3 w-4 h-4 bg-blue-600 rounded-full border-2 border-white shadow-lg animate-pulse"></div>
-              <div className="absolute top-1/2 right-1/3 w-4 h-4 bg-green-600 rounded-full border-2 border-white shadow-lg"></div>
-              <div className="absolute bottom-1/3 left-1/2 w-4 h-4 bg-orange-600 rounded-full border-2 border-white shadow-lg animate-pulse"></div>
-            </div>
+          <div className="text-sm text-gray-600">
+            {onlineDrivers.length} drivers online
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Driver List */}
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
-            <div className="p-4 border-b border-gray-100">
-              <h3 className="text-lg font-bold text-gray-900">Active Deliveries</h3>
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">Online Drivers</h2>
             </div>
-            <div className="p-4 space-y-4 max-h-96 overflow-y-auto">
-              {activeDeliveries.map(delivery => (
-                <div key={delivery.orderId} className={`rounded-xl p-4 border-2 ${
-                  delivery.priority === 'high' ? 'bg-orange-50 border-orange-200' : 'bg-blue-50 border-blue-200'
-                }`}>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="font-bold text-blue-600">{delivery.orderId}</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      delivery.priority === 'high' ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {delivery.priority.toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="font-semibold text-gray-900">{delivery.customer}</p>
-                    <p className="text-sm text-gray-600">{delivery.address}</p>
+            <div className="max-h-96 overflow-y-auto">
+              {onlineDrivers.map(driver => {
+                const location = driverLocations[driver.id];
+                const unreadCount = adminMessages.filter(msg =>
+                  msg.from === driver.id.toString() && !msg.read
+                ).length;
+
+                return (
+                  <div
+                    key={driver.id}
+                    onClick={() => setSelectedDriver(driver.id.toString())}
+                    className={`p-4 border-b border-gray-100 cursor-pointer transition-colors ${
+                      selectedDriver === driver.id.toString() ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'
+                    }`}
+                  >
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">ETA: {delivery.estimatedTime}</span>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-16 bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
-                            style={{ width: `${delivery.progress}%` }}
-                          ></div>
+                      <div className="flex items-center space-x-3">
+                        <div className="relative">
+                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <User className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
                         </div>
-                        <span className="text-sm font-semibold text-gray-700">{delivery.progress}%</span>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{driver.name}</h3>
+                          <p className="text-sm text-gray-600">
+                            {location ?
+                              `Last seen: ${new Date(location.timestamp).toLocaleTimeString()}` :
+                              'Location unknown'
+                            }
+                          </p>
+                        </div>
                       </div>
+                      {unreadCount > 0 && (
+                        <div className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                          {unreadCount}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Chat Interface */}
+          <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg border border-gray-100">
+            {selectedDriver ? (
+              <>
+                <div className="p-6 border-b border-gray-200">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      <User className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900">
+                        {drivers.find(d => d.id.toString() === selectedDriver)?.name}
+                      </h2>
+                      <p className="text-sm text-green-600">Online</p>
                     </div>
                   </div>
                 </div>
+
+                {/* Messages */}
+                <div className="h-64 overflow-y-auto p-4 space-y-3">
+                  {driverMessages.map(message => (
+                    <div
+                      key={message.id}
+                      className={`flex ${message.type === 'admin' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div className={`max-w-xs px-4 py-2 rounded-lg ${
+                        message.type === 'admin'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-900'
+                      }`}>
+                        <p className="text-sm">{message.message}</p>
+                        <p className="text-xs opacity-75 mt-1">
+                          {new Date(message.timestamp).toLocaleTimeString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+
+                  {driverMessages.length === 0 && (
+                    <div className="text-center text-gray-500 py-8">
+                      <MessageCircle className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                      <p>No messages yet. Start a conversation!</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Message Input */}
+                <div className="p-4 border-t border-gray-200">
+                  <div className="flex space-x-3">
+                    <input
+                      type="text"
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                      placeholder="Type a message..."
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <button
+                      onClick={handleSendMessage}
+                      disabled={!newMessage.trim()}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Mail className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="h-full flex items-center justify-center text-gray-500">
+                <div className="text-center">
+                  <MessageCircle className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                  <p>Select a driver to start messaging</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const DispatcherView = () => {
+    const { orders, drivers, processOrder, assignDriver, driverLocations } = useCannabisDeliveryStore();
+    const [selectedOrderStatus, setSelectedOrderStatus] = useState('pending');
+    const [autoAssign, setAutoAssign] = useState(false);
+
+    const pendingOrders = orders.filter(o => ['pending', 'confirmed'].includes(o.status));
+    const availableDrivers = drivers.filter(d => d.online && d.status === 'online');
+
+    const handleProcessOrder = (orderId: string, newStatus: string) => {
+      processOrder(orderId, newStatus);
+
+      if (newStatus === 'confirmed' && autoAssign && availableDrivers.length > 0) {
+        // Auto-assign to closest available driver
+        const randomDriver = availableDrivers[Math.floor(Math.random() * availableDrivers.length)];
+        setTimeout(() => assignDriver(orderId, randomDriver.id.toString()), 500);
+      }
+    };
+
+    const handleManualAssign = (orderId: string, driverId: string) => {
+      assignDriver(orderId, driverId);
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Order Dispatcher</h1>
+            <p className="text-gray-600 mt-1">Process orders and assign drivers for delivery</p>
+          </div>
+          <div className="flex items-center space-x-4">
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={autoAssign}
+                onChange={(e) => setAutoAssign(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              <span className="text-sm text-gray-700">Auto-assign drivers</span>
+            </label>
+            <div className="flex items-center space-x-2 text-sm">
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              <span>{availableDrivers.length} drivers available</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Pending Orders Queue */}
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">Order Queue</h2>
+              <p className="text-gray-600 text-sm">{pendingOrders.length} orders waiting for processing</p>
+            </div>
+            <div className="max-h-96 overflow-y-auto">
+              {pendingOrders.map(order => (
+                <div key={order.id} className="p-4 border-b border-gray-100 hover:bg-gray-50">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h3 className="font-semibold text-gray-900">#{order.orderNumber}</h3>
+                      <p className="text-sm text-gray-600">{order.customerName}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-900">${order.total}</p>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {order.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex space-x-2">
+                    {order.status === 'pending' && (
+                      <button
+                        onClick={() => handleProcessOrder(order.id, 'confirmed')}
+                        className="flex-1 bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+                      >
+                        Confirm Order
+                      </button>
+                    )}
+
+                    {order.status === 'confirmed' && (
+                      <select
+                        onChange={(e) => e.target.value && handleManualAssign(order.id, e.target.value)}
+                        defaultValue=""
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      >
+                        <option value="">Assign Driver...</option>
+                        {availableDrivers.map(driver => (
+                          <option key={driver.id} value={driver.id}>
+                            {driver.name} - {driver.vehicle?.make} {driver.vehicle?.model}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
+                    <button
+                      onClick={() => openModal('orderDetails', order)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+                    >
+                      Details
+                    </button>
+                  </div>
+                </div>
               ))}
+
+              {pendingOrders.length === 0 && (
+                <div className="p-8 text-center text-gray-500">
+                  <ShoppingCart className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                  <p>No pending orders</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Available Drivers */}
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">Available Drivers</h2>
+              <p className="text-gray-600 text-sm">{availableDrivers.length} drivers online and ready</p>
+            </div>
+            <div className="max-h-96 overflow-y-auto">
+              {availableDrivers.map(driver => {
+                const location = driverLocations[driver.id];
+                return (
+                  <div key={driver.id} className="p-4 border-b border-gray-100">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                          <User className="w-5 h-5 text-green-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{driver.name}</h3>
+                          <p className="text-sm text-gray-600">
+                            {driver.vehicle?.make} {driver.vehicle?.model} • {driver.vehicle?.licensePlate}
+                          </p>
+                          {location && (
+                            <p className="text-xs text-green-600">
+                              Last update: {new Date(location.timestamp).toLocaleTimeString()}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="flex items-center space-x-1">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <span className="text-sm text-green-600">Online</span>
+                        </div>
+                        <p className="text-sm text-gray-600">Rating: ⭐ {driver.rating || 5.0}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {availableDrivers.length === 0 && (
+                <div className="p-8 text-center text-gray-500">
+                  <Truck className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                  <p>No drivers available</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
+
+  const TrackingView = () => {
+    const { driverLocations, drivers, geofences, activeRoutes, createGeofence, updateDriverLocation } = useCannabisDeliveryStore();
+    const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
+    const [newGeofence, setNewGeofence] = useState({ name: '', lat: '', lng: '', radius: '100' });
+    const [showGeofenceForm, setShowGeofenceForm] = useState(false);
+
+    const onlineDrivers = drivers.filter(d => d.online);
+    const activeDeliveryCount = Object.keys(activeRoutes).length;
+
+    const handleCreateGeofence = () => {
+      if (newGeofence.name && newGeofence.lat && newGeofence.lng) {
+        createGeofence(newGeofence.name, {
+          lat: parseFloat(newGeofence.lat),
+          lng: parseFloat(newGeofence.lng),
+          radius: parseInt(newGeofence.radius)
+        });
+        setNewGeofence({ name: '', lat: '', lng: '', radius: '100' });
+        setShowGeofenceForm(false);
+      }
+    };
+
+    // Simulate driver location updates
+    useEffect(() => {
+      if (!isTrackingLive) return;
+
+      const interval = setInterval(() => {
+        onlineDrivers.forEach(driver => {
+          const currentLocation = driverLocations[driver.id] || { lat: 30.2672, lng: -97.7431 };
+          const newLocation = {
+            lat: currentLocation.lat + (Math.random() - 0.5) * 0.001,
+            lng: currentLocation.lng + (Math.random() - 0.5) * 0.001
+          };
+          updateDriverLocation(driver.id.toString(), newLocation);
+        });
+      }, 5000);
+
+      return () => clearInterval(interval);
+    }, [isTrackingLive, onlineDrivers.length]);
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Live GPS Tracking & Geofencing</h1>
+            <p className="text-gray-600 mt-1">Real-time driver tracking with geofencing alerts</p>
+          </div>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setShowGeofenceForm(true)}
+              className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 transition-colors"
+            >
+              <MapPin className="w-4 h-4" />
+              <span>Add Geofence</span>
+            </button>
+            <button
+              onClick={() => setIsTrackingLive(!isTrackingLive)}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-xl font-semibold transition-colors ${
+                isTrackingLive
+                  ? 'bg-red-600 text-white hover:bg-red-700'
+                  : 'bg-green-600 text-white hover:bg-green-700'
+              }`}
+            >
+              {isTrackingLive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              <span>{isTrackingLive ? 'Stop Tracking' : 'Start Live Tracking'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* GPS Status Dashboard */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-blue-800">Active Routes</h3>
+                <p className="text-3xl font-black text-blue-600">{activeDeliveryCount}</p>
+              </div>
+              <Route className="w-8 h-8 text-blue-600" />
+            </div>
+          </div>
+
+          <div className="bg-green-50 border border-green-200 rounded-2xl p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-green-800">Drivers Online</h3>
+                <p className="text-3xl font-black text-green-600">{onlineDrivers.length}</p>
+              </div>
+              <Navigation className="w-8 h-8 text-green-600" />
+            </div>
+          </div>
+
+          <div className="bg-purple-50 border border-purple-200 rounded-2xl p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-purple-800">Geofences</h3>
+                <p className="text-3xl font-black text-purple-600">{geofences.filter(g => g.active).length}</p>
+              </div>
+              <Shield className="w-8 h-8 text-purple-600" />
+            </div>
+          </div>
+
+          <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-orange-800">Tracking Status</h3>
+                <p className="text-lg font-bold text-orange-600">
+                  {isTrackingLive ? 'LIVE' : 'OFFLINE'}
+                </p>
+              </div>
+              <Activity className="w-8 h-8 text-orange-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Interactive Map */}
+          <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg border border-gray-100">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-gray-900">Live Map View</h3>
+                <div className="flex items-center space-x-2">
+                  <div className={`w-3 h-3 rounded-full ${isTrackingLive ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+                  <span className="text-sm text-gray-600">
+                    {isTrackingLive ? 'Live Updates' : 'Static View'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="relative h-96 bg-gradient-to-br from-green-100 via-blue-50 to-gray-100">
+              <div className="w-full h-full relative overflow-hidden rounded-b-2xl">
+                {/* Map Center */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-center">
+                    <Globe className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
+                    <p className="text-lg font-semibold text-gray-700">Austin, TX Delivery Zone</p>
+                    <p className="text-sm text-gray-500">
+                      {onlineDrivers.length} drivers • {geofences.length} geofences active
+                    </p>
+                  </div>
+                </div>
+
+                {/* Driver Markers */}
+                {onlineDrivers.map((driver, index) => {
+                  const location = driverLocations[driver.id];
+                  if (!location) return null;
+
+                  const x = 20 + (index * 15) % 60;
+                  const y = 20 + (index * 20) % 60;
+
+                  return (
+                    <div
+                      key={driver.id}
+                      className={`absolute w-6 h-6 rounded-full border-2 border-white shadow-lg cursor-pointer transition-all ${
+                        selectedDriver === driver.id.toString() ? 'bg-red-500 scale-125' : 'bg-blue-500'
+                      } ${isTrackingLive ? 'animate-pulse' : ''}`}
+                      style={{ left: `${x}%`, top: `${y}%` }}
+                      onClick={() => setSelectedDriver(driver.id.toString())}
+                      title={`${driver.name} - Last update: ${new Date(location.timestamp).toLocaleTimeString()}`}
+                    >
+                      <Truck className="w-3 h-3 text-white m-0.5" />
+                    </div>
+                  );
+                })}
+
+                {/* Geofence Areas */}
+                {geofences.map((geofence, index) => (
+                  <div
+                    key={geofence.id}
+                    className="absolute border-2 border-purple-400 border-dashed rounded-full bg-purple-200 bg-opacity-30"
+                    style={{
+                      left: `${25 + (index * 20) % 50}%`,
+                      top: `${25 + (index * 25) % 50}%`,
+                      width: '80px',
+                      height: '80px',
+                      transform: 'translate(-50%, -50%)'
+                    }}
+                    title={`${geofence.name} - Radius: ${geofence.radius}m`}
+                  >
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Shield className="w-4 h-4 text-purple-600" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Driver List & Controls */}
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
+              <div className="p-6 border-b border-gray-200">
+                <h3 className="text-xl font-bold text-gray-900">Driver Locations</h3>
+              </div>
+              <div className="max-h-64 overflow-y-auto">
+                {onlineDrivers.map(driver => {
+                  const location = driverLocations[driver.id];
+                  const route = activeRoutes[Object.keys(activeRoutes).find(key =>
+                    activeRoutes[key].driverId === driver.id.toString()
+                  )];
+
+                  return (
+                    <div
+                      key={driver.id}
+                      className={`p-4 border-b border-gray-100 cursor-pointer transition-colors ${
+                        selectedDriver === driver.id.toString() ? 'bg-blue-50' : 'hover:bg-gray-50'
+                      }`}
+                      onClick={() => setSelectedDriver(driver.id.toString())}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-semibold text-gray-900">{driver.name}</h4>
+                          <p className="text-sm text-gray-600">{driver.vehicle?.licensePlate}</p>
+                          {location && (
+                            <p className="text-xs text-green-600">
+                              Updated: {new Date(location.timestamp).toLocaleTimeString()}
+                            </p>
+                          )}
+                          {route && (
+                            <p className="text-xs text-blue-600">
+                              Status: {route.status} • ETA: {route.eta}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <div className="flex items-center space-x-1">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="text-xs text-green-600">Live</span>
+                          </div>
+                          {location?.speed && (
+                            <p className="text-xs text-gray-600">{location.speed} mph</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Geofence Management */}
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
+              <div className="p-6 border-b border-gray-200">
+                <h3 className="text-xl font-bold text-gray-900">Geofences</h3>
+              </div>
+              <div className="p-4 space-y-3">
+                {geofences.map(geofence => (
+                  <div key={geofence.id} className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                    <div>
+                      <h4 className="font-semibold text-gray-900">{geofence.name}</h4>
+                      <p className="text-sm text-gray-600">Radius: {geofence.radius}m</p>
+                    </div>
+                    <div className={`w-3 h-3 rounded-full ${geofence.active ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Geofence Creation Modal */}
+        {showGeofenceForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Create New Geofence</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                  <input
+                    type="text"
+                    value={newGeofence.name}
+                    onChange={(e) => setNewGeofence({...newGeofence, name: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    placeholder="e.g., Downtown Zone"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Latitude</label>
+                    <input
+                      type="number"
+                      step="any"
+                      value={newGeofence.lat}
+                      onChange={(e) => setNewGeofence({...newGeofence, lat: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                      placeholder="30.2672"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Longitude</label>
+                    <input
+                      type="number"
+                      step="any"
+                      value={newGeofence.lng}
+                      onChange={(e) => setNewGeofence({...newGeofence, lng: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                      placeholder="-97.7431"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Radius (meters)</label>
+                  <input
+                    type="number"
+                    value={newGeofence.radius}
+                    onChange={(e) => setNewGeofence({...newGeofence, radius: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    placeholder="100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Alert Type</label>
+                  <select
+                    value={newGeofence.alertType}
+                    onChange={(e) => setNewGeofence({...newGeofence, alertType: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="both">Entry & Exit</option>
+                    <option value="entry">Entry Only</option>
+                    <option value="exit">Exit Only</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex space-x-3 mt-6">
+                <button
+                  onClick={() => setShowGeofenceForm(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateGeofence}
+                  className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                >
+                  Create Geofence
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const AnalyticsView = () => (
     <div className="space-y-6">
@@ -2113,93 +3136,440 @@ const FadedSkiesTrackingAdmin = () => {
     </div>
   );
 
-  const CustomersView = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Customer Management</h1>
-        <button
-          onClick={() => openModal('customerDetails')}
-          className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-emerald-700 transition-colors"
-        >
-          Add Customer
-        </button>
-      </div>
+  const CustomersView = () => {
+    const [userList, setUserList] = useState([]);
+    const [driverList, setDriverList] = useState([]);
+    const [userStats, setUserStats] = useState({});
+    const [loading, setLoading] = useState(false);
+    const [currentTab, setCurrentTab] = useState('customers');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filters, setFilters] = useState({
+      isVerified: 'all',
+      isActive: 'all',
+      role: 'all'
+    });
+    const [pagination, setPagination] = useState({
+      page: 1,
+      limit: 20,
+      totalPages: 1
+    });
 
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Customer</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Contact</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Orders</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Total Spent</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Status</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {customers.map(customer => (
-                <tr key={customer.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div>
-                      <h4 className="font-semibold text-gray-900">{customer.name}</h4>
-                      <p className="text-sm text-gray-600">{customer.address}</p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-700">
-                      <div>{customer.email}</div>
-                      <div>{customer.phone}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-900">{customer.totalOrders}</td>
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-900">${customer.totalSpent}</td>
-                  <td className="px-6 py-4">
-                    <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
-                      {customer.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => openModal('customerDetails', customer)}
-                        className="text-blue-600 hover:text-blue-700 p-1"
-                        title="Edit Customer"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => openModal('customerDetails', customer)}
-                        className="text-green-600 hover:text-green-700 p-1"
-                        title="View Customer Details"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+    // Fetch users data
+    const fetchUsers = useCallback(async () => {
+      setLoading(true);
+      try {
+        const endpoint = currentTab === 'customers' ? '/api/admin/users/customers' : '/api/admin/users/drivers';
+        const params = new URLSearchParams({
+          page: pagination.page.toString(),
+          limit: pagination.limit.toString(),
+          ...(searchTerm && { search: searchTerm }),
+          ...(filters.isVerified !== 'all' && { isVerified: filters.isVerified }),
+          ...(filters.isActive !== 'all' && { isActive: filters.isActive }),
+          ...(filters.role !== 'all' && { role: filters.role })
+        });
+
+        const response = await fetch(`${endpoint}?${params}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (currentTab === 'customers') {
+            setUserList(data.users || []);
+          } else {
+            setDriverList(data.drivers || []);
+          }
+          setPagination(prev => ({
+            ...prev,
+            totalPages: data.pagination?.totalPages || 1
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to fetch users:', error);
+      } finally {
+        setLoading(false);
+      }
+    }, [currentTab, pagination.page, pagination.limit, searchTerm, filters]);
+
+    // Fetch user statistics
+    const fetchUserStats = useCallback(async () => {
+      try {
+        const response = await fetch('/api/admin/users/stats/dashboard', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setUserStats(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user stats:', error);
+      }
+    }, []);
+
+    // Load data on component mount and when dependencies change
+    useEffect(() => {
+      fetchUsers();
+    }, [fetchUsers]);
+
+    useEffect(() => {
+      fetchUserStats();
+    }, [fetchUserStats]);
+
+    // Handle user actions
+    const handleResetPassword = async (userId: string) => {
+      try {
+        const newPassword = prompt('Enter new password (min 6 characters):');
+        if (!newPassword || newPassword.length < 6) return;
+
+        const response = await fetch(`/api/admin/users/${userId}/reset-password`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ newPassword, sendNotification: true })
+        });
+
+        if (response.ok) {
+          showToastMessage('Password reset successfully', 'success');
+        } else {
+          throw new Error('Failed to reset password');
+        }
+      } catch (error) {
+        console.error('Reset password error:', error);
+        showToastMessage('Failed to reset password', 'error');
+      }
+    };
+
+    const handleUpdateEmail = async (userId: string, currentEmail: string) => {
+      try {
+        const newEmail = prompt('Enter new email address:', currentEmail);
+        if (!newEmail || newEmail === currentEmail) return;
+
+        const response = await fetch(`/api/admin/users/${userId}/update-email`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ newEmail, sendNotification: true })
+        });
+
+        if (response.ok) {
+          showToastMessage('Email updated successfully', 'success');
+          fetchUsers(); // Refresh the list
+        } else {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to update email');
+        }
+      } catch (error) {
+        console.error('Update email error:', error);
+        showToastMessage(error.message || 'Failed to update email', 'error');
+      }
+    };
+
+    const handleToggleStatus = async (userId: string, isActive: boolean) => {
+      try {
+        const reason = isActive ? '' : prompt('Reason for deactivation (optional):') || '';
+
+        const response = await fetch(`/api/admin/users/${userId}/toggle-status`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ isActive: !isActive, reason })
+        });
+
+        if (response.ok) {
+          showToastMessage(`User ${!isActive ? 'activated' : 'deactivated'} successfully`, 'success');
+          fetchUsers(); // Refresh the list
+        } else {
+          throw new Error('Failed to toggle user status');
+        }
+      } catch (error) {
+        console.error('Toggle status error:', error);
+        showToastMessage('Failed to update user status', 'error');
+      }
+    };
+
+    const showToastMessage = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+      // You can implement your toast notification here
+      console.log(`${type.toUpperCase()}: ${message}`);
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
+            <p className="text-gray-600 mt-1">Manage customers, drivers, and admin users</p>
+          </div>
+          <button
+            onClick={() => openModal('createUser')}
+            className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-emerald-700 transition-colors flex items-center space-x-2"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Add User</span>
+          </button>
+        </div>
+
+        {/* User Statistics Dashboard */}
+        {userStats.overview && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
+              <h3 className="text-lg font-bold text-blue-800">Total Users</h3>
+              <p className="text-3xl font-black text-blue-600">{userStats.overview.totalUsers}</p>
+              <p className="text-xs text-blue-600 mt-1">{userStats.overview.recentSignups} new this week</p>
+            </div>
+            <div className="bg-green-50 border border-green-200 rounded-2xl p-6">
+              <h3 className="text-lg font-bold text-green-800">Customers</h3>
+              <p className="text-3xl font-black text-green-600">{userStats.overview.totalCustomers}</p>
+              <p className="text-xs text-green-600 mt-1">{userStats.verificationRate}% verified</p>
+            </div>
+            <div className="bg-purple-50 border border-purple-200 rounded-2xl p-6">
+              <h3 className="text-lg font-bold text-purple-800">Drivers</h3>
+              <p className="text-3xl font-black text-purple-600">{userStats.overview.totalDrivers}</p>
+              <p className="text-xs text-purple-600 mt-1">{userStats.overview.onlineDrivers} online now</p>
+            </div>
+            <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6">
+              <h3 className="text-lg font-bold text-orange-800">Active Rate</h3>
+              <p className="text-3xl font-black text-orange-600">{userStats.activeRate}%</p>
+              <p className="text-xs text-orange-600 mt-1">of all users</p>
+            </div>
+          </div>
+        )}
+
+        {/* Tab Navigation */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
+          <div className="border-b border-gray-200">
+            <nav className="flex space-x-8 px-6">
+              {[
+                { id: 'customers', label: 'Customers', icon: Users },
+                { id: 'drivers', label: 'Drivers', icon: Truck },
+                { id: 'admins', label: 'Admins', icon: Shield }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setCurrentTab(tab.id)}
+                  className={`flex items-center space-x-2 py-4 border-b-2 font-medium text-sm ${
+                    currentTab === tab.id
+                      ? 'border-emerald-500 text-emerald-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <tab.icon className="w-4 h-4" />
+                  <span>{tab.label}</span>
+                </button>
               ))}
-            </tbody>
-          </table>
+            </nav>
+          </div>
+
+          {/* Filters and Search */}
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+              <div className="flex items-center space-x-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search users..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 w-64"
+                  />
+                </div>
+                <select
+                  value={filters.isVerified}
+                  onChange={(e) => setFilters(prev => ({ ...prev, isVerified: e.target.value }))}
+                  className="px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="all">All Verification</option>
+                  <option value="true">Verified Only</option>
+                  <option value="false">Unverified Only</option>
+                </select>
+                <select
+                  value={filters.isActive}
+                  onChange={(e) => setFilters(prev => ({ ...prev, isActive: e.target.value }))}
+                  className="px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="all">All Status</option>
+                  <option value="true">Active Only</option>
+                  <option value="false">Inactive Only</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* User List */}
+          <div className="overflow-x-auto">
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+              </div>
+            ) : (
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">User</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Contact</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
+                      {currentTab === 'customers' ? 'Orders' : currentTab === 'drivers' ? 'Deliveries' : 'Role'}
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Status</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Joined</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {(currentTab === 'customers' ? userList : driverList).map((user: any) => (
+                    <tr key={user.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                            <User className="w-5 h-5 text-gray-500" />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-900">{user.name || user.user?.name}</h4>
+                            <p className="text-sm text-gray-600">{user.email || user.user?.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-700">
+                          <div>{user.phone || user.user?.phone || 'N/A'}</div>
+                          <div className="text-xs text-gray-500">
+                            {user.address || user.user?.address || 'No address'}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                        {currentTab === 'customers'
+                          ? `${user.totalOrders || 0} orders`
+                          : currentTab === 'drivers'
+                          ? `${user.completedOrders || 0} deliveries`
+                          : user.role || 'Admin'
+                        }
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col space-y-1">
+                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                            (user.isActive ?? user.user?.isActive)
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {(user.isActive ?? user.user?.isActive) ? 'Active' : 'Inactive'}
+                          </span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                            (user.isVerified ?? user.user?.isVerified)
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {(user.isVerified ?? user.user?.isVerified) ? 'Verified' : 'Unverified'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {new Date(user.createdAt || user.user?.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => openModal('userDetails', user)}
+                            className="text-blue-600 hover:text-blue-700 p-1"
+                            title="View Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => openModal('editUser', user)}
+                            className="text-green-600 hover:text-green-700 p-1"
+                            title="Edit User"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleResetPassword(user.id || user.user?.id)}
+                            className="text-orange-600 hover:text-orange-700 p-1"
+                            title="Reset Password"
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleUpdateEmail(user.id || user.user?.id, user.email || user.user?.email)}
+                            className="text-purple-600 hover:text-purple-700 p-1"
+                            title="Update Email"
+                          >
+                            <Mail className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleToggleStatus(user.id || user.user?.id, user.isActive ?? user.user?.isActive)}
+                            className={`p-1 ${
+                              (user.isActive ?? user.user?.isActive)
+                                ? 'text-red-600 hover:text-red-700'
+                                : 'text-green-600 hover:text-green-700'
+                            }`}
+                            title={`${(user.isActive ?? user.user?.isActive) ? 'Deactivate' : 'Activate'} User`}
+                          >
+                            {(user.isActive ?? user.user?.isActive) ? <X className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* Pagination */}
+          {pagination.totalPages > 1 && (
+            <div className="px-6 py-4 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+                  disabled={pagination.page === 1}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-gray-700">
+                  Page {pagination.page} of {pagination.totalPages}
+                </span>
+                <button
+                  onClick={() => setPagination(prev => ({ ...prev, page: Math.min(prev.totalPages, prev.page + 1) }))}
+                  disabled={pagination.page === pagination.totalPages}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderCurrentView = () => {
     switch (currentView) {
       case 'dashboard': return <DashboardView />;
-      case 'products': return <ProductsView />;
       case 'orders': return <OrdersView />;
+      case 'dispatcher': return <DispatcherView />;
       case 'tracking': return <TrackingView />;
+      case 'messaging': return <MessagingView />;
+      case 'products': return <ProductsView />;
       case 'customers': return <CustomersView />;
-      case 'analytics':
-        return <AnalyticsView />;
-      case 'settings':
-        return <SettingsView />;
-      default:
-        return <DashboardView />;
+      case 'analytics': return <AnalyticsView />;
+      case 'settings': return <SettingsView />;
+      default: return <DashboardView />;
     }
   };
 
@@ -2215,6 +3585,8 @@ const FadedSkiesTrackingAdmin = () => {
       <OrderDetailsModal />
       <CustomerDetailsModal />
       <UserManagementModal />
+      <CreateUserModal />
+      <UserDetailsModal />
       <ConfirmationModal />
     </div>
   );

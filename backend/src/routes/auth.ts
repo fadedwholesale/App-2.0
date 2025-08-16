@@ -253,7 +253,7 @@ router.post('/login', [
 });
 
 // Refresh token
-router.post('/refresh', async (req, res) => {
+router.post('/refresh', async (req, res): Promise<any> => {
   try {
     const { token } = req.body;
 

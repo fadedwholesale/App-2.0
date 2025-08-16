@@ -102,8 +102,134 @@ export class SimpleWebSocketService {
         case 'admin:order_status_update':
           this.emit('order_status_update', message.data);
           break;
+        case 'admin:assign_driver':
+          this.emit('driver_assigned', message.data);
+          break;
         case 'driver:accept_order':
           this.emit('driver_accept_order', message.data);
+          break;
+        case 'driver:pickup_complete':
+          this.emit('pickup_complete', message.data);
+          break;
+        case 'driver:location_update':
+          this.emit('driver_location_update', message.data);
+          break;
+        case 'admin:send_message':
+        this.emit('admin_message', message.data);
+        break;
+
+      // Production GPS Tracking Events
+      case 'driver:location_broadcast':
+        this.emit('driver_location_broadcast', message.data);
+        break;
+
+      case 'admin:geofence_created':
+        this.emit('geofence_created', message.data);
+        break;
+
+      case 'admin:geofence_alert':
+        this.emit('geofence_alert', message.data);
+        break;
+
+      case 'admin:emergency_stop':
+        this.emit('emergency_stop', message.data);
+        break;
+
+      case 'driver:arrival_notification':
+        this.emit('driver_arrival', message.data);
+        break;
+
+      case 'customer:delivery_eta_update':
+        this.emit('delivery_eta_update', message.data);
+        break;
+
+      // Driver Pickup and Delivery Notifications
+      case 'admin:notify_driver_pickup':
+        this.emit('driver_pickup_notification', message.data);
+        break;
+
+      case 'driver:confirm_pickup':
+        this.emit('pickup_confirmed', message.data);
+        break;
+
+      case 'driver:start_delivery':
+        this.emit('delivery_started', message.data);
+        break;
+
+      case 'driver:delivery_complete':
+        this.emit('delivery_completed', message.data);
+        break;
+        case 'driver:send_message':
+          this.emit('driver_message', message.data);
+          break;
+        case 'admin:geofence_alert':
+          this.emit('geofence_alert', message.data);
+          break;
+        case 'admin:product_added':
+          this.emit('product_added', message.data);
+          break;
+        case 'driver:status_update':
+          this.emit('driver_status_update', message.data);
+          break;
+        case 'driver:online':
+          this.emit('driver_online', message.data);
+          break;
+        case 'driver:offline':
+          this.emit('driver_offline', message.data);
+          break;
+        case 'admin:auto_assign_order':
+          this.emit('order_auto_assigned', message.data);
+          break;
+        case 'driver:profile_update':
+          this.emit('driver:profile_update', message.data);
+          break;
+        case 'driver:settings_update':
+          this.emit('driver:settings_update', message.data);
+          break;
+        case 'driver:earnings_update':
+          this.emit('driver:earnings_update', message.data);
+          break;
+        case 'customer:profile_update':
+          this.emit('customer:profile_update', message.data);
+          break;
+        case 'customer:preferences_update':
+          this.emit('customer:preferences_update', message.data);
+          break;
+        case 'order:status_update':
+          this.emit('order:status_update', message.data);
+          break;
+        case 'order:details_update':
+          this.emit('order:details_update', message.data);
+          break;
+        case 'admin:settings_update':
+          this.emit('admin:settings_update', message.data);
+          break;
+        case 'sync:batch_update':
+          this.emit('sync:batch_update', message.data);
+          break;
+        case 'sms:send_to_driver':
+          this.emit('sms:send_to_driver', message.data);
+          break;
+        case 'sms:customer_to_driver':
+          this.emit('sms:customer_to_driver', message.data);
+          break;
+        case 'sms:send':
+          this.emit('sms:send', message.data);
+          break;
+        case 'sms:delivery_confirmation':
+          this.emit('sms:delivery_confirmation', message.data);
+          break;
+        case 'sms:delivery_failed':
+          this.emit('sms:delivery_failed', message.data);
+          break;
+        case 'sms:reply_received':
+          this.emit('sms:reply_received', message.data);
+          break;
+        case 'admin:product_updated':
+          this.emit('product_updated', message.data);
+          break;
+        case 'admin:product_deleted':
+          this.emit('product_deleted', message.data);
           break;
       }
     }, 100);
@@ -119,11 +245,35 @@ export class SimpleWebSocketService {
       case 'order_status_update':
         this.emit('order_status_update', message.data);
         break;
+      case 'driver_assigned':
+        this.emit('driver_assigned', message.data);
+        break;
       case 'driver_accept_order':
         this.emit('driver_accept_order', message.data);
         break;
+      case 'pickup_complete':
+        this.emit('pickup_complete', message.data);
+        break;
       case 'driver_location_update':
         this.emit('driver_location_update', message.data);
+        break;
+      case 'admin_message':
+        this.emit('admin_message', message.data);
+        break;
+      case 'driver_message':
+        this.emit('driver_message', message.data);
+        break;
+      case 'geofence_alert':
+        this.emit('geofence_alert', message.data);
+        break;
+      case 'product_added':
+        this.emit('product_added', message.data);
+        break;
+      case 'product_updated':
+        this.emit('product_updated', message.data);
+        break;
+      case 'product_deleted':
+        this.emit('product_deleted', message.data);
         break;
       default:
         console.log('Unknown message type:', message.type);
@@ -215,6 +365,66 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     console.log('🧪 Real-time sync test sequence started');
   };
 
+  // Test product synchronization
+  (window as any).testProductSync = () => {
+    console.log('🧪 Testing Product Real-Time Sync...');
+
+    // Test adding a new product
+    wsService.send({
+      type: 'admin:product_added',
+      data: {
+        product: {
+          id: Date.now(),
+          name: 'Test Product - Live Update',
+          category: 'flower',
+          price: 35.00,
+          originalPrice: null,
+          thc: '22.1%',
+          cbd: '0.5%',
+          strain: 'Hybrid',
+          rating: 4.8,
+          reviewCount: 0,
+          imageUrl: 'https://images.unsplash.com/photo-1560448204-61dc36dc98c8?w=400',
+          description: 'This is a test product added via real-time sync!',
+          effects: ['Happy', 'Relaxed'],
+          labTested: true,
+          inStock: true,
+          featured: false
+        },
+        timestamp: new Date().toISOString()
+      }
+    });
+
+    // Test updating a product after 2 seconds
+    setTimeout(() => {
+      wsService.send({
+        type: 'admin:product_updated',
+        data: {
+          id: 1,
+          updates: {
+            price: 50.00,
+            name: 'Purple Haze Live Resin Cartridge - UPDATED!',
+            featured: true
+          },
+          timestamp: new Date().toISOString()
+        }
+      });
+    }, 2000);
+
+    // Test deleting a product after 4 seconds
+    setTimeout(() => {
+      wsService.send({
+        type: 'admin:product_deleted',
+        data: {
+          id: 4,
+          timestamp: new Date().toISOString()
+        }
+      });
+    }, 4000);
+
+    console.log('🧪 Product sync test sequence started - watch both Admin and User apps!');
+  };
+
   (window as any).checkWebSocketStatus = () => {
     console.log('🔍 WebSocket Status:', {
       connected: wsService.ws?.readyState === WebSocket.OPEN,
@@ -225,7 +435,8 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   };
 
   console.log('🧪 Test functions available:');
-  console.log('- testRealTimeSync() - Test complete real-time flow');
+  console.log('- testRealTimeSync() - Test complete real-time order flow');
+  console.log('- testProductSync() - Test real-time product synchronization');
   console.log('- checkWebSocketStatus() - Check connection status');
 }
 

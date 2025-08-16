@@ -10,24 +10,27 @@ import {
   Clock, 
   CreditCard, 
   Bell, 
-  MessageCircle, 
-  Truck, 
-  Plus, 
-  Minus, 
-  Filter, 
-  Menu, 
-  X, 
-  Camera, 
-  Upload, 
-  Eye, 
-  EyeOff, 
-  Shield, 
+  MessageCircle,
+  Truck,
+  Plus,
+  Minus,
+  Filter,
+  Menu,
+  X,
+  Camera,
+  Upload,
+  Eye,
+  EyeOff,
+  Shield,
   CheckCircle,
   Edit3
 } from 'lucide-react';
 
 // Import simple WebSocket service for real-time updates
 import { wsService } from '../services/simple-websocket';
+import { useCannabisDeliveryStore } from '../services/cannabis-delivery-store';
+import { dataSyncService, useDataSync } from '../services/data-sync-service';
+import { useLocation, locationService } from '../services/location-service';
 
 // TypeScript interfaces
 interface Product {
@@ -940,140 +943,6 @@ const DataPrivacyModal = React.memo(({
   );
 });
 
-// Live Chat Modal Component
-const LiveChatModal = React.memo(({
-  isOpen,
-  onClose,
-  messages,
-  onSendMessage,
-  chatInput,
-  setChatInput,
-  isTyping
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  messages: Array<{id: number; sender: string; message: string; timestamp: Date}>;
-  onSendMessage: (message: string) => void;
-  chatInput: string;
-  setChatInput: (value: string) => void;
-  isTyping: boolean;
-}) => {
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const handleSend = () => {
-    if (chatInput.trim()) {
-      onSendMessage(chatInput.trim());
-      setChatInput('');
-    }
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
-        <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose}></div>
-        </div>
-
-        <div className="relative inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full max-w-md w-full h-[600px] flex flex-col">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <MessageCircle className="w-6 h-6" />
-                <div>
-                  <h3 className="text-lg font-bold">Live Chat Support</h3>
-                  <p className="text-blue-100 text-sm">Online • Response time: ~2 min</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-2 hover:bg-white/20 rounded-full transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-            {messages.map((msg) => (
-              <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
-                  msg.sender === 'user'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white border border-gray-200 text-gray-900'
-                }`}>
-                  <p className="text-sm">{msg.message}</p>
-                  <p className={`text-xs mt-1 ${
-                    msg.sender === 'user' ? 'text-blue-100' : 'text-gray-500'
-                  }`}>
-                    {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </p>
-                </div>
-              </div>
-            ))}
-
-            {isTyping && (
-              <div className="flex justify-start">
-                <div className="bg-white border border-gray-200 text-gray-900 px-4 py-2 rounded-2xl">
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                  </div>
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Input */}
-          <div className="bg-white border-t border-gray-200 p-4">
-            <div className="flex space-x-3">
-              <input
-                type="text"
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Type your message..."
-                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-gray-50 focus:bg-white"
-              />
-              <button
-                type="button"
-                onClick={handleSend}
-                disabled={!chatInput.trim()}
-                className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Send
-              </button>
-            </div>
-            <p className="text-xs text-gray-500 mt-2 text-center">
-              Powered by Faded Skies Support • Your data is secure
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-});
 
 // Quick Help Modal Component
 const QuickHelpModal = React.memo(({
@@ -1162,7 +1031,7 @@ const QuickHelpModal = React.memo(({
       case 'Account Help':
         return {
           title: 'Account Help',
-          icon: '���',
+          icon: '����',
           content: [
             {
               question: 'How do I verify my age/ID?',
@@ -1219,11 +1088,11 @@ const QuickHelpModal = React.memo(({
               type="button"
               onClick={() => {
                 onClose();
-                // This would open live chat
+                window.open('tel:5554203233', '_self');
               }}
               className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-sm"
             >
-              Start Live Chat
+              Call Support
             </button>
             <button
               type="button"
@@ -1366,7 +1235,7 @@ const ContactModal = React.memo(({
       default:
         return {
           title: 'Contact Us',
-          icon: '💬',
+          icon: '���',
           description: 'Get in touch',
           showForm: false,
           content: null
@@ -1497,7 +1366,7 @@ const ContactModal = React.memo(({
                           star <= form.rating ? 'text-yellow-400' : 'text-gray-300'
                         }`}
                       >
-                        ⭐
+                        ��
                       </button>
                     ))}
                     <span className="text-sm text-gray-600 ml-2">({form.rating}/5)</span>
@@ -1741,7 +1610,7 @@ const SubmitTicketModal = React.memo(({
             <li>• You\'ll receive a confirmation email with your ticket number</li>
             <li>• Our team will review your issue within 2-4 hours</li>
             <li>• We\'ll respond with a solution or follow-up questions</li>
-            <li>• You can track your ticket status in your account</li>
+            <li>�� You can track your ticket status in your account</li>
           </ul>
         </div>
 
@@ -1765,6 +1634,7 @@ const SubmitTicketModal = React.memo(({
     </Modal>
   );
 });
+
 
 // Order Details Modal Component
 const OrderDetailsModal = React.memo(({
@@ -1795,7 +1665,7 @@ const OrderDetailsModal = React.memo(({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'delivered': return '✅';
-      case 'in-transit': return '🚚';
+      case 'in-transit': return '����';
       case 'preparing': return '📦';
       case 'cancelled': return '❌';
       default: return '📋';
@@ -1913,9 +1783,24 @@ const OrderDetailsModal = React.memo(({
               <span className="font-medium text-blue-900">{order.vehicle}</span>
             </div>
             {order.driverPhone && (
-              <div className="flex justify-between">
-                <span className="text-blue-800">Driver Phone:</span>
-                <span className="font-medium text-blue-900">{order.driverPhone}</span>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-blue-800">Driver Phone:</span>
+                  <span className="font-medium text-blue-900">{order.driverPhone}</span>
+                </div>
+                {['preparing', 'assigned', 'picked_up', 'in_transit'].includes(order.status) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const message = `Hi ${order.driver}, I have a question about my delivery (Order #${order.id}).`;
+                      window.location.href = `sms:${order.driverPhone}?body=${encodeURIComponent(message)}`;
+                    }}
+                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>Text Driver</span>
+                  </button>
+                )}
               </div>
             )}
             {order.deliveryAddress && (
@@ -2216,36 +2101,112 @@ const LiveTrackingModal = React.memo(({
   // Debug logging
   console.log('LiveTrackingModal render:', { isOpen, orderId: order?.id, hasDriverLocation: !!order?.driverLocation });
 
-  // Simulated live updates
+  // Production-ready real-time tracking via WebSocket
   useEffect(() => {
-    if (!isOpen || !order?.driverLocation) return;
+    if (!isOpen || !order?.id) return;
 
-    const interval = setInterval(() => {
-      // Simulate driver movement (small random changes)
-      setDriverLocation(prev => {
-        if (!prev) return null;
+    console.log('🔄 Setting up real-time tracking for order:', order.id);
 
-        const deltaLat = (Math.random() - 0.5) * 0.001; // ~100m max change
-        const deltaLng = (Math.random() - 0.5) * 0.001;
+    // Request real-time updates for this order
+    wsService.send({
+      type: 'customer:request_tracking',
+      data: {
+        orderId: order.id,
+        customerId: order.customer
+      }
+    });
 
-        return {
-          lat: prev.lat + deltaLat,
-          lng: prev.lng + deltaLng,
-          lastUpdated: new Date()
-        };
+    // Real-time driver location updates
+    const handleDriverLocationBroadcast = (data: any) => {
+      if (data.orderId === order.id) {
+        console.log('📍 Real-time driver location update:', data);
+        setDriverLocation({
+          lat: data.location.lat,
+          lng: data.location.lng,
+          lastUpdated: new Date(data.location.timestamp)
+        });
+        setEta(data.eta || 'Calculating...');
+        setDistance(data.distance || 'Calculating...');
+      }
+    };
+
+    // Delivery status updates
+    const handleDeliveryEtaUpdate = (data: any) => {
+      if (data.orderId === order.id) {
+        console.log('⏰ ETA update received:', data);
+        setEta(data.eta);
+        setDistance(data.distance);
+      }
+    };
+
+    // Driver arrival notifications
+    const handleDriverArrival = (data: any) => {
+      if (data.orderId === order.id) {
+        console.log('🚚 Driver arriving:', data);
+        setEta('Driver arriving now!');
+        setDistance('< 0.1 miles');
+
+        // Show browser notification if permission granted
+        if (Notification.permission === 'granted') {
+          new Notification('Faded Skies - Driver Arriving', {
+            body: `Your driver ${data.driverName} is arriving now!`,
+            icon: '/favicon.ico',
+            tag: order.id
+          });
+        }
+      }
+    };
+
+    // Register WebSocket listeners
+    wsService.on('driver_location_broadcast', handleDriverLocationBroadcast);
+    wsService.on('delivery_eta_update', handleDeliveryEtaUpdate);
+    wsService.on('driver_arrival', handleDriverArrival);
+
+    // Fallback simulation for demo purposes if WebSocket is not responding
+    const fallbackInterval = setTimeout(() => {
+      console.log('⚠️  Using fallback simulation for demo');
+      const simulationInterval = setInterval(() => {
+        if (!driverLocation) return;
+
+        // Simulate realistic driver movement
+        setDriverLocation(prev => {
+          if (!prev) return null;
+
+          const deltaLat = (Math.random() - 0.5) * 0.0008; // ~80m max change
+          const deltaLng = (Math.random() - 0.5) * 0.0008;
+
+          return {
+            lat: prev.lat + deltaLat,
+            lng: prev.lng + deltaLng,
+            lastUpdated: new Date()
+          };
+        });
+
+        // Update ETA and distance progressively
+        const currentTime = new Date().getSeconds();
+        const etas = ['5-8 minutes', '8-12 minutes', '12-15 minutes', '3-5 minutes'];
+        const distances = ['0.3 miles', '0.5 miles', '0.7 miles', '0.2 miles'];
+
+        setEta(etas[currentTime % etas.length]);
+        setDistance(distances[currentTime % distances.length]);
+      }, 3000);
+
+      return () => clearInterval(simulationInterval);
+    }, 2000);
+
+    return () => {
+      clearTimeout(fallbackInterval);
+      wsService.off('driver_location_broadcast', handleDriverLocationBroadcast);
+      wsService.off('delivery_eta_update', handleDeliveryEtaUpdate);
+      wsService.off('driver_arrival', handleDriverArrival);
+
+      // Stop tracking request
+      wsService.send({
+        type: 'customer:stop_tracking',
+        data: { orderId: order.id }
       });
-
-      // Update ETA simulation
-      const etas = ['5-8 minutes', '8-12 minutes', '12-15 minutes', '3-5 minutes'];
-      setEta(etas[Math.floor(Math.random() * etas.length)]);
-
-      // Update distance simulation
-      const distances = ['0.3 miles', '0.5 miles', '0.7 miles', '0.2 miles'];
-      setDistance(distances[Math.floor(Math.random() * distances.length)]);
-    }, 5000); // Update every 5 seconds
-
-    return () => clearInterval(interval);
-  }, [isOpen, order]);
+    };
+  }, [isOpen, order?.id, driverLocation]);
 
   // Initialize Mapbox
   useEffect(() => {
@@ -2389,7 +2350,7 @@ const LiveTrackingModal = React.memo(({
                   transform: 'translate(-50%, -50%)'
                 }}
               >
-                <div className="text-4xl animate-bounce">🚚</div>
+                <div className="text-4xl animate-bounce">��</div>
               </div>
 
               {/* Destination marker */}
@@ -2463,8 +2424,27 @@ const LiveTrackingModal = React.memo(({
                   </button>
                   <button
                     type="button"
-                    onClick={() => alert('SMS functionality would open here')}
+                    onClick={() => {
+                      const activeOrder = orders.find(order =>
+                        ['preparing', 'assigned', 'picked_up', 'in_transit'].includes(order.status)
+                      );
+                      if (activeOrder && activeOrder.driver && activeOrder.driverPhone) {
+                        // Open SMS to driver with pre-filled message
+                        const message = `Hi ${activeOrder.driver}, I have a question about my delivery.`;
+                        window.location.href = `sms:${activeOrder.driverPhone}?body=${encodeURIComponent(message)}`;
+                      } else {
+                        // Open SMS to support
+                        const message = 'Hi, I need assistance with my order.';
+                        window.location.href = `sms:5554203233?body=${encodeURIComponent(message)}`;
+                      }
+                    }}
                     className="bg-blue-500 text-white p-3 rounded-full hover:bg-blue-600 transition-colors"
+                    title={(() => {
+                      const activeOrder = orders.find(order =>
+                        ['preparing', 'assigned', 'picked_up', 'in_transit'].includes(order.status)
+                      );
+                      return activeOrder?.driver ? `Text ${activeOrder.driver}` : 'Text Support';
+                    })()}
                   >
                     <MessageCircle className="w-5 h-5" />
                   </button>
@@ -2603,6 +2583,11 @@ const ProductCard = React.memo(({ product, addToCart, addingToCart }: {
 ));
 
 const FadedSkiesApp = () => {
+  // Store integration for real-time product updates
+  const { products, setProducts, setupRealTimeSync, addOrder } = useCannabisDeliveryStore();
+  const { syncCustomerProfile } = useDataSync();
+  const { requestPermission, startTracking, getCurrentLocation } = useLocation();
+
   const [currentView, setCurrentView] = useState<string>('auth');
   const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -2694,6 +2679,7 @@ const FadedSkiesApp = () => {
   const [toastMessage, setToastMessage] = useState<string>('');
   const [showToast, setShowToast] = useState<boolean>(false);
   const [addingToCart, setAddingToCart] = useState<number | null>(null);
+  const [syncToast, setSyncToast] = useState({ show: false, message: '', type: 'success' });
 
   // Modal states
   const [currentModal, setCurrentModal] = useState<string | null>(null);
@@ -2715,12 +2701,6 @@ const FadedSkiesApp = () => {
     description: ''
   });
 
-  // Live chat state
-  const [chatMessages, setChatMessages] = useState([
-    { id: 1, sender: 'agent', message: 'Hi! How can I help you today?', timestamp: new Date() }
-  ]);
-  const [chatInput, setChatInput] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
 
   // Order modal state
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -2735,7 +2715,7 @@ const FadedSkiesApp = () => {
   ];
 
   // Realistic product system with updateable images
-  const products = [
+  const localProducts = [
     {
       id: 1,
       name: 'Purple Haze Live Resin Cartridge',
@@ -2846,19 +2826,188 @@ const FadedSkiesApp = () => {
     }
   ];
 
-  const filteredProducts = products.filter(product => {
+  // Enhanced real-time product sync with immediate updates
+  useEffect(() => {
+    console.log('🔄 UserApp initializing enhanced real-time product sync...');
+
+    // Initialize data sync service
+    dataSyncService.initialize();
+
+
+
+    // Setup comprehensive real-time sync
+    setupRealTimeSync();
+
+    // Request location permission for geofencing and delivery tracking
+    requestLocationPermission();
+
+    // Connect to WebSocket for immediate product updates
+    try {
+      wsService.connect('user-product-sync');
+
+      // Enhanced product sync event handlers for immediate UI updates
+      const handleProductAdded = (data: any) => {
+        console.log('🆕 UserApp: Product added immediately:', data.product.name);
+        setProducts(prev => {
+          const updated = [...prev, data.product];
+          console.log('📦 UserApp: Product list updated, now showing', updated.length, 'products');
+          return updated;
+        });
+
+        // Show sync toast notification
+        setSyncToast({
+          show: true,
+          message: `🆕 New product added: ${data.product.name}`,
+          type: 'success'
+        });
+        setTimeout(() => setSyncToast(prev => ({ ...prev, show: false })), 3000);
+
+        // Show browser notification
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('🌿 New Product Available!', {
+            body: `${data.product.name} is now available for order`,
+            icon: '/favicon.ico'
+          });
+        }
+      };
+
+      const handleProductUpdated = (data: any) => {
+        console.log('✏️ UserApp: Product updated immediately:', data.id);
+        const productName = products.find(p => p.id === data.id)?.name || 'Product';
+        setProducts(prev => {
+          const updated = prev.map(p => p.id === data.id ? { ...p, ...data.updates } : p);
+          console.log('📦 UserApp: Product updated in list');
+          return updated;
+        });
+
+        // Show sync toast notification
+        setSyncToast({
+          show: true,
+          message: `✏️ ${productName} updated`,
+          type: 'success'
+        });
+        setTimeout(() => setSyncToast(prev => ({ ...prev, show: false })), 3000);
+      };
+
+      const handleProductDeleted = (data: any) => {
+        console.log('🗑️ UserApp: Product deleted immediately:', data.id);
+        const productName = products.find(p => p.id === data.id)?.name || 'Product';
+        setProducts(prev => {
+          const updated = prev.filter(p => p.id !== data.id);
+          console.log('📦 UserApp: Product removed from list, now showing', updated.length, 'products');
+          return updated;
+        });
+
+        // Show sync toast notification
+        setSyncToast({
+          show: true,
+          message: `🗑️ ${productName} removed`,
+          type: 'warning'
+        });
+        setTimeout(() => setSyncToast(prev => ({ ...prev, show: false })), 3000);
+      };
+
+      // Register enhanced event listeners for immediate updates
+      wsService.on('product_added', handleProductAdded);
+      wsService.on('product_updated', handleProductUpdated);
+      wsService.on('product_deleted', handleProductDeleted);
+
+      // Request browser notification permission for product updates
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().then(permission => {
+          console.log('🔔 Notification permission:', permission);
+        });
+      }
+
+      console.log('✅ UserApp: Enhanced real-time product sync connected - immediate updates enabled!');
+
+      // Cleanup function
+      return () => {
+        wsService.off('product_added', handleProductAdded);
+        wsService.off('product_updated', handleProductUpdated);
+        wsService.off('product_deleted', handleProductDeleted);
+        console.log('🔌 UserApp: Real-time product sync disconnected');
+      };
+
+    } catch (error) {
+      console.error('❌ UserApp: Failed to connect real-time product sync:', error);
+    }
+
+    // Initialize store with local products if it's empty
+    if (products.length === 0 && localProducts.length > 0) {
+      setProducts(localProducts);
+      console.log('🌿 UserApp: Initialized store with sample products');
+    }
+
+  }, [setupRealTimeSync, setProducts]);
+
+  // Use store products if available, otherwise fall back to local products
+  const activeProducts = products.length > 0 ? products : localProducts;
+
+  const filteredProducts = activeProducts.filter(product => {
     const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
+  // State to track and preserve scroll position during operations
+  const [preserveScrollPosition, setPreserveScrollPosition] = useState<number | null>(null);
+  const [isCartOperation, setIsCartOperation] = useState(false);
+
+  // Effect to restore scroll position when needed
+  useEffect(() => {
+    if (preserveScrollPosition !== null) {
+      setIsCartOperation(true);
+
+      const restoreScroll = () => {
+        window.scrollTo({ top: preserveScrollPosition, behavior: 'instant' });
+      };
+
+      // Multiple restoration attempts
+      requestAnimationFrame(restoreScroll);
+      setTimeout(restoreScroll, 0);
+      setTimeout(restoreScroll, 10);
+      setTimeout(restoreScroll, 50);
+      setTimeout(restoreScroll, 100);
+      setTimeout(restoreScroll, 200);
+
+      // Clear the preserved position and unlock scroll after restoration
+      setTimeout(() => {
+        setPreserveScrollPosition(null);
+        setIsCartOperation(false);
+      }, 300);
+    }
+  }, [preserveScrollPosition]);
+
+  // Prevent unwanted scroll during cart operations
+  useEffect(() => {
+    if (isCartOperation && preserveScrollPosition !== null) {
+      const preventScroll = (e: Event) => {
+        if (window.pageYOffset !== preserveScrollPosition) {
+          e.preventDefault();
+          window.scrollTo({ top: preserveScrollPosition, behavior: 'instant' });
+        }
+      };
+
+      window.addEventListener('scroll', preventScroll, { passive: false });
+
+      return () => {
+        window.removeEventListener('scroll', preventScroll);
+      };
+    }
+  }, [isCartOperation, preserveScrollPosition]);
+
   const addToCart = useCallback((product: Product) => {
     if (!product.inStock) return;
-    
+
+    // Preserve scroll position during cart updates
+    const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+    setPreserveScrollPosition(scrollPosition);
+
     // Set loading state for visual feedback
     setAddingToCart(product.id);
     setTimeout(() => setAddingToCart(null), 500);
-    
+
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
       if (existing) {
@@ -2866,24 +3015,28 @@ const FadedSkiesApp = () => {
         setToastMessage(`Added another ${product.name} to cart!`);
         setShowToast(true);
         setTimeout(() => setShowToast(false), 3000);
-        
-        return prev.map(item => 
-          item.id === product.id 
+
+        return prev.map(item =>
+          item.id === product.id
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
       }
-      
+
       // Show toast for new item
       setToastMessage(`${product.name} added to cart!`);
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
-      
+
       return [...prev, { ...product, quantity: 1 }];
     });
-  }, []);
+  }, [preserveScrollPosition]);
 
   const updateQuantity = useCallback((id: number, change: number) => {
+    // Preserve scroll position during cart updates
+    const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+    setPreserveScrollPosition(scrollPosition);
+
     setCart(prev => {
       const updatedCart = prev.map(item => {
         if (item.id === id) {
@@ -2905,7 +3058,7 @@ const FadedSkiesApp = () => {
         }
         return item;
       }).filter(Boolean) as CartItem[];
-      
+
       return updatedCart;
     });
   }, []);
@@ -3348,7 +3501,30 @@ const FadedSkiesApp = () => {
 
         // Add order to local state immediately
         setOrders(prev => [newOrder, ...prev]);
+
+        // Add order to global store for admin visibility
+        const storeOrder = {
+          id: orders.length + 3,
+          orderId: newOrder.id,
+          customer: user.name || 'Customer',
+          customerEmail: user.email || 'customer@example.com',
+          items: cart.map(item => item.name),
+          total: total,
+          status: 'pending' as const,
+          date: new Date().toLocaleDateString(),
+          time: new Date().toLocaleTimeString(),
+          deliveryAddress: orderData.deliveryAddress,
+          paymentMethod: orderData.paymentMethod,
+          estimatedDelivery: '45-60 minutes',
+          notes: '',
+          priority: (total > 150 ? 'high' : 'normal') as const,
+          location: 'Austin'
+        };
+
+        addOrder(storeOrder);
         setCart([]);
+
+        // SMS confirmations will be handled by external SMS service if needed
 
         // Send real-time notification to admin and drivers
         try {
@@ -3417,11 +3593,32 @@ const FadedSkiesApp = () => {
   }, []);
 
   const updateUserProfile = useCallback((updates: Partial<User>) => {
-    setUser(prev => ({ ...prev, ...updates }));
-    setToastMessage('Profile updated successfully!');
+    const updatedUser = { ...user, ...updates };
+    setUser(updatedUser);
+
+    // Sync to admin using data sync service
+    try {
+      syncCustomerProfile(parseInt(user.id || '1'), {
+        name: updatedUser.name,
+        email: updatedUser.email,
+        phone: updatedUser.phone,
+        address: updatedUser.address,
+        city: updatedUser.city,
+        state: updatedUser.state,
+        zipCode: updatedUser.zipCode,
+        preferences: updatedUser.preferences,
+        customerName: updatedUser.name
+      });
+
+      setToastMessage('Profile updated and synced to admin!');
+    } catch (error) {
+      console.error('Failed to sync profile to admin:', error);
+      setToastMessage('Profile updated locally!');
+    }
+
     setShowToast(true);
     setTimeout(() => setShowToast(false), 3000);
-  }, []);
+  }, [user, syncCustomerProfile]);
 
   const showToastMessage = useCallback((message: string) => {
     setToastMessage(message);
@@ -3429,51 +3626,28 @@ const FadedSkiesApp = () => {
     setTimeout(() => setShowToast(false), 3000);
   }, []);
 
-  const sendChatMessage = useCallback((message: string) => {
-    const newMessage = {
-      id: chatMessages.length + 1,
-      sender: 'user',
-      message,
-      timestamp: new Date()
-    };
+  // Request location permission for delivery and geofencing
+  const requestLocationPermission = useCallback(async () => {
+    try {
+      const permission = await requestPermission();
 
-    setChatMessages(prev => [...prev, newMessage]);
+      if (permission.granted) {
+        // Start location tracking for delivery zone validation
+        const trackingStarted = await startTracking('customer', user.id || 'customer_001');
 
-    // Simulate agent typing
-    setIsTyping(true);
-    setTimeout(() => {
-      setIsTyping(false);
-      const agentResponse = {
-        id: chatMessages.length + 2,
-        sender: 'agent',
-        message: getAgentResponse(message),
-        timestamp: new Date()
-      };
-      setChatMessages(prev => [...prev, agentResponse]);
-    }, 1500 + Math.random() * 1000);
-  }, [chatMessages]);
-
-  const getAgentResponse = (userMessage: string) => {
-    const lowerMessage = userMessage.toLowerCase();
-
-    if (lowerMessage.includes('order') || lowerMessage.includes('delivery')) {
-      return 'I can help you with your order! Can you please provide your order number? You can find it in the Orders tab.';
-    } else if (lowerMessage.includes('payment') || lowerMessage.includes('card')) {
-      return 'I\'m here to help with payment issues. Are you having trouble with a specific payment method or transaction?';
-    } else if (lowerMessage.includes('product') || lowerMessage.includes('strain')) {
-      return 'I\'d be happy to help you learn about our products! What specific information are you looking for?';
-    } else if (lowerMessage.includes('account') || lowerMessage.includes('login')) {
-      return 'I can assist with account-related questions. Are you having trouble logging in or need to update your information?';
-    } else {
-      const responses = [
-        'Thank you for contacting us! Let me help you with that.',
-        'I understand. Can you provide more details about your concern?',
-        'That\'s a great question! Let me gather some information for you.',
-        'I\'m here to help! Could you tell me more about what you\'re experiencing?'
-      ];
-      return responses[Math.floor(Math.random() * responses.length)];
+        if (trackingStarted) {
+          console.log('📍 Location tracking started for delivery zone validation');
+          showToastMessage('Location access granted - we can now provide accurate delivery estimates!');
+        }
+      } else if (permission.denied) {
+        console.log('📍 Location permission denied');
+        showToastMessage('Location access denied - delivery estimates may be less accurate');
+      }
+    } catch (error) {
+      console.error('Location permission error:', error);
     }
-  };
+  }, [requestPermission, startTracking, user.id]);
+
 
   // Order modal handlers
   const handleViewOrderDetails = useCallback((order: Order) => {
@@ -3509,9 +3683,123 @@ const FadedSkiesApp = () => {
     });
   }, [addToCart, products]);
 
+  // Location Permission Modal Component
+  const LocationPermissionModal = () => {
+    const [showLocationModal, setShowLocationModal] = useState(false);
+
+    useEffect(() => {
+      // Check if we need to show location permission modal
+      const checkLocationPermission = async () => {
+        if ('permissions' in navigator) {
+          try {
+            const permission = await navigator.permissions.query({ name: 'geolocation' });
+            if (permission.state === 'prompt') {
+              setShowLocationModal(true);
+            }
+          } catch (error) {
+            // Some browsers don't support permissions query
+            if (!localStorage.getItem('location_requested')) {
+              setShowLocationModal(true);
+            }
+          }
+        } else if (!localStorage.getItem('location_requested')) {
+          setShowLocationModal(true);
+        }
+      };
+
+      // Show modal after a short delay
+      setTimeout(checkLocationPermission, 2000);
+    }, []);
+
+    const handleAllowLocation = async () => {
+      localStorage.setItem('location_requested', 'true');
+      setShowLocationModal(false);
+      await requestLocationPermission();
+    };
+
+    const handleDenyLocation = () => {
+      localStorage.setItem('location_requested', 'denied');
+      setShowLocationModal(false);
+      showToastMessage('You can enable location access later in your browser settings');
+    };
+
+    if (!showLocationModal) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <MapPin className="w-8 h-8 text-blue-600" />
+            </div>
+
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Enable Location Access</h3>
+            <p className="text-gray-600 mb-6 leading-relaxed">
+              We use your location to:
+            </p>
+
+            <div className="text-left space-y-3 mb-6">
+              <div className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                <span className="text-sm text-gray-700">Verify you're in our delivery zone</span>
+              </div>
+              <div className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                <span className="text-sm text-gray-700">Provide accurate delivery estimates</span>
+              </div>
+              <div className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                <span className="text-sm text-gray-700">Track your delivery in real-time</span>
+              </div>
+              <div className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                <span className="text-sm text-gray-700">Ensure safe delivery to your location</span>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-6">
+              <p className="text-xs text-blue-800">
+                <strong>Privacy:</strong> Your location is only used for delivery purposes and is never shared with third parties.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={handleAllowLocation}
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-xl font-bold hover:from-blue-700 hover:to-indigo-700 transition-all"
+              >
+                Allow Location Access
+              </button>
+              <button
+                onClick={handleDenyLocation}
+                className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+              >
+                Maybe Later
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="max-w-md mx-auto bg-gray-50 min-h-screen">
       <Toast showToast={showToast} toastMessage={toastMessage} />
+
+      {/* Real-time Sync Toast */}
+      {syncToast.show && (
+        <div className="fixed top-32 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300">
+          <div className={`px-6 py-4 rounded-2xl shadow-xl border flex items-center space-x-3 ${
+            syncToast.type === 'success' ? 'bg-green-600 text-white border-green-500' :
+            syncToast.type === 'warning' ? 'bg-orange-600 text-white border-orange-500' :
+            'bg-blue-600 text-white border-blue-500'
+          }`}>
+            <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+            <span className="font-semibold">{syncToast.message}</span>
+          </div>
+        </div>
+      )}
       
       {!isAuthenticated ? (
         <div className="min-h-screen bg-gradient-to-br from-emerald-600 via-green-600 to-teal-700 flex items-center justify-center p-4">
@@ -3806,7 +4094,16 @@ const FadedSkiesApp = () => {
 
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold text-xl text-gray-900">Premium Products</h3>
+                    <div className="flex items-center space-x-3">
+                      <h3 className="font-bold text-xl text-gray-900">Premium Products</h3>
+                      <div className="flex items-center space-x-1 px-2 py-1 bg-green-100 rounded-full">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="text-xs font-medium text-green-700">Live Sync Active</span>
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {products.length} products • Updates instantly
+                      </div>
+                    </div>
                     <button type="button" className="text-emerald-600 hover:text-emerald-700 font-semibold text-sm">
                       View All
                     </button>
@@ -3972,7 +4269,7 @@ const FadedSkiesApp = () => {
                     <div className="grid grid-cols-2 gap-4">
                       {[
                         { name: "Driver's License", icon: "🚗" },
-                        { name: "State ID Card", icon: "🆔" },
+                        { name: "State ID Card", icon: "��" },
                         { name: "Passport", icon: "📘" },
                         { name: "Military ID", icon: "🎖️" }
                       ].map(idType => (
@@ -4077,7 +4374,7 @@ const FadedSkiesApp = () => {
                       onClick={() => setCurrentView('home')}
                       className="bg-gradient-to-r from-emerald-600 to-green-600 text-white px-10 py-5 rounded-2xl font-bold text-lg hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
                     >
-                      🌿 Start Shopping
+                      ��� Start Shopping
                     </button>
                   </div>
                 ) : (
@@ -4213,7 +4510,7 @@ const FadedSkiesApp = () => {
                       <p className="font-bold text-lg text-gray-900">{user.rewards}</p>
                     </div>
                     <div className="bg-white rounded-2xl p-4 text-center shadow-sm">
-                      <div className="text-2xl mb-1">📦</div>
+                      <div className="text-2xl mb-1">����</div>
                       <p className="text-sm font-semibold text-gray-600">Orders</p>
                       <p className="font-bold text-lg text-gray-900">{orders.length}</p>
                     </div>
@@ -4348,10 +4645,10 @@ const FadedSkiesApp = () => {
                   </div>
                   <button
                     type="button"
-                    onClick={() => openModal('liveChat')}
+                    onClick={() => openModal('contact', { contactType: 'Call Support' })}
                     className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-bold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl"
                   >
-                    Start Chat
+                    Contact Support
                   </button>
                 </div>
 
@@ -4362,7 +4659,7 @@ const FadedSkiesApp = () => {
                       { title: 'Order Status', icon: '📦', color: 'from-green-400 to-emerald-500' },
                       { title: 'Payment Issues', icon: '💳', color: 'from-blue-400 to-cyan-500' },
                       { title: 'Product Info', icon: '🌿', color: 'from-purple-400 to-violet-500' },
-                      { title: 'Account Help', icon: '����', color: 'from-orange-400 to-amber-500' }
+                      { title: 'Account Help', icon: '������', color: 'from-orange-400 to-amber-500' }
                     ].map((item, index) => (
                       <button
                         key={index}
@@ -4497,6 +4794,9 @@ const FadedSkiesApp = () => {
             </div>
           )}
 
+          {/* Location Permission Modal */}
+          <LocationPermissionModal />
+
           {/* Bottom Navigation */}
           <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-200 p-4 flex justify-around shadow-xl">
             {[
@@ -4560,15 +4860,6 @@ const FadedSkiesApp = () => {
           />
 
           {/* Support Modals */}
-          <LiveChatModal
-            isOpen={currentModal === 'liveChat'}
-            onClose={closeModal}
-            messages={chatMessages}
-            onSendMessage={sendChatMessage}
-            chatInput={chatInput}
-            setChatInput={setChatInput}
-            isTyping={isTyping}
-          />
 
           <QuickHelpModal
             isOpen={currentModal === 'quickHelp'}

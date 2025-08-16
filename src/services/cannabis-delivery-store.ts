@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { subscribeWithSelector } from 'zustand/middleware';
+import { wsService } from './simple-websocket';
 
 // ===== TYPES & INTERFACES =====
 
@@ -156,12 +157,65 @@ interface CannabisDeliveryState {
     isAuthenticated: boolean;
     token?: string;
   } | null;
+
+  // GPS and Real-time Tracking State
+  driverLocations: Record<string, {
+    lat: number;
+    lng: number;
+    timestamp: string;
+    heading?: number;
+    speed?: number;
+    isOnline: boolean;
+  }>;
+  geofences: Array<{
+    id: string;
+    name: string;
+    lat: number;
+    lng: number;
+    radius: number;
+    active: boolean;
+    alertType: 'entry' | 'exit' | 'both';
+  }>;
+  adminMessages: Array<{
+    id: string;
+    from: string;
+    to: string;
+    message: string;
+    timestamp: string;
+    type: 'admin' | 'driver';
+    orderId?: string;
+    read: boolean;
+  }>;
+  activeRoutes: Record<string, {
+    orderId: string;
+    driverId: string;
+    customerLocation: { lat: number; lng: number };
+    facilityLocation: { lat: number; lng: number };
+    currentRoute: Array<{ lat: number; lng: number }>;
+    eta: string;
+    status: 'pickup' | 'delivery' | 'completed';
+  }>;
   
   // Actions
   setProducts: (products: Product[]) => void;
   addProduct: (product: Product) => void;
   updateProduct: (id: number, updates: Partial<Product>) => void;
   deleteProduct: (id: number) => void;
+
+  // Real-time sync actions
+  broadcastProductAdded: (product: Product) => void;
+  broadcastProductUpdated: (id: number, updates: Partial<Product>) => void;
+  broadcastProductDeleted: (id: number) => void;
+  setupRealTimeSync: () => void;
+
+  // Order workflow actions
+  placeOrder: (orderData: any) => void;
+  processOrder: (orderId: string, status: string) => void;
+  assignDriver: (orderId: string, driverId: string) => void;
+  updateDriverLocation: (driverId: string, location: { lat: number; lng: number }) => void;
+  sendAdminMessage: (driverId: string, message: string) => void;
+  sendDriverMessage: (adminId: string, message: string) => void;
+  createGeofence: (name: string, coords: { lat: number; lng: number; radius: number }) => void;
   
   setCustomers: (customers: Customer[]) => void;
   addCustomer: (customer: Customer) => void;
@@ -175,11 +229,11 @@ interface CannabisDeliveryState {
   setDrivers: (drivers: Driver[]) => void;
   addDriver: (driver: Driver) => void;
   updateDriver: (id: number, updates: Partial<Driver>) => void;
+  updateDriverStatus: (driverId: number, status: 'online' | 'offline' | 'busy' | 'break', location?: { lat: number; lng: number }) => void;
   
   setActiveDeliveries: (deliveries: ActiveDelivery[]) => void;
   updateDeliveryProgress: (orderId: string, progress: number) => void;
   updateDeliveryStatus: (orderId: string, status: ActiveDelivery['status']) => void;
-  assignDriver: (orderId: string, driverId: number) => void;
   
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'>) => void;
   markAsRead: (id: string) => void;
@@ -202,8 +256,119 @@ export const useCannabisDeliveryStore = create<CannabisDeliveryState>()(
         // Initial State
         products: [],
         customers: [],
-        orders: [],
-        drivers: [],
+        orders: [
+          {
+            id: 1,
+            orderId: "FS2025001",
+            customer: "Sarah Johnson",
+            customerEmail: "sarah@example.com",
+            items: ["Blue Dream 3.5g", "CBD Gummies 10mg"],
+            total: 89.50,
+            status: "pending",
+            date: new Date().toLocaleDateString(),
+            time: new Date().toLocaleTimeString(),
+            deliveryAddress: "1234 Austin St, Austin, TX 78701",
+            paymentMethod: "Credit Card",
+            estimatedDelivery: "45-60 minutes",
+            notes: "Please call upon arrival",
+            priority: "normal",
+            location: "Austin Downtown"
+          },
+          {
+            id: 2,
+            orderId: "FS2025002",
+            customer: "Mike Chen",
+            customerEmail: "mike@example.com",
+            items: ["Sour Diesel 1/8oz", "Vape Cartridge"],
+            total: 125.00,
+            status: "pending",
+            date: new Date().toLocaleDateString(),
+            time: new Date().toLocaleTimeString(),
+            deliveryAddress: "5678 South Lamar, Austin, TX 78704",
+            paymentMethod: "Cash",
+            estimatedDelivery: "30-45 minutes",
+            notes: "Apartment 205, buzz #205",
+            priority: "high",
+            location: "Austin South"
+          }
+        ],
+        drivers: [
+          {
+            id: 1,
+            name: "Alex Rodriguez",
+            email: "alex@fadedskies.com",
+            phone: "(512) 555-0101",
+            vehicle: {
+              make: "Honda",
+              model: "Civic",
+              year: 2020,
+              color: "Blue",
+              licensePlate: "FDS001"
+            },
+            status: "offline",
+            rating: 4.8,
+            completedDeliveries: 142,
+            currentLocation: "Austin Downtown",
+            lastUpdate: new Date().toISOString(),
+            earnings: {
+              today: 0,
+              week: 0,
+              month: 0,
+              total: 0
+            },
+            online: false
+          },
+          {
+            id: 2,
+            name: "Maria Garcia",
+            email: "maria@fadedskies.com",
+            phone: "(512) 555-0102",
+            vehicle: {
+              make: "Toyota",
+              model: "Prius",
+              year: 2021,
+              color: "White",
+              licensePlate: "FDS002"
+            },
+            status: "offline",
+            rating: 4.9,
+            completedDeliveries: 189,
+            currentLocation: "Austin South",
+            lastUpdate: new Date().toISOString(),
+            earnings: {
+              today: 0,
+              week: 0,
+              month: 0,
+              total: 0
+            },
+            online: false
+          },
+          {
+            id: 3,
+            name: "Marcus Johnson",
+            email: "marcus@fadedskies.com",
+            phone: "(512) 555-0103",
+            vehicle: {
+              make: "Ford",
+              model: "Focus",
+              year: 2019,
+              color: "Black",
+              licensePlate: "FDS003"
+            },
+            status: "offline",
+            rating: 4.7,
+            completedDeliveries: 98,
+            currentLocation: "Austin West",
+            lastUpdate: new Date().toISOString(),
+            earnings: {
+              today: 0,
+              week: 0,
+              month: 0,
+              total: 0
+            },
+            online: false
+          }
+        ],
         activeDeliveries: [],
         notifications: [],
         isLoading: false,
@@ -212,10 +377,26 @@ export const useCannabisDeliveryStore = create<CannabisDeliveryState>()(
         connectionStatus: 'disconnected',
         user: null,
 
+        // GPS and Tracking State
+        driverLocations: {},
+        geofences: [
+          {
+            id: 'facility',
+            name: 'Faded Skies Facility',
+            lat: 30.2672,
+            lng: -97.7431,
+            radius: 100, // meters
+            active: true,
+            alertType: 'both'
+          }
+        ],
+        adminMessages: [],
+        activeRoutes: {},
+
         // Product Actions
         setProducts: (products) => set({ products }),
-        addProduct: (product) => set((state) => ({ 
-          products: [...state.products, product] 
+        addProduct: (product) => set((state) => ({
+          products: [...state.products, product]
         })),
         updateProduct: (id, updates) => set((state) => ({
           products: state.products.map(p => p.id === id ? { ...p, ...updates } : p)
@@ -223,6 +404,486 @@ export const useCannabisDeliveryStore = create<CannabisDeliveryState>()(
         deleteProduct: (id) => set((state) => ({
           products: state.products.filter(p => p.id !== id)
         })),
+
+        // Real-time sync actions
+        broadcastProductAdded: (product) => {
+          console.log('🚀 Store: Starting product add broadcast for:', product.name);
+
+          // First update local state immediately
+          set((state) => ({
+            products: [...state.products, product],
+            lastUpdated: new Date().toISOString()
+          }));
+
+          // Then broadcast to all connected clients for immediate sync
+          wsService.send({
+            type: 'admin:product_added',
+            data: { product, timestamp: new Date().toISOString() }
+          });
+
+          console.log('📡 Store: Product add broadcast sent to all clients:', product.name);
+          console.log('🔄 Users should see new product immediately');
+        },
+
+        broadcastProductUpdated: (id, updates) => {
+          console.log('🚀 Store: Starting product update broadcast for ID:', id);
+
+          // First update local state immediately
+          set((state) => ({
+            products: state.products.map(p => p.id === id ? { ...p, ...updates } : p),
+            lastUpdated: new Date().toISOString()
+          }));
+
+          // Then broadcast to all connected clients for immediate sync
+          wsService.send({
+            type: 'admin:product_updated',
+            data: { id, updates, timestamp: new Date().toISOString() }
+          });
+
+          console.log('📡 Store: Product update broadcast sent to all clients:', id);
+          console.log('🔄 Users should see updated product immediately');
+        },
+
+        broadcastProductDeleted: (id) => {
+          console.log('🚀 Store: Starting product delete broadcast for ID:', id);
+
+          // First update local state immediately
+          set((state) => ({
+            products: state.products.filter(p => p.id !== id),
+            lastUpdated: new Date().toISOString()
+          }));
+
+          // Then broadcast to all connected clients for immediate sync
+          wsService.send({
+            type: 'admin:product_deleted',
+            data: { id, timestamp: new Date().toISOString() }
+          });
+
+          console.log('📡 Store: Product delete broadcast sent to all clients:', id);
+          console.log('🔄 Users should see product removal immediately');
+        },
+
+        setupRealTimeSync: () => {
+          console.log('🔄 Setting up comprehensive real-time sync...');
+
+          // Product sync events
+          wsService.on('product_added', (data) => {
+            console.log('📥 Received product added:', data.product.name);
+            set((state) => ({
+              products: [...state.products, data.product],
+              lastUpdated: data.timestamp,
+              notifications: [...state.notifications, {
+                id: Date.now(),
+                type: 'success',
+                title: 'New Product Added',
+                message: `${data.product.name} is now available!`,
+                priority: 'low',
+                timestamp: new Date().toISOString()
+              }]
+            }));
+          });
+
+          wsService.on('product_updated', (data) => {
+            console.log('📥 Received product updated:', data.id);
+            const product = get().products.find(p => p.id === data.id);
+            set((state) => ({
+              products: state.products.map(p => p.id === data.id ? { ...p, ...data.updates } : p),
+              lastUpdated: data.timestamp,
+              notifications: [...state.notifications, {
+                id: Date.now(),
+                type: 'info',
+                title: 'Product Updated',
+                message: `${product?.name || 'A product'} has been updated`,
+                priority: 'low',
+                timestamp: new Date().toISOString()
+              }]
+            }));
+          });
+
+          wsService.on('product_deleted', (data) => {
+            console.log('📥 Received product deleted:', data.id);
+            const product = get().products.find(p => p.id === data.id);
+            set((state) => ({
+              products: state.products.filter(p => p.id !== data.id),
+              lastUpdated: data.timestamp,
+              notifications: [...state.notifications, {
+                id: Date.now(),
+                type: 'warning',
+                title: 'Product Removed',
+                message: `${product?.name || 'A product'} is no longer available`,
+                priority: 'medium',
+                timestamp: new Date().toISOString()
+              }]
+            }));
+          });
+
+          // Order workflow events
+          wsService.on('order_placed', (data) => {
+            console.log('📥 New order placed:', data.orderId);
+            set((state) => ({
+              orders: [data, ...state.orders],
+              notifications: [...state.notifications, {
+                id: Date.now(),
+                type: 'success',
+                title: 'New Order Received',
+                message: `Order ${data.orderNumber} - $${data.total}`,
+                priority: 'high',
+                timestamp: new Date().toISOString()
+              }]
+            }));
+          });
+
+          wsService.on('driver_assigned', (data) => {
+            console.log('📥 Driver assigned:', data);
+            set((state) => ({
+              orders: state.orders.map(o =>
+                o.id === data.orderId ? { ...o, driverId: data.driverId, status: 'assigned' } : o
+              ),
+              notifications: [...state.notifications, {
+                id: Date.now(),
+                type: 'info',
+                title: 'Driver Assigned',
+                message: `${data.driverName} assigned to order ${data.orderNumber}`,
+                priority: 'medium',
+                timestamp: new Date().toISOString()
+              }]
+            }));
+          });
+
+          // GPS tracking events
+          wsService.on('driver_location_update', (data) => {
+            set((state) => ({
+              driverLocations: {
+                ...state.driverLocations,
+                [data.driverId]: {
+                  lat: data.lat,
+                  lng: data.lng,
+                  timestamp: data.timestamp,
+                  heading: data.heading,
+                  speed: data.speed,
+                  isOnline: true
+                }
+              }
+            }));
+          });
+
+          // Messaging events
+          wsService.on('admin_message', (data) => {
+            set((state) => ({
+              adminMessages: [...state.adminMessages, {
+                id: Date.now().toString(),
+                from: data.from,
+                to: data.to,
+                message: data.message,
+                timestamp: data.timestamp,
+                type: 'admin',
+                orderId: data.orderId,
+                read: false
+              }]
+            }));
+          });
+
+          wsService.on('driver_message', (data) => {
+            set((state) => ({
+              adminMessages: [...state.adminMessages, {
+                id: Date.now().toString(),
+                from: data.from,
+                to: data.to,
+                message: data.message,
+                timestamp: data.timestamp,
+                type: 'driver',
+                orderId: data.orderId,
+                read: false
+              }]
+            }));
+          });
+
+          // Geofencing alerts
+          wsService.on('geofence_alert', (data) => {
+            console.log('🚨 Geofence alert:', data);
+            set((state) => ({
+              notifications: [...state.notifications, {
+                id: Date.now(),
+                type: 'warning',
+                title: 'Geofence Alert',
+                message: `Driver ${data.driverName} ${data.eventType} ${data.geofenceName}`,
+                priority: 'high',
+                timestamp: new Date().toISOString()
+              }]
+            }));
+          });
+
+          // Driver status events
+          wsService.on('driver_status_update', (data) => {
+            console.log('🚗 Driver status update:', data);
+            set((state) => ({
+              drivers: state.drivers.map(d =>
+                d.id === data.driverId ? {
+                  ...d,
+                  status: data.status,
+                  online: data.status === 'online',
+                  lastUpdate: data.timestamp,
+                  currentLocation: data.location ? `${data.location.lat}, ${data.location.lng}` : d.currentLocation
+                } : d
+              ),
+              driverLocations: data.location ? {
+                ...state.driverLocations,
+                [data.driverId]: {
+                  lat: data.location.lat,
+                  lng: data.location.lng,
+                  timestamp: data.timestamp,
+                  isOnline: data.status === 'online'
+                }
+              } : state.driverLocations
+            }));
+          });
+
+          wsService.on('driver_online', (data) => {
+            console.log('🚗 Driver came online:', data);
+            set((state) => ({
+              drivers: state.drivers.map(d =>
+                d.id === data.driverId ? {
+                  ...d,
+                  status: 'online',
+                  online: true,
+                  lastUpdate: new Date().toISOString()
+                } : d
+              ),
+              notifications: [...state.notifications, {
+                id: Date.now(),
+                type: 'info',
+                title: 'Driver Online',
+                message: `${data.driverName || 'Driver'} is now available for deliveries`,
+                priority: 'low',
+                timestamp: new Date().toISOString()
+              }]
+            }));
+          });
+
+          wsService.on('driver_offline', (data) => {
+            console.log('🚗 Driver went offline:', data);
+            set((state) => ({
+              drivers: state.drivers.map(d =>
+                d.id === data.driverId ? {
+                  ...d,
+                  status: 'offline',
+                  online: false,
+                  lastUpdate: new Date().toISOString()
+                } : d
+              ),
+              notifications: [...state.notifications, {
+                id: Date.now(),
+                type: 'warning',
+                title: 'Driver Offline',
+                message: `${data.driverName || 'Driver'} is no longer available`,
+                priority: 'low',
+                timestamp: new Date().toISOString()
+              }]
+            }));
+          });
+
+          // Order workflow events
+          wsService.on('driver_accept_order', (data) => {
+            console.log('✅ Driver accepted order:', data);
+            set((state) => ({
+              orders: state.orders.map(o =>
+                o.orderId === data.orderId ? { ...o, status: 'confirmed' } : o
+              ),
+              notifications: [...state.notifications, {
+                id: Date.now(),
+                type: 'success',
+                title: 'Order Accepted',
+                message: `Driver accepted order ${data.orderNumber}`,
+                priority: 'medium',
+                timestamp: new Date().toISOString()
+              }]
+            }));
+          });
+
+          wsService.on('pickup_complete', (data) => {
+            console.log('📦 Driver picked up order:', data);
+            set((state) => ({
+              orders: state.orders.map(o =>
+                o.orderId === data.orderId ? { ...o, status: 'picked_up' } : o
+              )
+            }));
+          });
+
+          wsService.on('delivery_started', (data) => {
+            console.log('🚚 Delivery started:', data);
+            set((state) => ({
+              orders: state.orders.map(o =>
+                o.orderId === data.orderId ? { ...o, status: 'in_transit' } : o
+              )
+            }));
+          });
+
+          wsService.on('delivery_completed', (data) => {
+            console.log('✅ Delivery completed:', data);
+            set((state) => ({
+              orders: state.orders.map(o =>
+                o.orderId === data.orderId ? { ...o, status: 'delivered' } : o
+              )
+            }));
+          });
+
+          // Connect WebSocket if not already connected
+          wsService.connect();
+          console.log('✅ Comprehensive real-time sync activated');
+        },
+
+        // Order workflow actions
+        placeOrder: (orderData) => {
+          const order = {
+            ...orderData,
+            id: Date.now().toString(),
+            status: 'pending',
+            timestamp: new Date().toISOString()
+          };
+
+          set((state) => ({
+            orders: [order, ...state.orders]
+          }));
+
+          // Broadcast to admin
+          wsService.send({
+            type: 'customer:order_placed',
+            data: order
+          });
+
+          console.log('📤 Order placed and sent to admin:', order.id);
+        },
+
+        processOrder: (orderId, status) => {
+          set((state) => ({
+            orders: state.orders.map(o =>
+              o.id === orderId ? { ...o, status, processedAt: new Date().toISOString() } : o
+            )
+          }));
+
+          wsService.send({
+            type: 'admin:order_status_update',
+            data: { orderId, status, timestamp: new Date().toISOString() }
+          });
+        },
+
+        assignDriver: (orderId, driverId) => {
+          const order = get().orders.find(o => o.id === orderId);
+          const driver = get().drivers.find(d => d.id === parseInt(driverId));
+
+          if (order && driver) {
+            set((state) => ({
+              orders: state.orders.map(o =>
+                o.id === orderId ? { ...o, driverId, status: 'assigned' } : o
+              ),
+              activeRoutes: {
+                ...state.activeRoutes,
+                [orderId]: {
+                  orderId,
+                  driverId,
+                  customerLocation: { lat: order.deliveryLat || 30.2672, lng: order.deliveryLng || -97.7431 },
+                  facilityLocation: { lat: 30.2672, lng: -97.7431 },
+                  currentRoute: [],
+                  eta: '20-30 minutes',
+                  status: 'pickup'
+                }
+              }
+            }));
+
+            wsService.send({
+              type: 'admin:assign_driver',
+              data: {
+                orderId,
+                driverId,
+                driverName: driver.name,
+                orderNumber: order.orderNumber,
+                customerLocation: { lat: order.deliveryLat, lng: order.deliveryLng }
+              }
+            });
+          }
+        },
+
+        updateDriverLocation: (driverId, location) => {
+          const timestamp = new Date().toISOString();
+          set((state) => ({
+            driverLocations: {
+              ...state.driverLocations,
+              [driverId]: {
+                ...state.driverLocations[driverId],
+                ...location,
+                timestamp,
+                isOnline: true
+              }
+            }
+          }));
+
+          wsService.send({
+            type: 'driver:location_update',
+            data: { driverId, ...location, timestamp }
+          });
+        },
+
+        sendAdminMessage: (driverId, message) => {
+          const messageData = {
+            from: 'admin',
+            to: driverId,
+            message,
+            timestamp: new Date().toISOString()
+          };
+
+          set((state) => ({
+            adminMessages: [...state.adminMessages, {
+              id: Date.now().toString(),
+              ...messageData,
+              type: 'admin',
+              read: true
+            }]
+          }));
+
+          wsService.send({
+            type: 'admin:send_message',
+            data: messageData
+          });
+        },
+
+        sendDriverMessage: (adminId, message) => {
+          const messageData = {
+            from: 'driver',
+            to: adminId,
+            message,
+            timestamp: new Date().toISOString()
+          };
+
+          set((state) => ({
+            adminMessages: [...state.adminMessages, {
+              id: Date.now().toString(),
+              ...messageData,
+              type: 'driver',
+              read: false
+            }]
+          }));
+
+          wsService.send({
+            type: 'driver:send_message',
+            data: messageData
+          });
+        },
+
+        createGeofence: (name, coords) => {
+          const geofence = {
+            id: Date.now().toString(),
+            name,
+            ...coords,
+            active: true,
+            alertType: 'both' as const
+          };
+
+          set((state) => ({
+            geofences: [...state.geofences, geofence]
+          }));
+
+          console.log('🗺️ Geofence created:', name);
+        },
 
         // Customer Actions
         setCustomers: (customers) => set({ customers }),
@@ -247,12 +908,82 @@ export const useCannabisDeliveryStore = create<CannabisDeliveryState>()(
 
         // Driver Actions
         setDrivers: (drivers) => set({ drivers }),
-        addDriver: (driver) => set((state) => ({ 
-          drivers: [...state.drivers, driver] 
+        addDriver: (driver) => set((state) => ({
+          drivers: [...state.drivers, driver]
         })),
         updateDriver: (id, updates) => set((state) => ({
           drivers: state.drivers.map(d => d.id === id ? { ...d, ...updates } : d)
         })),
+        updateDriverStatus: (driverId, status, location) => {
+          set((state) => {
+            const existingDriver = state.drivers.find(d => d.id === driverId);
+
+            if (existingDriver) {
+              // Update existing driver
+              return {
+                drivers: state.drivers.map(d =>
+                  d.id === driverId ? {
+                    ...d,
+                    status,
+                    online: status === 'online',
+                    lastUpdate: new Date().toISOString(),
+                    currentLocation: location ? `${location.lat}, ${location.lng}` : d.currentLocation
+                  } : d
+                ),
+                driverLocations: location ? {
+                  ...state.driverLocations,
+                  [driverId]: {
+                    lat: location.lat,
+                    lng: location.lng,
+                    timestamp: new Date().toISOString(),
+                    isOnline: status === 'online'
+                  }
+                } : state.driverLocations
+              };
+            } else {
+              // Add new driver if not exists
+              console.log(`🚗 Adding new driver ${driverId} to store`);
+              return {
+                drivers: [...state.drivers, {
+                  id: driverId,
+                  name: `Driver ${driverId}`,
+                  email: `driver${driverId}@fadedskies.com`,
+                  phone: "(512) 555-0000",
+                  vehicle: {
+                    make: "Unknown",
+                    model: "Unknown",
+                    year: 2020,
+                    color: "Unknown",
+                    licensePlate: `FDS${String(driverId).padStart(3, '0')}`
+                  },
+                  status,
+                  rating: 4.5,
+                  completedDeliveries: 0,
+                  currentLocation: location ? `${location.lat}, ${location.lng}` : "Unknown",
+                  lastUpdate: new Date().toISOString(),
+                  earnings: {
+                    today: 0,
+                    week: 0,
+                    month: 0,
+                    total: 0
+                  },
+                  online: status === 'online'
+                }],
+                driverLocations: location ? {
+                  ...state.driverLocations,
+                  [driverId]: {
+                    lat: location.lat,
+                    lng: location.lng,
+                    timestamp: new Date().toISOString(),
+                    isOnline: status === 'online'
+                  }
+                } : state.driverLocations
+              };
+            }
+          });
+
+          console.log(`🚗 Driver ${driverId} status updated: ${status}`);
+        },
 
         // Delivery Actions
         setActiveDeliveries: (deliveries) => set({ activeDeliveries: deliveries }),
@@ -264,11 +995,6 @@ export const useCannabisDeliveryStore = create<CannabisDeliveryState>()(
         updateDeliveryStatus: (orderId, status) => set((state) => ({
           activeDeliveries: state.activeDeliveries.map(d => 
             d.orderId === orderId ? { ...d, status } : d
-          )
-        })),
-        assignDriver: (orderId, driverId) => set((state) => ({
-          orders: state.orders.map(o => 
-            o.orderId === orderId ? { ...o, driver: `Driver ${driverId}`, status: 'assigned' } : o
           )
         })),
 
