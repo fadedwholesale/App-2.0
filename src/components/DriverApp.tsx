@@ -2884,17 +2884,17 @@ const FadedSkiesDriverApp = () => {
                     <p className="text-green-700 text-sm mt-2">Ready for withdrawal</p>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4 mb-6">
-                    <div className="bg-white rounded-2xl p-4 text-center shadow-sm">
-                      <div className="text-2xl font-black text-gray-900">${driver.earnings.today.toFixed(2)}</div>
+                  <div className="grid grid-cols-3 gap-3 mb-6">
+                    <div className="bg-white rounded-2xl p-3 text-center shadow-sm min-h-[80px] flex flex-col justify-center">
+                      <div className="text-lg font-black text-gray-900 truncate">${driver.earnings.today.toFixed(2)}</div>
                       <div className="text-xs text-gray-600 font-semibold">Today</div>
                     </div>
-                    <div className="bg-white rounded-2xl p-4 text-center shadow-sm">
-                      <div className="text-2xl font-black text-gray-900">${driver.earnings.week.toFixed(2)}</div>
+                    <div className="bg-white rounded-2xl p-3 text-center shadow-sm min-h-[80px] flex flex-col justify-center">
+                      <div className="text-lg font-black text-gray-900 truncate">${driver.earnings.week.toFixed(2)}</div>
                       <div className="text-xs text-gray-600 font-semibold">This Week</div>
                     </div>
-                    <div className="bg-white rounded-2xl p-4 text-center shadow-sm">
-                      <div className="text-2xl font-black text-gray-900">${driver.earnings.month.toFixed(2)}</div>
+                    <div className="bg-white rounded-2xl p-3 text-center shadow-sm min-h-[80px] flex flex-col justify-center">
+                      <div className="text-lg font-black text-gray-900 truncate">${driver.earnings.month.toFixed(2)}</div>
                       <div className="text-xs text-gray-600 font-semibold">This Month</div>
                     </div>
                   </div>
