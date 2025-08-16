@@ -338,9 +338,9 @@ export const useCannabisDeliveryStore = create<CannabisDeliveryState>()(
         },
 
         setupRealTimeSync: () => {
-          console.log('🔄 Setting up real-time product sync...');
+          console.log('🔄 Setting up comprehensive real-time sync...');
 
-          // Listen for product events from other clients
+          // Product sync events
           wsService.on('product_added', (data) => {
             console.log('📥 Received product added:', data.product.name);
             set((state) => ({
@@ -391,9 +391,258 @@ export const useCannabisDeliveryStore = create<CannabisDeliveryState>()(
             }));
           });
 
+          // Order workflow events
+          wsService.on('order_placed', (data) => {
+            console.log('📥 New order placed:', data.orderId);
+            set((state) => ({
+              orders: [data, ...state.orders],
+              notifications: [...state.notifications, {
+                id: Date.now(),
+                type: 'success',
+                title: 'New Order Received',
+                message: `Order ${data.orderNumber} - $${data.total}`,
+                priority: 'high',
+                timestamp: new Date().toISOString()
+              }]
+            }));
+          });
+
+          wsService.on('driver_assigned', (data) => {
+            console.log('📥 Driver assigned:', data);
+            set((state) => ({
+              orders: state.orders.map(o =>
+                o.id === data.orderId ? { ...o, driverId: data.driverId, status: 'assigned' } : o
+              ),
+              notifications: [...state.notifications, {
+                id: Date.now(),
+                type: 'info',
+                title: 'Driver Assigned',
+                message: `${data.driverName} assigned to order ${data.orderNumber}`,
+                priority: 'medium',
+                timestamp: new Date().toISOString()
+              }]
+            }));
+          });
+
+          // GPS tracking events
+          wsService.on('driver_location_update', (data) => {
+            set((state) => ({
+              driverLocations: {
+                ...state.driverLocations,
+                [data.driverId]: {
+                  lat: data.lat,
+                  lng: data.lng,
+                  timestamp: data.timestamp,
+                  heading: data.heading,
+                  speed: data.speed,
+                  isOnline: true
+                }
+              }
+            }));
+          });
+
+          // Messaging events
+          wsService.on('admin_message', (data) => {
+            set((state) => ({
+              adminMessages: [...state.adminMessages, {
+                id: Date.now().toString(),
+                from: data.from,
+                to: data.to,
+                message: data.message,
+                timestamp: data.timestamp,
+                type: 'admin',
+                orderId: data.orderId,
+                read: false
+              }]
+            }));
+          });
+
+          wsService.on('driver_message', (data) => {
+            set((state) => ({
+              adminMessages: [...state.adminMessages, {
+                id: Date.now().toString(),
+                from: data.from,
+                to: data.to,
+                message: data.message,
+                timestamp: data.timestamp,
+                type: 'driver',
+                orderId: data.orderId,
+                read: false
+              }]
+            }));
+          });
+
+          // Geofencing alerts
+          wsService.on('geofence_alert', (data) => {
+            console.log('🚨 Geofence alert:', data);
+            set((state) => ({
+              notifications: [...state.notifications, {
+                id: Date.now(),
+                type: 'warning',
+                title: 'Geofence Alert',
+                message: `Driver ${data.driverName} ${data.eventType} ${data.geofenceName}`,
+                priority: 'high',
+                timestamp: new Date().toISOString()
+              }]
+            }));
+          });
+
           // Connect WebSocket if not already connected
           wsService.connect();
-          console.log('✅ Real-time product sync activated');
+          console.log('✅ Comprehensive real-time sync activated');
+        },
+
+        // Order workflow actions
+        placeOrder: (orderData) => {
+          const order = {
+            ...orderData,
+            id: Date.now().toString(),
+            status: 'pending',
+            timestamp: new Date().toISOString()
+          };
+
+          set((state) => ({
+            orders: [order, ...state.orders]
+          }));
+
+          // Broadcast to admin
+          wsService.send({
+            type: 'customer:order_placed',
+            data: order
+          });
+
+          console.log('📤 Order placed and sent to admin:', order.id);
+        },
+
+        processOrder: (orderId, status) => {
+          set((state) => ({
+            orders: state.orders.map(o =>
+              o.id === orderId ? { ...o, status, processedAt: new Date().toISOString() } : o
+            )
+          }));
+
+          wsService.send({
+            type: 'admin:order_status_update',
+            data: { orderId, status, timestamp: new Date().toISOString() }
+          });
+        },
+
+        assignDriver: (orderId, driverId) => {
+          const order = get().orders.find(o => o.id === orderId);
+          const driver = get().drivers.find(d => d.id === parseInt(driverId));
+
+          if (order && driver) {
+            set((state) => ({
+              orders: state.orders.map(o =>
+                o.id === orderId ? { ...o, driverId, status: 'assigned' } : o
+              ),
+              activeRoutes: {
+                ...state.activeRoutes,
+                [orderId]: {
+                  orderId,
+                  driverId,
+                  customerLocation: { lat: order.deliveryLat || 30.2672, lng: order.deliveryLng || -97.7431 },
+                  facilityLocation: { lat: 30.2672, lng: -97.7431 },
+                  currentRoute: [],
+                  eta: '20-30 minutes',
+                  status: 'pickup'
+                }
+              }
+            }));
+
+            wsService.send({
+              type: 'admin:assign_driver',
+              data: {
+                orderId,
+                driverId,
+                driverName: driver.name,
+                orderNumber: order.orderNumber,
+                customerLocation: { lat: order.deliveryLat, lng: order.deliveryLng }
+              }
+            });
+          }
+        },
+
+        updateDriverLocation: (driverId, location) => {
+          const timestamp = new Date().toISOString();
+          set((state) => ({
+            driverLocations: {
+              ...state.driverLocations,
+              [driverId]: {
+                ...state.driverLocations[driverId],
+                ...location,
+                timestamp,
+                isOnline: true
+              }
+            }
+          }));
+
+          wsService.send({
+            type: 'driver:location_update',
+            data: { driverId, ...location, timestamp }
+          });
+        },
+
+        sendAdminMessage: (driverId, message) => {
+          const messageData = {
+            from: 'admin',
+            to: driverId,
+            message,
+            timestamp: new Date().toISOString()
+          };
+
+          set((state) => ({
+            adminMessages: [...state.adminMessages, {
+              id: Date.now().toString(),
+              ...messageData,
+              type: 'admin',
+              read: true
+            }]
+          }));
+
+          wsService.send({
+            type: 'admin:send_message',
+            data: messageData
+          });
+        },
+
+        sendDriverMessage: (adminId, message) => {
+          const messageData = {
+            from: 'driver',
+            to: adminId,
+            message,
+            timestamp: new Date().toISOString()
+          };
+
+          set((state) => ({
+            adminMessages: [...state.adminMessages, {
+              id: Date.now().toString(),
+              ...messageData,
+              type: 'driver',
+              read: false
+            }]
+          }));
+
+          wsService.send({
+            type: 'driver:send_message',
+            data: messageData
+          });
+        },
+
+        createGeofence: (name, coords) => {
+          const geofence = {
+            id: Date.now().toString(),
+            name,
+            ...coords,
+            active: true,
+            alertType: 'both' as const
+          };
+
+          set((state) => ({
+            geofences: [...state.geofences, geofence]
+          }));
+
+          console.log('🗺️ Geofence created:', name);
         },
 
         // Customer Actions
