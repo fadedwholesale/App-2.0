@@ -13,6 +13,7 @@ import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import driverRoutes from './routes/drivers';
 import adminRoutes from './routes/admin';
+import adminUsersRoutes from './routes/admin/users';
 import productRoutes from './routes/products';
 import orderRoutes from './routes/orders';
 import paymentRoutes from './routes/payments';
