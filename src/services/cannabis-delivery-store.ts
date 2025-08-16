@@ -998,11 +998,6 @@ export const useCannabisDeliveryStore = create<CannabisDeliveryState>()(
             d.orderId === orderId ? { ...d, status } : d
           )
         })),
-        assignDriver: (orderId, driverId) => set((state) => ({
-          orders: state.orders.map(o => 
-            o.orderId === orderId ? { ...o, driver: `Driver ${driverId}`, status: 'assigned' } : o
-          )
-        })),
 
         // Notification Actions
         addNotification: (notification) => set((state) => ({
