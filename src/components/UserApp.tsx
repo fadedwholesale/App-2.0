@@ -4583,10 +4583,10 @@ const FadedSkiesApp = () => {
                   </div>
                   <button
                     type="button"
-                    onClick={() => openModal('liveChat')}
+                    onClick={() => openModal('contact', { contactType: 'Call Support' })}
                     className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-bold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl"
                   >
-                    Start Chat
+                    Contact Support
                   </button>
                 </div>
 
