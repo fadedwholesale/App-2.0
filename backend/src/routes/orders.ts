@@ -27,7 +27,7 @@ router.post('/', [
   body('paymentMethod').notEmpty(),
   body('specialInstructions').optional().isString(),
   body('tip').optional().isFloat({ min: 0 })
-], async (req, res) => {
+], async (req: AuthenticatedRequest, res): Promise<void> => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -47,7 +47,7 @@ router.post('/', [
       tip = 0
     } = req.body;
 
-    const userId = req.user.userId;
+    const userId = req.user!.userId;
 
     // Verify all products exist and calculate totals
     let subtotal = 0;
@@ -241,7 +241,7 @@ router.get('/', [
   query('status').optional().isIn(['PENDING', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'ASSIGNED', 'ACCEPTED', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED']),
   query('page').optional().isInt({ min: 1 }),
   query('limit').optional().isInt({ min: 1, max: 100 })
-], async (req, res) => {
+], async (req: AuthenticatedRequest, res): Promise<void> => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -251,8 +251,8 @@ router.get('/', [
       });
     }
 
-    const userId = req.user.userId;
-    const userRole = req.user.role;
+    const userId = req.user!.userId;
+    const userRole = req.user!.role;
     const { status, page = 1, limit = 20 } = req.query;
 
     const skip = (Number(page) - 1) * Number(limit);
@@ -336,11 +336,11 @@ router.get('/', [
 });
 
 // Get specific order
-router.get('/:orderId', async (req, res) => {
+router.get('/:orderId', async (req: AuthenticatedRequest, res): Promise<void> => {
   try {
     const { orderId } = req.params;
-    const userId = req.user.userId;
-    const userRole = req.user.role;
+    const userId = req.user!.userId;
+    const userRole = req.user!.role;
 
     const order = await prisma.order.findUnique({
       where: { id: orderId },
@@ -414,7 +414,7 @@ router.get('/:orderId', async (req, res) => {
 router.patch('/:orderId/status', [
   body('status').isIn(['CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'ASSIGNED', 'ACCEPTED', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED']),
   body('notes').optional().isString()
-], async (req, res) => {
+], async (req: AuthenticatedRequest, res): Promise<void> => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -426,8 +426,8 @@ router.patch('/:orderId/status', [
 
     const { orderId } = req.params;
     const { status, notes } = req.body;
-    const userId = req.user.userId;
-    const userRole = req.user.role;
+    const userId = req.user!.userId;
+    const userRole = req.user!.role;
 
     // Check permissions
     if (!['DRIVER', 'ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
@@ -600,11 +600,11 @@ router.patch('/:orderId/status', [
 // Cancel order (customers only, within certain time window)
 router.patch('/:orderId/cancel', [
   body('reason').optional().isString()
-], async (req, res) => {
+], async (req: AuthenticatedRequest, res): Promise<void> => {
   try {
     const { orderId } = req.params;
     const { reason } = req.body;
-    const userId = req.user.userId;
+    const userId = req.user!.userId;
 
     const order = await prisma.order.findUnique({
       where: { id: orderId },
