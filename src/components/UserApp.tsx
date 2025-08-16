@@ -3602,15 +3602,7 @@ const FadedSkiesApp = () => {
         addOrder(storeOrder);
         setCart([]);
 
-        // Send SMS confirmation to customer
-        try {
-          await sendDeliveryNotification(user.phone || '(512) 555-0000', {
-            type: 'order_confirmed',
-            orderId: newOrder.id
-          });
-        } catch (error) {
-          console.error('Failed to send SMS confirmation:', error);
-        }
+        // SMS confirmations will be handled by external SMS service if needed
 
         // Send real-time notification to admin and drivers
         try {
