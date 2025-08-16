@@ -157,6 +157,44 @@ interface CannabisDeliveryState {
     isAuthenticated: boolean;
     token?: string;
   } | null;
+
+  // GPS and Real-time Tracking State
+  driverLocations: Record<string, {
+    lat: number;
+    lng: number;
+    timestamp: string;
+    heading?: number;
+    speed?: number;
+    isOnline: boolean;
+  }>;
+  geofences: Array<{
+    id: string;
+    name: string;
+    lat: number;
+    lng: number;
+    radius: number;
+    active: boolean;
+    alertType: 'entry' | 'exit' | 'both';
+  }>;
+  adminMessages: Array<{
+    id: string;
+    from: string;
+    to: string;
+    message: string;
+    timestamp: string;
+    type: 'admin' | 'driver';
+    orderId?: string;
+    read: boolean;
+  }>;
+  activeRoutes: Record<string, {
+    orderId: string;
+    driverId: string;
+    customerLocation: { lat: number; lng: number };
+    facilityLocation: { lat: number; lng: number };
+    currentRoute: Array<{ lat: number; lng: number }>;
+    eta: string;
+    status: 'pickup' | 'delivery' | 'completed';
+  }>;
   
   // Actions
   setProducts: (products: Product[]) => void;
