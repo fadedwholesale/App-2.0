@@ -29,6 +29,7 @@ import {
 // Import simple WebSocket service for real-time updates
 import { wsService } from '../services/simple-websocket';
 import { useCannabisDeliveryStore } from '../services/cannabis-delivery-store';
+import { dataSyncService } from '../services/data-sync-service';
 
 // TypeScript interfaces
 interface Product {
