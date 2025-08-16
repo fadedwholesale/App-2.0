@@ -2703,7 +2703,6 @@ const FadedSkiesApp = () => {
   // Store integration for real-time product updates
   const { products, setProducts, setupRealTimeSync, addOrder } = useCannabisDeliveryStore();
   const { syncCustomerProfile } = useDataSync();
-  const { sendCustomerToDriver, sendDeliveryNotification } = useSMS();
   const { requestPermission, startTracking, getCurrentLocation } = useLocation();
 
   const [currentView, setCurrentView] = useState<string>('auth');
