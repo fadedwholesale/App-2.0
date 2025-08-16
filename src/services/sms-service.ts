@@ -188,18 +188,24 @@ export class SMSService {
 
   // Setup SMS event listeners
   setupSMSListeners() {
-    wsService.on('sms:delivery_confirmation', (data) => {
-      console.log('📱 SMS delivery confirmed:', data);
-    });
+    try {
+      wsService.on('sms:delivery_confirmation', (data) => {
+        console.log('📱 SMS delivery confirmed:', data);
+      });
 
-    wsService.on('sms:delivery_failed', (data) => {
-      console.error('📱 SMS delivery failed:', data);
-    });
+      wsService.on('sms:delivery_failed', (data) => {
+        console.error('📱 SMS delivery failed:', data);
+      });
 
-    wsService.on('sms:reply_received', (data) => {
-      console.log('📱 SMS reply received:', data);
-      // Handle driver/customer replies
-    });
+      wsService.on('sms:reply_received', (data) => {
+        console.log('📱 SMS reply received:', data);
+        // Handle driver/customer replies
+      });
+
+      console.log('✅ SMS service listeners initialized');
+    } catch (error) {
+      console.error('❌ Failed to setup SMS listeners:', error);
+    }
   }
 }
 
