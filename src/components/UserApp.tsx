@@ -2943,10 +2943,17 @@ const FadedSkiesApp = () => {
     dataSyncService.initialize();
 
     // Initialize SMS service
+    smsService.initialize();
     smsService.setupSMSListeners();
+
+    // Initialize secure chat service
+    secureChatService.initialize();
 
     // Setup comprehensive real-time sync
     setupRealTimeSync();
+
+    // Request location permission for geofencing and delivery tracking
+    requestLocationPermission();
 
     // Connect to WebSocket for immediate product updates
     try {
@@ -4661,7 +4668,7 @@ const FadedSkiesApp = () => {
                   <div className="grid grid-cols-2 gap-4">
                     {[
                       { title: 'Order Status', icon: '📦', color: 'from-green-400 to-emerald-500' },
-                      { title: 'Payment Issues', icon: '����', color: 'from-blue-400 to-cyan-500' },
+                      { title: 'Payment Issues', icon: '💳', color: 'from-blue-400 to-cyan-500' },
                       { title: 'Product Info', icon: '🌿', color: 'from-purple-400 to-violet-500' },
                       { title: 'Account Help', icon: '������', color: 'from-orange-400 to-amber-500' }
                     ].map((item, index) => (
