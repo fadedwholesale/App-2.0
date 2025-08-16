@@ -10,18 +10,17 @@ import {
   Clock, 
   CreditCard, 
   Bell, 
-  MessageCircle, 
-  Truck, 
-  Plus, 
-  Minus, 
-  Filter, 
-  Menu, 
-  X, 
-  Camera, 
-  Upload, 
-  Eye, 
-  EyeOff, 
-  Shield, 
+  Truck,
+  Plus,
+  Minus,
+  Filter,
+  Menu,
+  X,
+  Camera,
+  Upload,
+  Eye,
+  EyeOff,
+  Shield,
   CheckCircle,
   Edit3
 } from 'lucide-react';
@@ -32,7 +31,6 @@ import { useCannabisDeliveryStore } from '../services/cannabis-delivery-store';
 import { dataSyncService, useDataSync } from '../services/data-sync-service';
 import { useSMS, smsService } from '../services/sms-service';
 import { useLocation, locationService } from '../services/location-service';
-import { useSecureChat, secureChatService } from '../services/secure-chat-service';
 
 // TypeScript interfaces
 interface Product {
@@ -3066,11 +3064,14 @@ const FadedSkiesApp = () => {
 
   const addToCart = useCallback((product: Product) => {
     if (!product.inStock) return;
-    
+
+    // Preserve scroll position during cart updates
+    const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+
     // Set loading state for visual feedback
     setAddingToCart(product.id);
     setTimeout(() => setAddingToCart(null), 500);
-    
+
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
       if (existing) {
@@ -3078,19 +3079,29 @@ const FadedSkiesApp = () => {
         setToastMessage(`Added another ${product.name} to cart!`);
         setShowToast(true);
         setTimeout(() => setShowToast(false), 3000);
-        
-        return prev.map(item => 
-          item.id === product.id 
+
+        // Restore scroll position after state update
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: scrollPosition, behavior: 'instant' });
+        });
+
+        return prev.map(item =>
+          item.id === product.id
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
       }
-      
+
       // Show toast for new item
       setToastMessage(`${product.name} added to cart!`);
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
-      
+
+      // Restore scroll position after state update
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: scrollPosition, behavior: 'instant' });
+      });
+
       return [...prev, { ...product, quantity: 1 }];
     });
   }, []);
