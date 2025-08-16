@@ -3974,7 +3974,10 @@ const FadedSkiesApp = () => {
                       <h3 className="font-bold text-xl text-gray-900">Premium Products</h3>
                       <div className="flex items-center space-x-1 px-2 py-1 bg-green-100 rounded-full">
                         <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        <span className="text-xs font-medium text-green-700">Live</span>
+                        <span className="text-xs font-medium text-green-700">Live Sync Active</span>
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {products.length} products • Updates instantly
                       </div>
                     </div>
                     <button type="button" className="text-emerald-600 hover:text-emerald-700 font-semibold text-sm">
