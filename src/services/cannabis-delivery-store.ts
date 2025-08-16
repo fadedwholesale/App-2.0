@@ -266,6 +266,22 @@ export const useCannabisDeliveryStore = create<CannabisDeliveryState>()(
         connectionStatus: 'disconnected',
         user: null,
 
+        // GPS and Tracking State
+        driverLocations: {},
+        geofences: [
+          {
+            id: 'facility',
+            name: 'Faded Skies Facility',
+            lat: 30.2672,
+            lng: -97.7431,
+            radius: 100, // meters
+            active: true,
+            alertType: 'both'
+          }
+        ],
+        adminMessages: [],
+        activeRoutes: {},
+
         // Product Actions
         setProducts: (products) => set({ products }),
         addProduct: (product) => set((state) => ({
