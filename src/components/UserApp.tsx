@@ -30,7 +30,6 @@ import {
 import { wsService } from '../services/simple-websocket';
 import { useCannabisDeliveryStore } from '../services/cannabis-delivery-store';
 import { dataSyncService, useDataSync } from '../services/data-sync-service';
-import { useSMS, smsService } from '../services/sms-service';
 import { useLocation, locationService } from '../services/location-service';
 
 // TypeScript interfaces
@@ -4487,7 +4486,7 @@ const FadedSkiesApp = () => {
                                 ? 'bg-amber-100 text-amber-800'
                                 : 'bg-gray-100 text-gray-800'
                             }`}>
-                              {order.status === 'delivered' && '��� Delivered'}
+                              {order.status === 'delivered' && '�� Delivered'}
                               {order.status === 'in-transit' && '🚚 In Transit'}
                               {order.status === 'preparing' && '📦 Preparing'}
                               {order.status === 'cancelled' && '❌ Cancelled'}
