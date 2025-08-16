@@ -3816,6 +3816,106 @@ const FadedSkiesApp = () => {
     });
   }, [addToCart, products]);
 
+  // Location Permission Modal Component
+  const LocationPermissionModal = () => {
+    const [showLocationModal, setShowLocationModal] = useState(false);
+
+    useEffect(() => {
+      // Check if we need to show location permission modal
+      const checkLocationPermission = async () => {
+        if ('permissions' in navigator) {
+          try {
+            const permission = await navigator.permissions.query({ name: 'geolocation' });
+            if (permission.state === 'prompt') {
+              setShowLocationModal(true);
+            }
+          } catch (error) {
+            // Some browsers don't support permissions query
+            if (!localStorage.getItem('location_requested')) {
+              setShowLocationModal(true);
+            }
+          }
+        } else if (!localStorage.getItem('location_requested')) {
+          setShowLocationModal(true);
+        }
+      };
+
+      // Show modal after a short delay
+      setTimeout(checkLocationPermission, 2000);
+    }, []);
+
+    const handleAllowLocation = async () => {
+      localStorage.setItem('location_requested', 'true');
+      setShowLocationModal(false);
+      await requestLocationPermission();
+    };
+
+    const handleDenyLocation = () => {
+      localStorage.setItem('location_requested', 'denied');
+      setShowLocationModal(false);
+      showToastMessage('You can enable location access later in your browser settings');
+    };
+
+    if (!showLocationModal) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <MapPin className="w-8 h-8 text-blue-600" />
+            </div>
+
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Enable Location Access</h3>
+            <p className="text-gray-600 mb-6 leading-relaxed">
+              We use your location to:
+            </p>
+
+            <div className="text-left space-y-3 mb-6">
+              <div className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                <span className="text-sm text-gray-700">Verify you're in our delivery zone</span>
+              </div>
+              <div className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                <span className="text-sm text-gray-700">Provide accurate delivery estimates</span>
+              </div>
+              <div className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                <span className="text-sm text-gray-700">Track your delivery in real-time</span>
+              </div>
+              <div className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                <span className="text-sm text-gray-700">Ensure safe delivery to your location</span>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-6">
+              <p className="text-xs text-blue-800">
+                <strong>Privacy:</strong> Your location is only used for delivery purposes and is never shared with third parties.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={handleAllowLocation}
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-xl font-bold hover:from-blue-700 hover:to-indigo-700 transition-all"
+              >
+                Allow Location Access
+              </button>
+              <button
+                onClick={handleDenyLocation}
+                className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+              >
+                Maybe Later
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="max-w-md mx-auto bg-gray-50 min-h-screen">
       <Toast showToast={showToast} toastMessage={toastMessage} />
