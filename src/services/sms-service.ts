@@ -1,14 +1,16 @@
 import { wsService } from './simple-websocket';
 
 export interface SMSMessage {
-  to: string;
-  from: string;
-  message: string;
+  to: string; // Encrypted/hashed phone number
+  from: string; // Service identifier, not personal info
+  message: string; // Sanitized message content
   timestamp: string;
   type: 'customer_to_driver' | 'admin_to_driver' | 'driver_to_customer' | 'admin_notification';
   orderId?: string;
-  driverId?: string;
-  customerId?: string;
+  sessionId?: string; // Chat session reference
+  messageId: string; // Unique message identifier
+  isSecure: boolean; // Whether message contains sensitive data
+  expiresAt?: string; // Auto-deletion timestamp
 }
 
 export class SMSService {
