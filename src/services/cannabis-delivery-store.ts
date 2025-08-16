@@ -258,7 +258,83 @@ export const useCannabisDeliveryStore = create<CannabisDeliveryState>()(
         products: [],
         customers: [],
         orders: [],
-        drivers: [],
+        drivers: [
+          {
+            id: 1,
+            name: "Alex Rodriguez",
+            email: "alex@fadedskies.com",
+            phone: "(512) 555-0101",
+            vehicle: {
+              make: "Honda",
+              model: "Civic",
+              year: 2020,
+              color: "Blue",
+              licensePlate: "FDS001"
+            },
+            status: "offline",
+            rating: 4.8,
+            completedDeliveries: 142,
+            currentLocation: "Austin Downtown",
+            lastUpdate: new Date().toISOString(),
+            earnings: {
+              today: 0,
+              week: 0,
+              month: 0,
+              total: 0
+            },
+            online: false
+          },
+          {
+            id: 2,
+            name: "Maria Garcia",
+            email: "maria@fadedskies.com",
+            phone: "(512) 555-0102",
+            vehicle: {
+              make: "Toyota",
+              model: "Prius",
+              year: 2021,
+              color: "White",
+              licensePlate: "FDS002"
+            },
+            status: "offline",
+            rating: 4.9,
+            completedDeliveries: 189,
+            currentLocation: "Austin South",
+            lastUpdate: new Date().toISOString(),
+            earnings: {
+              today: 0,
+              week: 0,
+              month: 0,
+              total: 0
+            },
+            online: false
+          },
+          {
+            id: 3,
+            name: "Marcus Johnson",
+            email: "marcus@fadedskies.com",
+            phone: "(512) 555-0103",
+            vehicle: {
+              make: "Ford",
+              model: "Focus",
+              year: 2019,
+              color: "Black",
+              licensePlate: "FDS003"
+            },
+            status: "offline",
+            rating: 4.7,
+            completedDeliveries: 98,
+            currentLocation: "Austin West",
+            lastUpdate: new Date().toISOString(),
+            earnings: {
+              today: 0,
+              week: 0,
+              month: 0,
+              total: 0
+            },
+            online: false
+          }
+        ],
         activeDeliveries: [],
         notifications: [],
         isLoading: false,
