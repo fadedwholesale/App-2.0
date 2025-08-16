@@ -551,6 +551,9 @@ const FadedSkiesDriverApp = () => {
   useEffect(() => {
     if (isAuthenticated && driver.isOnline) {
       try {
+        // Setup real-time sync for driver communication
+        setupRealTimeSync();
+
         // Connect WebSocket for driver
         wsService.connect(`driver-${driver.name}`);
 
