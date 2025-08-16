@@ -3023,7 +3023,7 @@ const FadedSkiesDriverApp = () => {
                           if (option.title === 'Standard Transfer') {
                             openModal('bankingTransfer');
                           } else {
-                            alert(`${option.title} selected`);
+                            alert('Only Standard Transfer is available');
                           }
                         }}
                         className={`w-full bg-gradient-to-r ${option.color} text-white p-4 rounded-2xl text-left hover:scale-105 transition-all shadow-lg hover:shadow-xl`}
