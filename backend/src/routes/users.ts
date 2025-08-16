@@ -5,7 +5,7 @@ import { logger } from '../utils/logger';
 const router = express.Router();
 
 // Get current user profile
-router.get('/profile', async (req, res) => {
+router.get('/profile', async (req, res): Promise<void> => {
   try {
     const userId = (req as any).user.userId;
     
