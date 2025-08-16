@@ -1236,7 +1236,7 @@ const ContactModal = React.memo(({
       default:
         return {
           title: 'Contact Us',
-          icon: '💬',
+          icon: '���',
           description: 'Get in touch',
           showForm: false,
           content: null
@@ -4968,6 +4968,13 @@ const FadedSkiesApp = () => {
             isOpen={currentModal === 'quickHelp'}
             onClose={closeModal}
             helpType={modalData.helpType || ''}
+          />
+
+          <SMSModal
+            isOpen={currentModal === 'sms'}
+            onClose={closeModal}
+            onSuccess={showToastMessage}
+            driver={modalData.driver}
           />
 
           <ContactModal
