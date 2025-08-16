@@ -683,12 +683,47 @@ export const useCannabisDeliveryStore = create<CannabisDeliveryState>()(
 
         // Driver Actions
         setDrivers: (drivers) => set({ drivers }),
-        addDriver: (driver) => set((state) => ({ 
-          drivers: [...state.drivers, driver] 
+        addDriver: (driver) => set((state) => ({
+          drivers: [...state.drivers, driver]
         })),
         updateDriver: (id, updates) => set((state) => ({
           drivers: state.drivers.map(d => d.id === id ? { ...d, ...updates } : d)
         })),
+        updateDriverStatus: (driverId, status, location) => {
+          set((state) => ({
+            drivers: state.drivers.map(d =>
+              d.id === driverId ? {
+                ...d,
+                status,
+                online: status === 'online',
+                lastUpdate: new Date().toISOString(),
+                currentLocation: location || d.currentLocation
+              } : d
+            ),
+            driverLocations: location ? {
+              ...state.driverLocations,
+              [driverId]: {
+                lat: location.lat,
+                lng: location.lng,
+                timestamp: new Date().toISOString(),
+                isOnline: status === 'online'
+              }
+            } : state.driverLocations
+          }));
+
+          // Broadcast driver status to all connected clients
+          wsService.send({
+            type: 'driver:status_update',
+            data: {
+              driverId,
+              status,
+              location,
+              timestamp: new Date().toISOString()
+            }
+          });
+
+          console.log(`🚗 Driver ${driverId} status updated: ${status}`);
+        },
 
         // Delivery Actions
         setActiveDeliveries: (deliveries) => set({ activeDeliveries: deliveries }),
