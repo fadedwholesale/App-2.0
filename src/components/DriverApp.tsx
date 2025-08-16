@@ -468,7 +468,7 @@ const FadedSkiesDriverApp = () => {
 
       // Show notification when entering/leaving delivery zone
       if (withinRadius && distanceToCustomer && distanceToCustomer > DELIVERY_RADIUS_METERS) {
-        setToastMessage('�� You\'re within delivery range! You can now mark as delivered.');
+        setToastMessage('🎯 You\'re within delivery range! You can now mark as delivered.');
         setToastType('success');
         setShowToast(true);
         setTimeout(() => setShowToast(false), 3000);
@@ -2173,7 +2173,7 @@ const FadedSkiesDriverApp = () => {
                   <div>
                     <h4 className="font-semibold text-green-800">🏦 Standard Bank Transfer</h4>
                     <p className="text-sm text-green-700">
-                      • No fees • 2-3 business days • Bank-level security ��� Enter your banking details below
+                      • No fees • 2-3 business days • Bank-level security • Enter your banking details below
                     </p>
                   </div>
                 </div>
@@ -2437,7 +2437,11 @@ const FadedSkiesDriverApp = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-gray-50 min-h-screen">
+    <div className={`max-w-md mx-auto min-h-screen transition-colors duration-300 ${
+      driver.settings?.nightMode
+        ? 'bg-gray-900 text-white'
+        : 'bg-gray-50 text-gray-900'
+    }`}>
       <Toast showToast={showToast} toastMessage={toastMessage} type={toastType} />
       
       {!isAuthenticated ? (
