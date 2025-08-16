@@ -714,8 +714,13 @@ const FadedSkiesDriverApp = () => {
               }
             });
 
-            // Remove event listeners
+            // Remove all event listeners
             wsService.off('order_available_for_pickup');
+            wsService.off('admin:assign_order');
+            wsService.off('admin_message');
+            wsService.off('driver_pickup_notification');
+            wsService.off('emergency_stop');
+            wsService.off('geofence_alert');
 
             // Stop location tracking on disconnect
             stopLocationTracking();
