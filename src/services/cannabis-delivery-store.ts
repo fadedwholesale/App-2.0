@@ -503,6 +503,120 @@ export const useCannabisDeliveryStore = create<CannabisDeliveryState>()(
             }));
           });
 
+          // Driver status events
+          wsService.on('driver_status_update', (data) => {
+            console.log('🚗 Driver status update:', data);
+            set((state) => ({
+              drivers: state.drivers.map(d =>
+                d.id === data.driverId ? {
+                  ...d,
+                  status: data.status,
+                  online: data.status === 'online',
+                  lastUpdate: data.timestamp,
+                  currentLocation: data.location ? `${data.location.lat}, ${data.location.lng}` : d.currentLocation
+                } : d
+              ),
+              driverLocations: data.location ? {
+                ...state.driverLocations,
+                [data.driverId]: {
+                  lat: data.location.lat,
+                  lng: data.location.lng,
+                  timestamp: data.timestamp,
+                  isOnline: data.status === 'online'
+                }
+              } : state.driverLocations
+            }));
+          });
+
+          wsService.on('driver_online', (data) => {
+            console.log('🚗 Driver came online:', data);
+            set((state) => ({
+              drivers: state.drivers.map(d =>
+                d.id === data.driverId ? {
+                  ...d,
+                  status: 'online',
+                  online: true,
+                  lastUpdate: new Date().toISOString()
+                } : d
+              ),
+              notifications: [...state.notifications, {
+                id: Date.now(),
+                type: 'info',
+                title: 'Driver Online',
+                message: `${data.driverName || 'Driver'} is now available for deliveries`,
+                priority: 'low',
+                timestamp: new Date().toISOString()
+              }]
+            }));
+          });
+
+          wsService.on('driver_offline', (data) => {
+            console.log('🚗 Driver went offline:', data);
+            set((state) => ({
+              drivers: state.drivers.map(d =>
+                d.id === data.driverId ? {
+                  ...d,
+                  status: 'offline',
+                  online: false,
+                  lastUpdate: new Date().toISOString()
+                } : d
+              ),
+              notifications: [...state.notifications, {
+                id: Date.now(),
+                type: 'warning',
+                title: 'Driver Offline',
+                message: `${data.driverName || 'Driver'} is no longer available`,
+                priority: 'low',
+                timestamp: new Date().toISOString()
+              }]
+            }));
+          });
+
+          // Order workflow events
+          wsService.on('driver_accept_order', (data) => {
+            console.log('✅ Driver accepted order:', data);
+            set((state) => ({
+              orders: state.orders.map(o =>
+                o.orderId === data.orderId ? { ...o, status: 'confirmed' } : o
+              ),
+              notifications: [...state.notifications, {
+                id: Date.now(),
+                type: 'success',
+                title: 'Order Accepted',
+                message: `Driver accepted order ${data.orderNumber}`,
+                priority: 'medium',
+                timestamp: new Date().toISOString()
+              }]
+            }));
+          });
+
+          wsService.on('pickup_complete', (data) => {
+            console.log('📦 Driver picked up order:', data);
+            set((state) => ({
+              orders: state.orders.map(o =>
+                o.orderId === data.orderId ? { ...o, status: 'picked_up' } : o
+              )
+            }));
+          });
+
+          wsService.on('delivery_started', (data) => {
+            console.log('🚚 Delivery started:', data);
+            set((state) => ({
+              orders: state.orders.map(o =>
+                o.orderId === data.orderId ? { ...o, status: 'in_transit' } : o
+              )
+            }));
+          });
+
+          wsService.on('delivery_completed', (data) => {
+            console.log('✅ Delivery completed:', data);
+            set((state) => ({
+              orders: state.orders.map(o =>
+                o.orderId === data.orderId ? { ...o, status: 'delivered' } : o
+              )
+            }));
+          });
+
           // Connect WebSocket if not already connected
           wsService.connect();
           console.log('✅ Comprehensive real-time sync activated');
