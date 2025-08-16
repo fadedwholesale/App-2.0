@@ -2678,7 +2678,7 @@ const FadedSkiesDriverApp = () => {
                       { status: 'accepted', label: 'Order Accepted', icon: '✅' },
                       { status: 'picked_up', label: 'Order Picked Up', icon: '📦' },
                       { status: 'in_transit', label: 'En Route to Customer', icon: '🚗' },
-                      { status: 'delivered', label: 'Delivered', icon: '��' }
+                      { status: 'delivered', label: 'Delivered', icon: '🏠' }
                     ].map((step, index) => {
                       const isCompleted = ['accepted', 'picked_up', 'in_transit', 'delivered'].indexOf(activeOrder.status) >= index;
                       const isCurrent = ['accepted', 'picked_up', 'in_transit', 'delivered'][index] === activeOrder.status;
@@ -2998,6 +2998,7 @@ const FadedSkiesDriverApp = () => {
                   <div className="space-y-3">
                     {[
                       {
+                        title: 'Instant Transfer',
                         subtitle: `Available now • $${driver.payoutSettings.instantFee.toFixed(2)} fee`,
                         icon: '���',
                         color: 'from-yellow-400 to-orange-500'
