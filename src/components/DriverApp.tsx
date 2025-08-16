@@ -566,6 +566,16 @@ const FadedSkiesDriverApp = () => {
         // Initialize data sync service
         dataSyncService.initialize();
 
+        // Initialize secure chat service
+        secureChatService.initialize();
+
+        // Request location permission for GPS tracking
+        const locationPermission = await requestPermission();
+        if (locationPermission.granted) {
+          await startTracking('driver', driver.id);
+          console.log('📍 Driver location tracking started');
+        }
+
         // Setup real-time sync for driver communication
         setupRealTimeSync();
 
