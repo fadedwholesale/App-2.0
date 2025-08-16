@@ -2932,6 +2932,9 @@ const FadedSkiesApp = () => {
   useEffect(() => {
     console.log('🔄 UserApp initializing enhanced real-time product sync...');
 
+    // Initialize data sync service
+    dataSyncService.initialize();
+
     // Setup comprehensive real-time sync
     setupRealTimeSync();
 
