@@ -3037,7 +3037,12 @@ const FadedSkiesDriverApp = () => {
                           <span className="text-2xl">{option.icon}</span>
                           <div className="flex-1">
                             <div className="font-bold text-lg">{option.title}</div>
-                            <div className="text-sm opacity-90">{option.subtitle}</div>
+                            <div className="text-sm opacity-90">
+                              {option.title === 'Standard Transfer'
+                                ? option.subtitle
+                                : 'Coming Soon - Standard Transfer Only'
+                              }
+                            </div>
                           </div>
                           <span className="text-white/70">→</span>
                         </div>
