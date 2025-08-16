@@ -229,6 +229,7 @@ interface CannabisDeliveryState {
   setDrivers: (drivers: Driver[]) => void;
   addDriver: (driver: Driver) => void;
   updateDriver: (id: number, updates: Partial<Driver>) => void;
+  updateDriverStatus: (driverId: number, status: 'online' | 'offline' | 'busy' | 'break', location?: { lat: number; lng: number }) => void;
   
   setActiveDeliveries: (deliveries: ActiveDelivery[]) => void;
   updateDeliveryProgress: (orderId: string, progress: number) => void;
