@@ -7,3 +7,4 @@
 2025-08-16T16:16:14.722Z [[32minfo[39m]: 📱 Environment: development
 2025-08-16T16:16:14.722Z [[32minfo[39m]: 🔗 Socket.IO enabled
 2025-08-16T16:16:14.722Z [[32minfo[39m]: 📋 API Documentation: http://localhost:3002/health
+2025-08-16T16:16:24.434Z [[32minfo[39m]: ::ffff:127.0.0.1 - - [16/Aug/2025:16:16:24 +0000] "GET /health HTTP/1.1" 200 109 "-" "curl/7.88.1"
