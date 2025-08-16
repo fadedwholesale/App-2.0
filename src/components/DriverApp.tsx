@@ -275,7 +275,6 @@ const FadedSkiesDriverApp = () => {
   const { updateDriverStatus, setupRealTimeSync } = useCannabisDeliveryStore();
   const { syncDriverProfile, syncSettingsUpdate } = useDataSync();
   const { requestPermission, startTracking, stopTracking } = useLocation();
-  const { createSession, sendMessage } = useSecureChat();
 
   const [driver, setDriver] = useState<Driver>({
     id: 'driver_001',
