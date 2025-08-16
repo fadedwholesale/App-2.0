@@ -308,6 +308,12 @@ const FadedSkiesDriverApp = () => {
       method: 'three_day',
       primaryAccount: 'Chase Bank ••••4567',
       instantFee: 0.50
+    },
+    settings: {
+      pushNotifications: true,
+      locationServices: true,
+      autoAcceptOrders: false,
+      nightMode: false
     }
   });
 
