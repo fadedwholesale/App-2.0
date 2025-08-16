@@ -1114,9 +1114,11 @@ const FadedSkiesTrackingAdmin = () => {
       <nav className="space-y-2">
         {[
           { id: 'dashboard', icon: Home, label: 'Dashboard' },
+          { id: 'orders', icon: ShoppingCart, label: 'Order Management' },
+          { id: 'dispatcher', icon: Truck, label: 'Dispatcher' },
+          { id: 'tracking', icon: Navigation, label: 'Live GPS Tracking' },
+          { id: 'messaging', icon: Mail, label: 'Driver Messages' },
           { id: 'products', icon: Package, label: 'Products' },
-          { id: 'orders', icon: ShoppingCart, label: 'Orders' },
-          { id: 'tracking', icon: Navigation, label: 'Live Tracking' },
           { id: 'customers', icon: Users, label: 'Customers' },
           { id: 'analytics', icon: BarChart3, label: 'Analytics' },
           { id: 'settings', icon: Settings, label: 'Settings' }
