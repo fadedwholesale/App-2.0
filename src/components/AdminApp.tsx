@@ -1370,6 +1370,167 @@ const FadedSkiesTrackingAdmin = () => {
     </div>
   );
 
+  const MessagingView = () => {
+    const { adminMessages, drivers, driverLocations, sendAdminMessage } = useCannabisDeliveryStore();
+    const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
+    const [newMessage, setNewMessage] = useState('');
+
+    const onlineDrivers = drivers.filter(d => d.isOnline);
+    const driverMessages = adminMessages.filter(msg =>
+      selectedDriver ? (msg.from === selectedDriver || msg.to === selectedDriver) : false
+    );
+
+    const handleSendMessage = () => {
+      if (selectedDriver && newMessage.trim()) {
+        sendAdminMessage(selectedDriver, newMessage.trim());
+        setNewMessage('');
+      }
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Driver Communication</h1>
+            <p className="text-gray-600 mt-1">Send messages and communicate with drivers in real-time</p>
+          </div>
+          <div className="text-sm text-gray-600">
+            {onlineDrivers.length} drivers online
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Driver List */}
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">Online Drivers</h2>
+            </div>
+            <div className="max-h-96 overflow-y-auto">
+              {onlineDrivers.map(driver => {
+                const location = driverLocations[driver.id];
+                const unreadCount = adminMessages.filter(msg =>
+                  msg.from === driver.id.toString() && !msg.read
+                ).length;
+
+                return (
+                  <div
+                    key={driver.id}
+                    onClick={() => setSelectedDriver(driver.id.toString())}
+                    className={`p-4 border-b border-gray-100 cursor-pointer transition-colors ${
+                      selectedDriver === driver.id.toString() ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="relative">
+                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <User className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{driver.name}</h3>
+                          <p className="text-sm text-gray-600">
+                            {location ?
+                              `Last seen: ${new Date(location.timestamp).toLocaleTimeString()}` :
+                              'Location unknown'
+                            }
+                          </p>
+                        </div>
+                      </div>
+                      {unreadCount > 0 && (
+                        <div className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                          {unreadCount}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Chat Interface */}
+          <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg border border-gray-100">
+            {selectedDriver ? (
+              <>
+                <div className="p-6 border-b border-gray-200">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      <User className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900">
+                        {drivers.find(d => d.id.toString() === selectedDriver)?.name}
+                      </h2>
+                      <p className="text-sm text-green-600">Online</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Messages */}
+                <div className="h-64 overflow-y-auto p-4 space-y-3">
+                  {driverMessages.map(message => (
+                    <div
+                      key={message.id}
+                      className={`flex ${message.type === 'admin' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div className={`max-w-xs px-4 py-2 rounded-lg ${
+                        message.type === 'admin'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-900'
+                      }`}>
+                        <p className="text-sm">{message.message}</p>
+                        <p className="text-xs opacity-75 mt-1">
+                          {new Date(message.timestamp).toLocaleTimeString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+
+                  {driverMessages.length === 0 && (
+                    <div className="text-center text-gray-500 py-8">
+                      <MessageCircle className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                      <p>No messages yet. Start a conversation!</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Message Input */}
+                <div className="p-4 border-t border-gray-200">
+                  <div className="flex space-x-3">
+                    <input
+                      type="text"
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                      placeholder="Type a message..."
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <button
+                      onClick={handleSendMessage}
+                      disabled={!newMessage.trim()}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Mail className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="h-full flex items-center justify-center text-gray-500">
+                <div className="text-center">
+                  <MessageCircle className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                  <p>Select a driver to start messaging</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const DispatcherView = () => {
     const { orders, drivers, processOrder, assignDriver, driverLocations } = useCannabisDeliveryStore();
     const [selectedOrderStatus, setSelectedOrderStatus] = useState('pending');
