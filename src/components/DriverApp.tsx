@@ -2458,6 +2458,20 @@ const FadedSkiesDriverApp = () => {
         : 'bg-gray-50 text-gray-900'
     }`}>
       <Toast showToast={showToast} toastMessage={toastMessage} type={toastType} />
+
+      {/* Sync Status Indicator */}
+      <div className="fixed top-4 left-4 z-50">
+        <div className={`px-3 py-2 rounded-lg shadow-lg text-sm font-medium transition-all duration-300 ${
+          driver.settings?.nightMode
+            ? 'bg-gray-800 border border-gray-700 text-gray-300'
+            : 'bg-white border border-gray-200 text-gray-700'
+        }`}>
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span>Sync Active</span>
+          </div>
+        </div>
+      </div>
       
       {!isAuthenticated ? (
         <div className="min-h-screen bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 flex items-center justify-center p-4">
