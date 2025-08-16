@@ -296,45 +296,60 @@ export const useCannabisDeliveryStore = create<CannabisDeliveryState>()(
 
         // Real-time sync actions
         broadcastProductAdded: (product) => {
-          // First update local state
+          console.log('🚀 Store: Starting product add broadcast for:', product.name);
+
+          // First update local state immediately
           set((state) => ({
             products: [...state.products, product],
             lastUpdated: new Date().toISOString()
           }));
-          // Then broadcast to other clients
+
+          // Then broadcast to all connected clients for immediate sync
           wsService.send({
             type: 'admin:product_added',
             data: { product, timestamp: new Date().toISOString() }
           });
-          console.log('📡 Broadcasting product added:', product.name);
+
+          console.log('📡 Store: Product add broadcast sent to all clients:', product.name);
+          console.log('🔄 Users should see new product immediately');
         },
 
         broadcastProductUpdated: (id, updates) => {
-          // First update local state
+          console.log('🚀 Store: Starting product update broadcast for ID:', id);
+
+          // First update local state immediately
           set((state) => ({
             products: state.products.map(p => p.id === id ? { ...p, ...updates } : p),
             lastUpdated: new Date().toISOString()
           }));
-          // Then broadcast to other clients
+
+          // Then broadcast to all connected clients for immediate sync
           wsService.send({
             type: 'admin:product_updated',
             data: { id, updates, timestamp: new Date().toISOString() }
           });
-          console.log('📡 Broadcasting product updated:', id, updates);
+
+          console.log('📡 Store: Product update broadcast sent to all clients:', id);
+          console.log('🔄 Users should see updated product immediately');
         },
 
         broadcastProductDeleted: (id) => {
-          // First update local state
+          console.log('🚀 Store: Starting product delete broadcast for ID:', id);
+
+          // First update local state immediately
           set((state) => ({
             products: state.products.filter(p => p.id !== id),
             lastUpdated: new Date().toISOString()
           }));
-          // Then broadcast to other clients
+
+          // Then broadcast to all connected clients for immediate sync
           wsService.send({
             type: 'admin:product_deleted',
             data: { id, timestamp: new Date().toISOString() }
           });
-          console.log('📡 Broadcasting product deleted:', id);
+
+          console.log('📡 Store: Product delete broadcast sent to all clients:', id);
+          console.log('🔄 Users should see product removal immediately');
         },
 
         setupRealTimeSync: () => {
