@@ -2554,7 +2554,6 @@ const FadedSkiesApp = () => {
   const { syncCustomerProfile } = useDataSync();
   const { sendCustomerToDriver, sendDeliveryNotification } = useSMS();
   const { requestPermission, startTracking, getCurrentLocation } = useLocation();
-  const { createSession, sendMessage, getSession } = useSecureChat();
 
   const [currentView, setCurrentView] = useState<string>('auth');
   const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot'>('login');
