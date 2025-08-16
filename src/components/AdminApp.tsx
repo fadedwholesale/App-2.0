@@ -1370,6 +1370,174 @@ const FadedSkiesTrackingAdmin = () => {
     </div>
   );
 
+  const DispatcherView = () => {
+    const { orders, drivers, processOrder, assignDriver, driverLocations } = useCannabisDeliveryStore();
+    const [selectedOrderStatus, setSelectedOrderStatus] = useState('pending');
+    const [autoAssign, setAutoAssign] = useState(false);
+
+    const pendingOrders = orders.filter(o => ['pending', 'confirmed'].includes(o.status));
+    const availableDrivers = drivers.filter(d => d.isOnline && !d.currentOrderId);
+
+    const handleProcessOrder = (orderId: string, newStatus: string) => {
+      processOrder(orderId, newStatus);
+
+      if (newStatus === 'confirmed' && autoAssign && availableDrivers.length > 0) {
+        // Auto-assign to closest available driver
+        const randomDriver = availableDrivers[Math.floor(Math.random() * availableDrivers.length)];
+        setTimeout(() => assignDriver(orderId, randomDriver.id.toString()), 500);
+      }
+    };
+
+    const handleManualAssign = (orderId: string, driverId: string) => {
+      assignDriver(orderId, driverId);
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Order Dispatcher</h1>
+            <p className="text-gray-600 mt-1">Process orders and assign drivers for delivery</p>
+          </div>
+          <div className="flex items-center space-x-4">
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={autoAssign}
+                onChange={(e) => setAutoAssign(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              <span className="text-sm text-gray-700">Auto-assign drivers</span>
+            </label>
+            <div className="flex items-center space-x-2 text-sm">
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              <span>{availableDrivers.length} drivers available</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Pending Orders Queue */}
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">Order Queue</h2>
+              <p className="text-gray-600 text-sm">{pendingOrders.length} orders waiting for processing</p>
+            </div>
+            <div className="max-h-96 overflow-y-auto">
+              {pendingOrders.map(order => (
+                <div key={order.id} className="p-4 border-b border-gray-100 hover:bg-gray-50">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h3 className="font-semibold text-gray-900">#{order.orderNumber}</h3>
+                      <p className="text-sm text-gray-600">{order.customerName}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-900">${order.total}</p>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {order.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex space-x-2">
+                    {order.status === 'pending' && (
+                      <button
+                        onClick={() => handleProcessOrder(order.id, 'confirmed')}
+                        className="flex-1 bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+                      >
+                        Confirm Order
+                      </button>
+                    )}
+
+                    {order.status === 'confirmed' && (
+                      <select
+                        onChange={(e) => e.target.value && handleManualAssign(order.id, e.target.value)}
+                        defaultValue=""
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      >
+                        <option value="">Assign Driver...</option>
+                        {availableDrivers.map(driver => (
+                          <option key={driver.id} value={driver.id}>
+                            {driver.name} - {driver.vehicle?.make} {driver.vehicle?.model}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
+                    <button
+                      onClick={() => openModal('orderDetails', order)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+                    >
+                      Details
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {pendingOrders.length === 0 && (
+                <div className="p-8 text-center text-gray-500">
+                  <ShoppingCart className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                  <p>No pending orders</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Available Drivers */}
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">Available Drivers</h2>
+              <p className="text-gray-600 text-sm">{availableDrivers.length} drivers online and ready</p>
+            </div>
+            <div className="max-h-96 overflow-y-auto">
+              {availableDrivers.map(driver => {
+                const location = driverLocations[driver.id];
+                return (
+                  <div key={driver.id} className="p-4 border-b border-gray-100">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                          <User className="w-5 h-5 text-green-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{driver.name}</h3>
+                          <p className="text-sm text-gray-600">
+                            {driver.vehicle?.make} {driver.vehicle?.model} • {driver.vehicle?.licensePlate}
+                          </p>
+                          {location && (
+                            <p className="text-xs text-green-600">
+                              Last update: {new Date(location.timestamp).toLocaleTimeString()}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="flex items-center space-x-1">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <span className="text-sm text-green-600">Online</span>
+                        </div>
+                        <p className="text-sm text-gray-600">Rating: ⭐ {driver.rating || 5.0}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {availableDrivers.length === 0 && (
+                <div className="p-8 text-center text-gray-500">
+                  <Truck className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                  <p>No drivers available</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const TrackingView = () => (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
