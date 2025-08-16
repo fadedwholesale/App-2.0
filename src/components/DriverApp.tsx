@@ -2995,6 +2995,12 @@ const FadedSkiesDriverApp = () => {
                 {/* Withdrawal Options */}
                 <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100">
                   <h3 className="font-bold text-xl text-gray-900 mb-4">Withdrawal Options</h3>
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-3 mb-4">
+                    <p className="text-sm text-green-800">
+                      <span className="font-semibold">🏦 Standard Transfer Only:</span> Currently only standard bank transfers are available.
+                      No fees, funds arrive in 2-3 business days.
+                    </p>
+                  </div>
                   <div className="space-y-3">
                     {[
                       {
