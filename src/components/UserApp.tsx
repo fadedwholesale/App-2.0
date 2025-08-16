@@ -3613,11 +3613,32 @@ const FadedSkiesApp = () => {
   }, []);
 
   const updateUserProfile = useCallback((updates: Partial<User>) => {
-    setUser(prev => ({ ...prev, ...updates }));
-    setToastMessage('Profile updated successfully!');
+    const updatedUser = { ...user, ...updates };
+    setUser(updatedUser);
+
+    // Sync to admin using data sync service
+    try {
+      syncCustomerProfile(parseInt(user.id || '1'), {
+        name: updatedUser.name,
+        email: updatedUser.email,
+        phone: updatedUser.phone,
+        address: updatedUser.address,
+        city: updatedUser.city,
+        state: updatedUser.state,
+        zipCode: updatedUser.zipCode,
+        preferences: updatedUser.preferences,
+        customerName: updatedUser.name
+      });
+
+      setToastMessage('Profile updated and synced to admin!');
+    } catch (error) {
+      console.error('Failed to sync profile to admin:', error);
+      setToastMessage('Profile updated locally!');
+    }
+
     setShowToast(true);
     setTimeout(() => setShowToast(false), 3000);
-  }, []);
+  }, [user, syncCustomerProfile]);
 
   const showToastMessage = useCallback((message: string) => {
     setToastMessage(message);
