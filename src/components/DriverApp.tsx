@@ -611,24 +611,39 @@ const FadedSkiesDriverApp = () => {
             totalDriverPay: 3.50 + (parseFloat(orderData.estimatedDistance) * 0.65 || 1.50)
           };
 
-          // Auto-accept the assigned order for demo
-          setTimeout(() => {
-            setActiveOrder(assignedOrder);
-            showToastMessage(
-              `Order ${orderData.orderId} assigned and accepted! Starting pickup.`,
-              'success'
-            );
+          // Auto-accept if setting is enabled, otherwise add to available orders
+          if (driver.settings?.autoAcceptOrders) {
+            setTimeout(() => {
+              setActiveOrder(assignedOrder);
+              showToastMessage(
+                `Order ${orderData.orderId} auto-accepted! Starting pickup.`,
+                'success'
+              );
 
-            // Send acceptance notification
-            wsService.send({
-              type: 'driver:accept_order',
-              data: {
-                orderId: orderData.orderId,
-                driverId: driver.id,
-                driverName: driver.name
+              // Send acceptance notification
+              wsService.send({
+                type: 'driver:accept_order',
+                data: {
+                  orderId: orderData.orderId,
+                  driverId: driver.id,
+                  driverName: driver.name
+                }
+              });
+            }, 1000);
+          } else {
+            // Add to available orders for manual acceptance
+            setAvailableOrders(prev => {
+              const exists = prev.some(order => order.id === orderData.orderId);
+              if (!exists) {
+                showToastMessage(
+                  `New order assigned: ${orderData.orderId}. Check available orders to accept.`,
+                  'info'
+                );
+                return [assignedOrder, ...prev];
               }
+              return prev;
             });
-          }, 1000);
+          }
         });
 
         // New order pickup notifications
