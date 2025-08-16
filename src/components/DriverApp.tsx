@@ -3309,23 +3309,26 @@ const FadedSkiesDriverApp = () => {
                   <h3 className="font-bold text-xl text-gray-900 mb-4">App Settings</h3>
                   <div className="space-y-4">
                     {[
-                      { label: 'Push Notifications', icon: Bell, enabled: true },
-                      { label: 'Location Services', icon: MapPin, enabled: true },
-                      { label: 'Auto-Accept Orders', icon: Timer, enabled: false },
-                      { label: 'Night Mode', icon: Settings, enabled: false }
+                      { label: 'Push Notifications', icon: Bell, key: 'pushNotifications' as const },
+                      { label: 'Location Services', icon: MapPin, key: 'locationServices' as const },
+                      { label: 'Auto-Accept Orders', icon: Timer, key: 'autoAcceptOrders' as const },
+                      { label: 'Night Mode', icon: Settings, key: 'nightMode' as const }
                     ].map((setting, index) => (
                       <div key={index} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
                         <div className="flex items-center space-x-3">
                           <setting.icon className="w-5 h-5 text-gray-500" />
                           <span className="font-medium text-gray-700">{setting.label}</span>
                         </div>
-                        <div className={`w-12 h-6 rounded-full relative transition-colors ${
-                          setting.enabled ? 'bg-blue-600' : 'bg-gray-300'
-                        }`}>
+                        <button
+                          onClick={() => toggleSetting(setting.key)}
+                          className={`w-12 h-6 rounded-full relative transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                            driver.settings[setting.key] ? 'bg-blue-600' : 'bg-gray-300'
+                          }`}
+                        >
                           <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                            setting.enabled ? 'translate-x-7' : 'translate-x-1'
+                            driver.settings[setting.key] ? 'translate-x-7' : 'translate-x-1'
                           }`}></div>
-                        </div>
+                        </button>
                       </div>
                     ))}
                   </div>
