@@ -2952,10 +2952,13 @@ const FadedSkiesApp = () => {
 
   // State to track and preserve scroll position during operations
   const [preserveScrollPosition, setPreserveScrollPosition] = useState<number | null>(null);
+  const [isCartOperation, setIsCartOperation] = useState(false);
 
   // Effect to restore scroll position when needed
   useEffect(() => {
     if (preserveScrollPosition !== null) {
+      setIsCartOperation(true);
+
       const restoreScroll = () => {
         window.scrollTo({ top: preserveScrollPosition, behavior: 'instant' });
       };
@@ -2966,11 +2969,33 @@ const FadedSkiesApp = () => {
       setTimeout(restoreScroll, 10);
       setTimeout(restoreScroll, 50);
       setTimeout(restoreScroll, 100);
+      setTimeout(restoreScroll, 200);
 
-      // Clear the preserved position after restoration
-      setTimeout(() => setPreserveScrollPosition(null), 200);
+      // Clear the preserved position and unlock scroll after restoration
+      setTimeout(() => {
+        setPreserveScrollPosition(null);
+        setIsCartOperation(false);
+      }, 300);
     }
   }, [preserveScrollPosition]);
+
+  // Prevent unwanted scroll during cart operations
+  useEffect(() => {
+    if (isCartOperation && preserveScrollPosition !== null) {
+      const preventScroll = (e: Event) => {
+        if (window.pageYOffset !== preserveScrollPosition) {
+          e.preventDefault();
+          window.scrollTo({ top: preserveScrollPosition, behavior: 'instant' });
+        }
+      };
+
+      window.addEventListener('scroll', preventScroll, { passive: false });
+
+      return () => {
+        window.removeEventListener('scroll', preventScroll);
+      };
+    }
+  }, [isCartOperation, preserveScrollPosition]);
 
   const addToCart = useCallback((product: Product) => {
     if (!product.inStock) return;
