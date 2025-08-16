@@ -3544,6 +3544,27 @@ const FadedSkiesApp = () => {
 
         // Add order to local state immediately
         setOrders(prev => [newOrder, ...prev]);
+
+        // Add order to global store for admin visibility
+        const storeOrder = {
+          id: orders.length + 3,
+          orderId: newOrder.id,
+          customer: user.name || 'Customer',
+          customerEmail: user.email || 'customer@example.com',
+          items: cart.map(item => item.name),
+          total: total,
+          status: 'pending' as const,
+          date: new Date().toLocaleDateString(),
+          time: new Date().toLocaleTimeString(),
+          deliveryAddress: orderData.deliveryAddress,
+          paymentMethod: orderData.paymentMethod,
+          estimatedDelivery: '45-60 minutes',
+          notes: '',
+          priority: (total > 150 ? 'high' : 'normal') as const,
+          location: 'Austin'
+        };
+
+        addOrder(storeOrder);
         setCart([]);
 
         // Send real-time notification to admin and drivers
@@ -4489,7 +4510,7 @@ const FadedSkiesApp = () => {
                     <div className="flex items-center justify-between py-3">
                       <span className="font-medium text-gray-700">ID Verification</span>
                       <span className={`font-semibold ${user.idVerified ? 'text-green-600' : 'text-amber-600'}`}>
-                        {user.idVerified ? '✅ Verified' : '��� Pending'}
+                        {user.idVerified ? '✅ Verified' : '⏳ Pending'}
                       </span>
                     </div>
                   </div>
