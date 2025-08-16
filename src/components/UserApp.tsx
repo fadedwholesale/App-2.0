@@ -4471,7 +4471,7 @@ const FadedSkiesApp = () => {
                       <p className="font-bold text-lg text-gray-900">{user.rewards}</p>
                     </div>
                     <div className="bg-white rounded-2xl p-4 text-center shadow-sm">
-                      <div className="text-2xl mb-1">���</div>
+                      <div className="text-2xl mb-1">����</div>
                       <p className="text-sm font-semibold text-gray-600">Orders</p>
                       <p className="font-bold text-lg text-gray-900">{orders.length}</p>
                     </div>
@@ -4826,12 +4826,6 @@ const FadedSkiesApp = () => {
             isOpen={currentModal === 'quickHelp'}
             onClose={closeModal}
             helpType={modalData.helpType || ''}
-          />
-
-          <SMSModal
-            isOpen={currentModal === 'sms'}
-            onClose={closeModal}
-            driver={modalData.driver}
           />
 
           <ContactModal
