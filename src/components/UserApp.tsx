@@ -31,6 +31,8 @@ import { wsService } from '../services/simple-websocket';
 import { useCannabisDeliveryStore } from '../services/cannabis-delivery-store';
 import { dataSyncService, useDataSync } from '../services/data-sync-service';
 import { useSMS, smsService } from '../services/sms-service';
+import { useLocation, locationService } from '../services/location-service';
+import { useSecureChat, secureChatService } from '../services/secure-chat-service';
 
 // TypeScript interfaces
 interface Product {
@@ -1331,7 +1333,7 @@ const ContactModal = React.memo(({
                   onClick={() => window.open('tel:5554203233', '_self')}
                   className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-xl font-bold hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
                 >
-                  <span>���</span>
+                  <span>📞</span>
                   <span>Call Now</span>
                 </button>
               </div>
@@ -4271,7 +4273,7 @@ const FadedSkiesApp = () => {
                         { name: "Driver's License", icon: "🚗" },
                         { name: "State ID Card", icon: "��" },
                         { name: "Passport", icon: "📘" },
-                        { name: "Military ID", icon: "���️" }
+                        { name: "Military ID", icon: "🎖️" }
                       ].map(idType => (
                         <div key={idType.name} className="bg-white border-2 border-gray-100 rounded-2xl p-4 text-center hover:border-emerald-200 transition-colors shadow-sm">
                           <div className="text-2xl mb-2">{idType.icon}</div>
