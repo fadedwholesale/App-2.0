@@ -116,20 +116,27 @@ export class SMSService {
     }
   }
 
-  // Send SMS to driver
+  // Send SMS to driver with privacy protection
   async sendToDriver(driverPhone: string, message: string, options: {
     orderId?: string;
-    customerId?: string;
+    sessionId?: string;
     priority?: 'low' | 'normal' | 'high' | 'urgent';
   } = {}) {
+    // Sanitize message content
+    const { sanitized, isSecure } = this.sanitizeMessage(message);
+
+    // Create secure SMS data
     const smsData: SMSMessage = {
-      to: driverPhone,
-      from: 'Faded Skies',
-      message,
+      to: this.maskPhoneNumber(driverPhone),
+      from: 'Faded Skies Delivery',
+      message: sanitized,
       timestamp: new Date().toISOString(),
       type: 'admin_to_driver',
       orderId: options.orderId,
-      customerId: options.customerId
+      sessionId: options.sessionId,
+      messageId: `sms_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      isSecure,
+      expiresAt: new Date(Date.now() + (this.MESSAGE_RETENTION_HOURS * 60 * 60 * 1000)).toISOString()
     };
 
     try {
