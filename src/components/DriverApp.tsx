@@ -557,8 +557,13 @@ const FadedSkiesDriverApp = () => {
           type: 'driver:online',
           data: {
             driverId: driver.id,
-            location: driver.currentLocation,
-            isAvailable: driver.isAvailable
+            driverName: driver.name,
+            location: {
+              lat: driver.currentLocation?.lat || 30.2672,
+              lng: driver.currentLocation?.lng || -97.7431
+            },
+            status: 'online',
+            timestamp: new Date().toISOString()
           }
         });
 
