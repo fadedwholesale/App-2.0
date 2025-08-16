@@ -10,6 +10,7 @@ import {
   Clock, 
   CreditCard, 
   Bell, 
+  MessageCircle,
   Truck,
   Plus,
   Minus,
@@ -1031,7 +1032,7 @@ const QuickHelpModal = React.memo(({
       case 'Account Help':
         return {
           title: 'Account Help',
-          icon: '���',
+          icon: '����',
           content: [
             {
               question: 'How do I verify my age/ID?',
