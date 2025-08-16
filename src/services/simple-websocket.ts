@@ -168,6 +168,18 @@ export class SimpleWebSocketService {
         case 'admin:product_added':
           this.emit('product_added', message.data);
           break;
+        case 'driver:status_update':
+          this.emit('driver_status_update', message.data);
+          break;
+        case 'driver:online':
+          this.emit('driver_online', message.data);
+          break;
+        case 'driver:offline':
+          this.emit('driver_offline', message.data);
+          break;
+        case 'admin:auto_assign_order':
+          this.emit('order_auto_assigned', message.data);
+          break;
         case 'admin:product_updated':
           this.emit('product_updated', message.data);
           break;
