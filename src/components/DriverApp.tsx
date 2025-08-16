@@ -826,21 +826,13 @@ const FadedSkiesDriverApp = () => {
       }
     }));
 
-    // Sync to store and broadcast to admin
+    // Sync to store and broadcast to admin using sync service
     const newValue = !driver.settings[settingKey];
+    const driverId = parseInt(driver.id.replace('driver_', ''));
 
-    // Send settings update via WebSocket
-    wsService.send({
-      type: 'driver:settings_update',
-      data: {
-        driverId: parseInt(driver.id.replace('driver_', '')),
-        driverName: driver.name,
-        settings: {
-          ...driver.settings,
-          [settingKey]: newValue
-        },
-        timestamp: new Date().toISOString()
-      }
+    syncSettingsUpdate(driverId, 'driver', {
+      ...driver.settings,
+      [settingKey]: newValue
     });
 
     showToastMessage(
