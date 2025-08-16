@@ -2938,11 +2938,6 @@ const FadedSkiesApp = () => {
         setShowToast(true);
         setTimeout(() => setShowToast(false), 3000);
 
-        // Restore scroll position after state update
-        requestAnimationFrame(() => {
-          window.scrollTo({ top: scrollPosition, behavior: 'instant' });
-        });
-
         return prev.map(item =>
           item.id === product.id
             ? { ...item, quantity: item.quantity + 1 }
@@ -2955,13 +2950,13 @@ const FadedSkiesApp = () => {
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
 
-      // Restore scroll position after state update
-      requestAnimationFrame(() => {
-        window.scrollTo({ top: scrollPosition, behavior: 'instant' });
-      });
-
       return [...prev, { ...product, quantity: 1 }];
     });
+
+    // Restore scroll position after all state updates complete
+    setTimeout(() => {
+      window.scrollTo({ top: scrollPosition, behavior: 'instant' });
+    }, 0);
   }, []);
 
   const updateQuantity = useCallback((id: number, change: number) => {
@@ -4162,7 +4157,7 @@ const FadedSkiesApp = () => {
                           { name: 'Apple Pay', icon: '🍎' },
                           { name: 'Google Pay', icon: '🔵' },
                           { name: 'Aeropay', icon: '💳' },
-                          { name: 'FS Coin', icon: '🪙' }
+                          { name: 'FS Coin', icon: '����' }
                         ].map(method => (
                           <button
                             key={method.name}
