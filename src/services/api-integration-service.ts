@@ -12,8 +12,8 @@ import type {
 
 // ===== API CONFIGURATION =====
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api';
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3002';
 
 interface ApiResponse<T> {
   success: boolean;
