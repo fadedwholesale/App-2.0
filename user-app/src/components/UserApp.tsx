@@ -1,24 +1,25 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { 
-  ShoppingCart, 
-  User, 
-  Search, 
-  MapPin, 
-  Star, 
-  Bell, 
-  MessageCircle, 
-  Truck, 
-  Plus, 
-  Minus, 
-  Menu, 
-  X, 
-  Eye, 
-  EyeOff, 
-  Shield, 
+import {
+  ShoppingCart,
+  User,
+  Search,
+  MapPin,
+  Star,
+  Bell,
+  MessageCircle,
+  Truck,
+  Plus,
+  Minus,
+  Menu,
+  X,
+  Eye,
+  EyeOff,
+  Shield,
   CheckCircle,
-  Edit3
+  Edit3,
+  Upload
 } from 'lucide-react';
 
 // Import simple WebSocket service for real-time updates
