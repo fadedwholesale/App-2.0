@@ -2,12 +2,7 @@
 
 import { useCannabisDeliveryStore } from './cannabis-delivery-store';
 import type { 
-  Product, 
-  Customer, 
-  Order, 
-  Driver, 
-  ActiveDelivery, 
-  Notification 
+  Order
 } from './cannabis-delivery-store';
 
 // ===== API CONFIGURATION =====
@@ -42,9 +37,9 @@ class ApiClient {
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`;
     
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...(options.headers as Record<string, string>),
     };
 
     if (this.token) {

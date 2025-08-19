@@ -246,7 +246,7 @@ export const apiService = {
     };
   },
   
-  login: async (email: string, password: string) => {
+  login: async (email: string, _password: string) => {
     console.log('🔐 Login (simulated):', email);
     return {
       success: true,

@@ -15,10 +15,7 @@ interface RegisterRequest {
   dateOfBirth: string;
 }
 
-interface LoginRequest {
-  email: string;
-  password: string;
-}
+// LoginRequest interface removed as it's not used
 
 interface User {
   id: string;

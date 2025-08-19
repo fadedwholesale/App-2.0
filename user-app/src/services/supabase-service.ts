@@ -2,9 +2,8 @@ import { supabase } from '../lib/supabase'
 import type { Database } from '../lib/supabase'
 
 type User = Database['public']['Tables']['users']['Row']
-type Product = Database['public']['Tables']['products']['Row']
+// Product and Driver types removed as they're not used
 type Order = Database['public']['Tables']['orders']['Row']
-type Driver = Database['public']['Tables']['drivers']['Row']
 
 export class SupabaseService {
   // Authentication

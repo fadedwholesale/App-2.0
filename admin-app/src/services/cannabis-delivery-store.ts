@@ -198,7 +198,7 @@ interface CannabisDeliveryState {
 export const useCannabisDeliveryStore = create<CannabisDeliveryState>()(
   subscribeWithSelector(
     persist(
-      (set, get) => ({
+      (set) => ({
         // Initial State
         products: [],
         customers: [],

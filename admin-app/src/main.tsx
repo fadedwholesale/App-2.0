@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import AdminApp from '../src/AdminApp.tsx'
+import AdminApp from './components/AdminApp'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

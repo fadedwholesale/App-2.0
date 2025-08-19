@@ -17,21 +17,15 @@ import {
   Package,
   Star,
   Filter,
-  MoreVertical,
   Eye,
   EyeOff,
-  Camera,
-  Upload,
   X,
-  Plus,
-  Minus,
   Home,
   Target,
   Route,
   Truck,
   AlertTriangle,
   ChevronRight,
-  BarChart3,
   Calendar,
   CreditCard,
   Shield,
@@ -40,9 +34,7 @@ import {
   Power,
   PowerOff,
   Timer,
-  TrendingUp,
-  Award,
-  Users
+  Award
 } from 'lucide-react';
 
 // Import simple WebSocket service for real-time driver updates
@@ -63,6 +55,7 @@ interface Order {
   priority: 'normal' | 'high' | 'urgent';
   status: 'assigned' | 'accepted' | 'picked_up' | 'in_transit' | 'delivered' | 'cancelled';
   timestamp: string;
+  acceptedAt?: Date;
   lat: number;
   lng: number;
   customerImage?: string;
@@ -88,6 +81,7 @@ interface Driver {
     licensePlate: string;
   };
   isOnline: boolean;
+  isAvailable: boolean;
   currentLocation: {
     lat: number;
     lng: number;
@@ -257,7 +251,7 @@ const OrderCard = React.memo(({ order, onAccept, onDecline, onViewDetails, isAct
 
 const FadedSkiesDriverApp = () => {
   const [currentView, setCurrentView] = useState<string>('auth');
-  const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot'>('login');
+  const [authMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [authForm, setAuthForm] = useState({
@@ -284,6 +278,7 @@ const FadedSkiesDriverApp = () => {
       licensePlate: 'ABC789'
     },
     isOnline: false,
+    isAvailable: false,
     currentLocation: {
       lat: 30.2672,
       lng: -97.7431
@@ -334,6 +329,7 @@ const FadedSkiesDriverApp = () => {
 
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const [completedOrders, setCompletedOrders] = useState<Order[]>([]);
+  console.log('Completed orders count:', completedOrders.length);
 
   // Geofencing states
   const [driverLocation, setDriverLocation] = useState<{lat: number; lng: number} | null>(null);
@@ -345,6 +341,7 @@ const FadedSkiesDriverApp = () => {
   // Geofencing constants
   const DELIVERY_RADIUS_METERS = 100; // 100 meters radius
   const LOCATION_UPDATE_INTERVAL = 5000; // 5 seconds
+  console.log('Location update interval:', LOCATION_UPDATE_INTERVAL);
 
   const [toastMessage, setToastMessage] = useState<string>('');
   const [showToast, setShowToast] = useState<boolean>(false);
@@ -561,21 +558,31 @@ const FadedSkiesDriverApp = () => {
         });
 
         // Register event listeners for real-time notifications
-        wsService.on('order_available_for_pickup', (orderData) => {
+        wsService.on('order_available_for_pickup', (orderData: any) => {
           console.log('🆕 New order available:', orderData);
           setAvailableOrders(prev => {
             const exists = prev.some(order => order.id === orderData.orderId);
             if (!exists) {
-              const newOrder = {
+              const newOrder: Order = {
                 id: orderData.orderId,
-                customer: orderData.customerName || 'Customer',
-                pickup: orderData.pickupLocation || 'Faded Skies Dispensary',
-                dropoff: orderData.location,
-                distance: orderData.estimatedDistance || '2.3 miles',
-                value: orderData.total || 0,
-                items: orderData.items?.length || 3,
-                estimatedTime: '15-20 min',
-                priority: orderData.priority || 'normal'
+                customerName: orderData.customerName || 'Customer',
+                customerPhone: orderData.customerPhone || '',
+                address: orderData.location || '',
+                items: orderData.items || [],
+                total: orderData.total || 0,
+                distance: parseFloat(orderData.estimatedDistance) || 2.3,
+                estimatedTime: 15,
+                paymentMethod: orderData.paymentMethod || 'Credit Card',
+                priority: orderData.priority || 'normal',
+                status: 'assigned',
+                timestamp: new Date().toISOString(),
+                lat: orderData.lat || 30.2672,
+                lng: orderData.lng || -97.7431,
+                zone: orderData.zone || 'Downtown',
+                tip: orderData.tip || 0,
+                mileagePayment: parseFloat(orderData.estimatedDistance) * 0.5 || 1.15,
+                basePay: 6.00,
+                totalDriverPay: (orderData.total || 0) * 0.25 + (parseFloat(orderData.estimatedDistance) * 0.5 || 1.15)
               };
 
               showToastMessage(`New order available: ${orderData.orderId} - $${orderData.total}`, 'info');
@@ -637,7 +644,7 @@ const FadedSkiesDriverApp = () => {
   }, [driver.isOnline, showToastMessage]);
 
   const acceptOrder = useCallback((order: Order) => {
-    const acceptedOrder = { ...order, status: 'accepted', acceptedAt: new Date() };
+    const acceptedOrder: Order = { ...order, status: 'accepted' as const, acceptedAt: new Date() };
     setActiveOrder(acceptedOrder);
     setAvailableOrders(prev => prev.filter(o => o.id !== order.id));
 
@@ -686,6 +693,8 @@ const FadedSkiesDriverApp = () => {
     setActiveOrder(updatedOrder);
 
     const statusMessages = {
+      assigned: 'Order assigned to you',
+      accepted: 'Order accepted successfully',
       picked_up: 'Order picked up! En route to customer.',
       in_transit: 'Delivery in progress',
       delivered: 'Order delivered successfully!',
@@ -714,7 +723,7 @@ const FadedSkiesDriverApp = () => {
     }
 
     if (status === 'delivered') {
-      setCompletedOrders(prev => [updatedOrder, ...prev]);
+      setCompletedOrders((prev: Order[]) => [updatedOrder, ...prev]);
       setActiveOrder(null);
 
       // Stop location tracking when delivery is completed
@@ -1104,7 +1113,7 @@ const FadedSkiesDriverApp = () => {
                     name="payoutMethod"
                     value={method.value}
                     checked={withdrawData.method === method.value}
-                    onChange={(e) => setWithdrawData({...withdrawData, method: e.target.value})}
+                    onChange={(e) => setWithdrawData({...withdrawData, method: e.target.value as 'instant' | 'daily' | 'three_day'})}
                     className="w-4 h-4 text-blue-600 mr-3"
                   />
                   <div className="flex-1">
@@ -1367,7 +1376,7 @@ const FadedSkiesDriverApp = () => {
                     name="defaultMethod"
                     value={method.value}
                     checked={payoutData.defaultMethod === method.value}
-                    onChange={(e) => setPayoutData({...payoutData, defaultMethod: e.target.value})}
+                    onChange={(e) => setPayoutData({...payoutData, defaultMethod: e.target.value as 'instant' | 'daily' | 'three_day'})}
                     className="w-4 h-4 text-blue-600 mr-4"
                   />
                   <div className="flex items-center space-x-3 flex-1">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Home,
   Package,
@@ -11,12 +11,9 @@ import {
   Play,
   Pause,
   Bell,
-  Clock,
   Star,
   Edit,
   MapPin,
-  Route,
-  RotateCcw,
   AlertTriangle,
   CheckCircle,
   X,
@@ -24,22 +21,16 @@ import {
   TrendingUp,
   TrendingDown,
   DollarSign,
-  Calendar,
-  Filter,
   Download,
   RefreshCw,
   Eye,
   Shield,
   Database,
   Globe,
-  Zap,
   Mail,
-  Smartphone,
-  Lock,
   UserPlus,
   CreditCard,
   Truck,
-  Award,
   Target,
   Activity
 } from 'lucide-react';
@@ -62,14 +53,14 @@ const FadedSkiesTrackingAdmin = () => {
   });
 
   // Selected items for modals
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+
   const [deleteTarget, setDeleteTarget] = useState({ type: '', id: null, name: '' });
 
   // Modal management functions
-  const openModal = (modalName, item = null) => {
+  const openModal = (modalName: string, item: any = null) => {
     setModals(prev => ({ ...prev, [modalName]: true }));
     if (item) {
       switch (modalName) {
@@ -82,9 +73,7 @@ const FadedSkiesTrackingAdmin = () => {
         case 'customerDetails':
           setSelectedCustomer(item);
           break;
-        case 'userManagement':
-          setSelectedUser(item);
-          break;
+
         case 'confirmDelete':
           setDeleteTarget(item);
           break;
@@ -92,13 +81,13 @@ const FadedSkiesTrackingAdmin = () => {
     }
   };
 
-  const closeModal = (modalName) => {
+  const closeModal = (modalName: string) => {
     setModals(prev => ({ ...prev, [modalName]: false }));
     // Clear selected items
     if (modalName === 'editProduct' || modalName === 'addProduct') setSelectedProduct(null);
     if (modalName === 'orderDetails') setSelectedOrder(null);
     if (modalName === 'customerDetails') setSelectedCustomer(null);
-    if (modalName === 'userManagement') setSelectedUser(null);
+
     if (modalName === 'confirmDelete') setDeleteTarget({ type: '', id: null, name: '' });
   };
 
@@ -109,7 +98,7 @@ const FadedSkiesTrackingAdmin = () => {
       wsService.connect('admin-session');
 
       // Set up real-time order notifications
-      const handleNewOrder = (orderData) => {
+      const handleNewOrder = (orderData: any) => {
         console.log('🔔 New order received:', orderData);
 
         // Add visual notification
@@ -141,11 +130,11 @@ const FadedSkiesTrackingAdmin = () => {
         }
       };
 
-      const handleOrderUpdate = (updateData) => {
+      const handleOrderUpdate = (updateData: any) => {
         console.log('📊 Order status updated:', updateData);
       };
 
-      const handleDriverStatusChange = (driverData) => {
+      const handleDriverStatusChange = (driverData: any) => {
         console.log('🚗 Driver status changed:', driverData);
       };
 
@@ -201,13 +190,13 @@ const FadedSkiesTrackingAdmin = () => {
     setSelectedProduct(null);
     setSelectedOrder(null);
     setSelectedCustomer(null);
-    setSelectedUser(null);
+    
     setDeleteTarget({ type: '', id: null, name: '' });
   };
 
   // Handle keyboard events for modals
   useEffect(() => {
-    const handleKeyDown = (event) => {
+    const handleKeyDown = (event: any) => {
       if (event.key === 'Escape') {
         const hasOpenModal = Object.values(modals).some(modal => modal);
         if (hasOpenModal) {
@@ -346,7 +335,7 @@ const FadedSkiesTrackingAdmin = () => {
   ]);
 
   // Base Modal Component
-  const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
+  const Modal = ({ isOpen, onClose, title, children, size = 'md' }: any) => {
     if (!isOpen) return null;
 
     const sizeClasses = {
@@ -363,7 +352,7 @@ const FadedSkiesTrackingAdmin = () => {
 
           <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
 
-          <div className={`inline-block align-bottom bg-white rounded-2xl px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle ${sizeClasses[size]} sm:w-full sm:p-6`}>
+          <div className={`inline-block align-bottom bg-white rounded-2xl px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle ${sizeClasses[size as keyof typeof sizeClasses]} sm:w-full sm:p-6`}>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-gray-900">{title}</h3>
               <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
@@ -393,14 +382,14 @@ const FadedSkiesTrackingAdmin = () => {
       status: 'active'
     });
 
-    const handleSubmit = (e) => {
+    const handleSubmit = (e: any) => {
       e.preventDefault();
       // Handle form submission
       console.log('Product data:', formData);
       closeModal(isEdit ? 'editProduct' : 'addProduct');
     };
 
-    const handleChange = (field, value) => {
+    const handleChange = (field: any, value: any) => {
       setFormData(prev => ({ ...prev, [field]: value }));
     };
 
@@ -563,7 +552,7 @@ const FadedSkiesTrackingAdmin = () => {
   const OrderDetailsModal = () => {
     const [orderStatus, setOrderStatus] = useState(selectedOrder?.status || 'pending');
 
-    const updateOrderStatus = async (newStatus) => {
+    const updateOrderStatus = async (newStatus: any) => {
       setOrderStatus(newStatus);
 
       try {
@@ -628,7 +617,7 @@ const FadedSkiesTrackingAdmin = () => {
     };
 
     // Helper function to get user-friendly status messages
-    const getStatusMessage = (status) => {
+    const getStatusMessage = (status: any) => {
       const messages = {
         'pending': 'Order received and pending review',
         'confirmed': 'Order confirmed and being prepared',
@@ -639,7 +628,7 @@ const FadedSkiesTrackingAdmin = () => {
         'delivered': 'Order has been delivered successfully',
         'cancelled': 'Order has been cancelled'
       };
-      return messages[status] || `Order status updated to ${status}`;
+      return messages[status as keyof typeof messages] || `Order status updated to ${status}`;
     };
 
     return (
@@ -678,7 +667,7 @@ const FadedSkiesTrackingAdmin = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-gray-50 rounded-xl p-4">
                 <h4 className="text-lg font-bold text-gray-900 mb-3 flex items-center space-x-2">
-                  <User className="w-5 h-5" />
+                  <Users className="w-5 h-5" />
                   <span>Customer Details</span>
                 </h4>
                 <div className="space-y-2">
@@ -715,7 +704,7 @@ const FadedSkiesTrackingAdmin = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {selectedOrder?.items?.map((item, index) => (
+                    {selectedOrder?.items?.map((item: any, index: any) => (
                       <tr key={index}>
                         <td className="px-4 py-3 font-semibold text-gray-900">{item.name}</td>
                         <td className="px-4 py-3 text-gray-700">{item.quantity}</td>
@@ -882,12 +871,12 @@ const FadedSkiesTrackingAdmin = () => {
       }
     });
 
-    const handlePermissionChange = (permission) => {
+    const handlePermissionChange = (permission: any) => {
       setUserData(prev => ({
         ...prev,
         permissions: {
           ...prev.permissions,
-          [permission]: !prev.permissions[permission]
+          [permission]: !prev.permissions[permission as keyof typeof prev.permissions]
         }
       }));
     };
@@ -950,10 +939,10 @@ const FadedSkiesTrackingAdmin = () => {
                 <div key={permission} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                   <span className="font-medium text-gray-700 capitalize">{permission}</span>
                   <div className={`w-12 h-6 rounded-full relative transition-colors cursor-pointer ${
-                    userData.permissions[permission] ? 'bg-emerald-600' : 'bg-gray-300'
+                    userData.permissions[permission as keyof typeof userData.permissions] ? 'bg-emerald-600' : 'bg-gray-300'
                   }`} onClick={() => handlePermissionChange(permission)}>
                     <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                      userData.permissions[permission] ? 'translate-x-7' : 'translate-x-1'
+                      userData.permissions[permission as keyof typeof userData.permissions] ? 'translate-x-7' : 'translate-x-1'
                     }`}></div>
                   </div>
                 </div>
