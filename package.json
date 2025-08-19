@@ -1,23 +1,33 @@
 {
   "name": "faded-skies-cannabis-delivery",
-  "version": "1.0.0",
-  "description": "Cannabis delivery platform with user, driver, and admin applications",
-  "type": "module",
   "private": true,
+  "version": "1.0.0",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "start": "vite"
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:user\" \"npm run dev:driver\" \"npm run dev:admin\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:user": "cd user-app && npm run dev",
+    "dev:driver": "cd driver-app && npm run dev",
+    "dev:admin": "cd admin-app && npm run dev",
+    "install:all": "npm install && cd backend && npm install && cd ../user-app && npm install && cd ../driver-app && npm install && cd ../admin-app && npm install",
+    "build:all": "npm run build && cd user-app && npm run build && cd ../driver-app && npm run build && cd ../admin-app && npm run build",
+    "setup-database": "node setup-database.js",
+    "setup-database-secure": "node setup-database-secure.js"
   },
   "dependencies": {
-    "@types/mapbox-gl": "^3.4.1",
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/ios": "^6.0.0",
     "lucide-react": "^0.294.0",
-    "mapbox-gl": "^3.14.0",
+    "pg": "^8.16.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "zustand": "^5.0.7"
+    "zustand": "^4.4.7"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",
@@ -26,6 +36,7 @@
     "@typescript-eslint/parser": "^6.14.0",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.16",
+    "concurrently": "^8.2.2",
     "eslint": "^8.55.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",

@@ -1,105 +1,192 @@
 # Faded Skies Cannabis Delivery Platform
 
-A comprehensive cannabis delivery platform built with React, TypeScript, and Tailwind CSS. The platform includes three main applications:
+A comprehensive cannabis delivery platform with three independent applications that communicate in real-time.
 
-## 🌿 Applications
+## 🏗️ Architecture
 
-### 1. User App (Customer Interface)
-- Browse cannabis products (flower, vapes, edibles, pre-rolls)
-- Shopping cart and checkout functionality
-- Age verification system
-- Order tracking and delivery status
-- User authentication and profile management
-- Support system
+The platform consists of four main components:
 
-### 2. 🚚 Driver App
-- Driver portal for delivery management
-- Order acceptance and status updates
-- Earnings tracking with detailed breakdowns
-- GPS navigation integration (simulated)
-- Customer communication tools
-- Payout management system
+### 📱 **User App** (Port 3000)
+- Customer-facing application for ordering cannabis products
+- Real-time order tracking and notifications
+- Payment processing and delivery management
 
-### 3. 📊 Admin Panel
-- Live tracking and dispatch system
-- Product catalog management
-- Customer management
-- Order management and status updates
-- Driver monitoring and analytics
-- Real-time delivery tracking with interactive map
+### 🚚 **Driver App** (Port 3001)
+- Driver interface for accepting and managing deliveries
+- Real-time location tracking and route optimization
+- Order status updates and customer communication
 
-## 🚀 Getting Started
+### 📊 **Admin Panel** (Port 3002)
+- Administrative dashboard for managing orders, products, and users
+- Real-time order monitoring and driver management
+- Analytics and reporting tools
 
-### Prerequisites
-- Node.js 16+ 
-- npm 8+
+### 🔧 **Backend Server** (Port 3001)
+- RESTful API for all applications
+- WebSocket server for real-time communication
+- Database management and business logic
 
-### Installation
+## 🚀 Quick Start
+
+### Install Dependencies
 ```bash
-npm install
+npm run install:all
+```
+
+### Development Mode (All Apps)
+```bash
+npm run dev:all
+```
+
+This will start:
+- Backend server on `http://localhost:3001`
+- User app on `http://localhost:3000`
+- Driver app on `http://localhost:3001`
+- Admin panel on `http://localhost:3002`
+
+### Individual App Development
+
+#### User App
+```bash
+cd user-app
 npm run dev
 ```
 
-The application will be available at `http://localhost:3000`
+#### Driver App
+```bash
+cd driver-app
+npm run dev
+```
 
-### Available Scripts
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
-- `npm run lint` - Run ESLint
+#### Admin Panel
+```bash
+cd admin-app
+npm run dev
+```
 
-## 🛠 Technology Stack
+#### Backend Server
+```bash
+cd backend
+npm run dev
+```
 
-- **Frontend**: React 18 with TypeScript
-- **Styling**: Tailwind CSS
-- **Icons**: Lucide React
-- **Build Tool**: Vite
-- **Development**: Hot reload with Vite HMR
+## 🔄 Real-Time Communication
 
-## 📱 Features
+All apps communicate through:
+- **WebSocket connections** for real-time updates
+- **Shared backend API** for data persistence
+- **Event-driven architecture** for order flow management
 
-### User Experience
-- Responsive mobile-first design
-- Real-time product search and filtering
-- Shopping cart with quantity management
-- Secure age verification process
-- Multiple payment options support
-- Order tracking with live updates
+### Communication Flow
+1. **User places order** → Backend receives order
+2. **Backend notifies Admin** → Admin can approve/reject
+3. **Admin assigns Driver** → Driver receives notification
+4. **Driver accepts order** → User gets status update
+5. **Real-time tracking** → All parties see live updates
 
-### Driver Experience  
-- Real-time order notifications
-- Detailed earnings breakdown (base pay + mileage + tips)
-- GPS navigation and route optimization
-- Customer communication tools
-- Instant and scheduled payout options
+## 📁 Project Structure
 
-### Admin Features
-- Live delivery tracking with interactive maps
-- Comprehensive product management
-- Customer relationship management
-- Order processing and status updates
-- Driver performance monitoring
-- Real-time analytics and reporting
+```
+App-2.0/
+├── backend/                 # Backend server (Node.js/Express)
+├── user-app/               # Customer application
+├── driver-app/             # Driver application  
+├── admin-app/              # Admin dashboard
+├── src/                    # Shared components and services
+│   ├── components/         # React components
+│   ├── services/           # Shared services (WebSocket, API)
+│   └── mockApi.ts          # Mock data for development
+└── package.json            # Root package with scripts
+```
 
-## 🎯 Demo Features
+## 🛠️ Technology Stack
 
-- **Quick Login**: Demo accounts for testing all three interfaces
-- **Sample Data**: Pre-populated with realistic cannabis products and orders
-- **Interactive UI**: Fully functional interface with simulated backend
-- **Live Updates**: Real-time status updates and notifications
+- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS
+- **Backend**: Node.js, Express, Socket.IO
+- **Database**: Prisma ORM with SQLite/PostgreSQL
+- **Real-time**: WebSocket connections
+- **Mobile**: Capacitor for iOS/Android deployment
 
-## 🔧 Configuration
+## 📱 Mobile Deployment
 
-The project is configured with:
-- TypeScript for type safety
-- Tailwind CSS for styling
-- ESLint for code quality
-- Vite for fast development and building
+Each app can be deployed as a mobile application using Capacitor:
+
+```bash
+# For User App
+cd user-app
+npx cap add ios
+npx cap add android
+npx cap sync
+
+# For Driver App  
+cd driver-app
+npx cap add ios
+npx cap add android
+npx cap sync
+
+# For Admin App
+cd admin-app
+npx cap add ios
+npx cap add android
+npx cap sync
+```
+
+## 🔧 Environment Variables
+
+Create `.env` files in each app directory:
+
+```env
+# Backend (.env)
+PORT=3001
+DATABASE_URL="file:./dev.db"
+JWT_SECRET="your-secret-key"
+ALLOWED_ORIGINS="http://localhost:3000,http://localhost:3001,http://localhost:3002"
+
+# User App (.env)
+VITE_API_URL="http://localhost:3001"
+VITE_WS_URL="ws://localhost:3001"
+
+# Driver App (.env)
+VITE_API_URL="http://localhost:3001"
+VITE_WS_URL="ws://localhost:3001"
+
+# Admin App (.env)
+VITE_API_URL="http://localhost:3001"
+VITE_WS_URL="ws://localhost:3001"
+```
+
+## 🧪 Testing
+
+```bash
+# Test all apps
+npm run test:all
+
+# Test individual apps
+cd user-app && npm test
+cd driver-app && npm test
+cd admin-app && npm test
+```
+
+## 📦 Production Build
+
+```bash
+# Build all applications
+npm run build:all
+
+# Build individual apps
+cd user-app && npm run build
+cd driver-app && npm run build
+cd admin-app && npm run build
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test all applications
+5. Submit a pull request
 
 ## 📄 License
 
-This project is private and not licensed for public use.
-
-## 🚨 Legal Notice
-
-This is a demonstration application for a cannabis delivery platform. It does not facilitate actual cannabis transactions and is intended for educational and development purposes only.
+This project is licensed under the MIT License - see the LICENSE file for details.
