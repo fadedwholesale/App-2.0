@@ -6,13 +6,10 @@ import {
   MapPin, 
   Star, 
   Clock, 
-  CreditCard, 
-  Bell, 
   MessageCircle, 
   Truck, 
   Plus, 
   Minus, 
-  Filter, 
   Menu, 
   X, 
   Camera, 
@@ -23,6 +20,10 @@ import {
   CheckCircle,
   Edit3
 } from 'lucide-react';
+
+// Import real-time service
+import realTimeService, { Order as RealTimeOrder, Product as RealTimeProduct } from '../services/real-time-service';
+import { supabase } from '../lib/supabase';
 
 // TypeScript interfaces
 interface Product {
@@ -65,20 +66,21 @@ interface User {
   name: string;
   email: string;
   address: string;
+  phone?: string;
   rewards: number;
   age: number;
   idVerified: boolean;
 }
 
-interface SupportTicket {
-  id: string;
-  subject: string;
-  status: string;
-  priority: string;
-  created: string;
-  updated: string;
-  category: string;
-}
+// interface SupportTicket {
+//   id: string;
+//   subject: string;
+//   status: string;
+//   priority: string;
+//   created: string;
+//   updated: string;
+//   category: string;
+// }
 
 // Toast component - moved outside
 const Toast = React.memo(({ showToast, toastMessage }: { showToast: boolean; toastMessage: string }) => (
@@ -191,7 +193,7 @@ const FadedSkiesApp = () => {
   const [currentView, setCurrentView] = useState<string>('auth');
   const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [idVerified, setIdVerified] = useState<boolean>(false);
+  // const [idVerified] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [authForm, setAuthForm] = useState({
     email: '',
@@ -210,30 +212,9 @@ const FadedSkiesApp = () => {
     age: 25,
     idVerified: false
   });
-  const [orders, setOrders] = useState<Order[]>([
-    {
-      id: '#FS2025001',
-      status: 'delivered',
-      items: ['Purple Haze Live Resin Cart', 'Midnight Mint Indica Gummies'],
-      total: 89.50,
-      date: '2025-06-10',
-      estimatedDelivery: '2-4 hours',
-      deliveredAt: '3:10 PM',
-      driver: 'Marcus Chen',
-      vehicle: 'Blue Toyota Prius - ABC789'
-    },
-    {
-      id: '#FS2025002',
-      status: 'in-transit',
-      items: ['OG Kush Premium Flower', 'Sunset Sherbet Pre-roll 3-Pack'],
-      total: 124.75,
-      date: '2025-06-12',
-      estimatedDelivery: '1-2 hours',
-      driver: 'Alex Rodriguez',
-      vehicle: 'Green Honda Civic - XYZ123',
-      currentLocation: '0.8 miles away'
-    }
-  ]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [realProducts, setRealProducts] = useState<RealTimeProduct[]>([]);
+  // const [loading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [toastMessage, setToastMessage] = useState<string>('');
@@ -284,7 +265,7 @@ const FadedSkiesApp = () => {
     { id: 3, type: 'FS Coin', icon: '🪙', status: 'Available', primary: false, details: `${user.rewards} coins` }
   ]);
   const [showAddPayment, setShowAddPayment] = useState(false);
-  const [editingPayment, setEditingPayment] = useState(null);
+  // const [editingPayment] = useState(null);
   const [newPaymentForm, setNewPaymentForm] = useState({
     type: 'card',
     cardNumber: '',
@@ -292,6 +273,100 @@ const FadedSkiesApp = () => {
     cvv: '',
     name: ''
   });
+
+  // Load real-time data and set up connections
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // setLoading(true);
+        
+        // Load products from Supabase - no fallback to mock data
+        const productsData = await realTimeService.getProducts();
+        console.log('Loaded products from Supabase:', productsData?.length);
+        setRealProducts(productsData);
+        
+        // Load user orders if authenticated
+        if (isAuthenticated && user.email) {
+          try {
+            const ordersData = await realTimeService.getOrders(user.email);
+            setOrders(ordersData.map((order: RealTimeOrder) => ({
+              id: order.order_id,
+              status: order.status,
+              items: order.items.map((item: any) => item.name),
+              total: order.total,
+              date: order.created_at,
+              estimatedDelivery: '1-2 hours',
+              driver: 'Driver Assigned',
+              vehicle: 'Vehicle Info'
+            })));
+          } catch (orderError) {
+            console.warn('Failed to load orders:', orderError);
+            // Keep empty orders array
+          }
+        }
+        
+        // Connect to real-time service
+        if (isAuthenticated && user.email) {
+          realTimeService.connect(user.email);
+        }
+        
+        // Check connection status
+        const connectionStatus = realTimeService.isSocketConnected();
+        console.log('Supabase real-time connection status:', connectionStatus);
+        
+        // Set up real-time listeners
+        realTimeService.onOrderUpdate((order: RealTimeOrder) => {
+          setOrders(prev => prev.map(o => 
+            o.id === order.order_id 
+              ? { ...o, status: order.status }
+              : o
+          ));
+        });
+        
+        // realTimeService.onOrderAssigned((order: RealTimeOrder) => {
+        //   setOrders(prev => prev.map(o => 
+        //     o.id === order.order_id 
+        //       ? { ...o, status: order.status, driver: 'Driver Assigned' }
+        //       : o
+        //   ));
+        //   setToastMessage(`Order ${order.order_id} assigned to driver!`);
+        //   setShowToast(true);
+        // });
+        
+        // realTimeService.onOrderDelivered((order: RealTimeOrder) => {
+        //   setOrders(prev => prev.map(o => 
+        //     o.id === order.order_id 
+        //       ? { ...o, status: order.status, deliveredAt: new Date().toLocaleTimeString() }
+        //       : o
+        //   ));
+        //   setToastMessage(`Order ${order.order_id} delivered!`);
+        //   setShowToast(true);
+        // });
+        
+        // Data loading completed successfully
+        console.log('Data loading completed');
+        setToastMessage('Live data loaded successfully!');
+        setShowToast(true);
+        
+      } catch (error) {
+        console.error('Failed to load live data:', error);
+        setToastMessage('Failed to load live data. Please check your connection.');
+        setShowToast(true);
+      } finally {
+        // setLoading(false);
+      }
+    };
+    
+    if (isAuthenticated) {
+      loadData();
+    }
+    
+    // Cleanup
+    return () => {
+      realTimeService.removeAllListeners();
+      realTimeService.disconnect();
+    };
+  }, [isAuthenticated, user.email]);
 
   // Update FS Coin balance when user rewards change
   useEffect(() => {
@@ -506,7 +581,7 @@ const FadedSkiesApp = () => {
     setTimeout(() => setShowToast(false), 2000);
   }, []);
 
-  const editDeliveryAddress = useCallback((address) => {
+  const editDeliveryAddress = useCallback((address: any) => {
     const addressParts = address.address.split(', ');
     const stateZip = addressParts[addressParts.length - 1].split(' ');
     
@@ -581,7 +656,7 @@ const FadedSkiesApp = () => {
     }, 1500 + Math.random() * 2000);
   }, [chatInput, user.name]);
 
-  const handleChatKeyPress = useCallback((e) => {
+  const handleChatKeyPress = useCallback((e: any) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendChatMessage();
@@ -596,117 +671,32 @@ const FadedSkiesApp = () => {
     { id: 'edibles', name: 'Edibles', icon: '🍯', gradient: 'from-purple-400 to-violet-500' }
   ];
 
-  // Realistic product system with updateable images
-  const products = [
-    {
-      id: 1,
-      name: 'Purple Haze Live Resin Cartridge',
-      category: 'vapes',
-      price: 65.00,
-      originalPrice: 75.00,
-      thc: '89.2%',
-      cbd: '0.1%',
-      strain: 'Sativa',
-      rating: 4.8,
-      reviewCount: 342,
-      imageUrl: 'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?w=400&h=400&fit=crop&crop=center',
-      description: 'Premium live resin cartridge with authentic Purple Haze terpenes. Smooth, potent, and flavorful.',
-      effects: ['Creative', 'Energetic', 'Happy'],
-      labTested: true,
-      inStock: true,
-      featured: true
-    },
-    {
-      id: 2,
-      name: 'OG Kush Premium Indoor Flower',
-      category: 'flower',
-      price: 45.00,
-      originalPrice: null,
-      thc: '24.3%',
-      cbd: '0.2%',
-      strain: 'Indica',
-      rating: 4.9,
-      reviewCount: 567,
-      imageUrl: 'https://images.unsplash.com/photo-1536924430914-91f9e2041b83?w=400&h=400&fit=crop&crop=center',
-      description: 'Classic OG Kush with dense, frosty buds. Earthy pine aroma with hints of lemon.',
-      effects: ['Relaxed', 'Sleepy', 'Euphoric'],
-      labTested: true,
-      inStock: true,
-      featured: false
-    },
-    {
-      id: 3,
-      name: 'Sunset Sherbet Pre-roll 3-Pack',
-      category: 'prerolls',
-      price: 35.00,
-      originalPrice: 42.00,
-      thc: '21.7%',
-      cbd: '0.3%',
-      strain: 'Hybrid',
-      rating: 4.7,
-      reviewCount: 289,
-      imageUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=400&fit=crop&crop=center',
-      description: 'Three perfectly rolled joints featuring premium Sunset Sherbet flower.',
-      effects: ['Relaxed', 'Happy', 'Creative'],
-      labTested: true,
-      inStock: true,
-      featured: true
-    },
-    {
-      id: 4,
-      name: 'Midnight Mint Indica Gummies',
-      category: 'edibles',
-      price: 28.00,
-      originalPrice: null,
-      thc: '10mg each',
-      cbd: '2mg each',
-      strain: 'Indica',
-      rating: 4.6,
-      reviewCount: 445,
-      imageUrl: 'https://images.unsplash.com/photo-1582048184309-a42b64c7e2c9?w=400&h=400&fit=crop&crop=center',
-      description: 'Delicious mint-flavored gummies perfect for evening relaxation. 20-pack.',
-      effects: ['Sleepy', 'Relaxed', 'Pain Relief'],
-      labTested: true,
-      inStock: true,
-      featured: false
-    },
-    {
-      id: 5,
-      name: 'Blue Dream Premium Flower',
-      category: 'flower',
-      price: 42.00,
-      originalPrice: null,
-      thc: '22.1%',
-      cbd: '0.1%',
-      strain: 'Hybrid',
-      rating: 4.8,
-      reviewCount: 623,
-      imageUrl: 'https://images.unsplash.com/photo-1583031994962-6bfde2c5d72a?w=400&h=400&fit=crop&crop=center',
-      description: 'Perfectly balanced hybrid with sweet berry notes and cerebral effects.',
-      effects: ['Happy', 'Creative', 'Relaxed'],
-      labTested: true,
-      inStock: true,
-      featured: false
-    },
-    {
-      id: 6,
-      name: 'Strawberry Cough Live Rosin Cart',
-      category: 'vapes',
-      price: 78.00,
-      originalPrice: 85.00,
-      thc: '87.5%',
-      cbd: '0.2%',
-      strain: 'Sativa',
-      rating: 4.5,
-      reviewCount: 198,
-      imageUrl: 'https://images.unsplash.com/photo-1591424337553-93a4f46e4dd9?w=400&h=400&fit=crop&crop=center',
-      description: 'Premium live rosin cartridge with authentic strawberry and earth flavors.',
-      effects: ['Energetic', 'Creative', 'Focused'],
-      labTested: true,
-      inStock: false,
-      featured: false
-    }
-  ];
+  // Use only real products from Supabase - no mock data fallback
+  console.log('realProducts from Supabase:', realProducts);
+  
+  // Show message if no products are available
+  if (realProducts.length === 0) {
+    console.log('No products available from Supabase');
+  }
+  
+  const products = realProducts.map((product: RealTimeProduct) => ({
+    id: parseInt(product.id) || 1,
+    name: product.name,
+    category: product.category,
+    price: product.price,
+    originalPrice: null,
+    thc: product.thc,
+    cbd: product.cbd,
+    strain: 'Hybrid',
+    rating: 4.8,
+    reviewCount: 100,
+    imageUrl: 'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?w=400&h=400&fit=crop&crop=center',
+    description: `${product.name} - Premium quality cannabis product.`,
+    effects: ['Relaxed', 'Happy', 'Creative'],
+    labTested: true,
+    inStock: product.stock > 0,
+    featured: false
+  }));
 
   const filteredProducts = products.filter(product => {
     const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
@@ -775,23 +765,60 @@ const FadedSkiesApp = () => {
   const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  const handleAuthSubmit = useCallback(() => {
+  const handleAuthSubmit = useCallback(async () => {
     if (authMode === 'login') {
       if (authForm.email && authForm.email.trim() && authForm.password && authForm.password.trim()) {
-        setIsAuthenticated(true);
-        setCurrentView('home');
-        setUser(prev => ({ ...prev, email: authForm.email, name: authForm.name || 'Demo User' }));
+        try {
+          console.log('🔐 Attempting login with:', authForm.email);
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: authForm.email,
+            password: authForm.password
+          });
+
+          if (error) {
+            console.error('Login error:', error);
+            
+            // Provide more specific error messages
+            if (error.message.includes('Invalid login credentials')) {
+              setToastMessage('Invalid email or password. Please try again.');
+            } else if (error.message.includes('Email not confirmed')) {
+              setToastMessage('Please check your email and confirm your account before logging in.');
+            } else {
+              setToastMessage(`Login failed: ${error.message}`);
+            }
+            setShowToast(true);
+            return;
+          }
+
+          console.log('✅ Login successful:', data);
+          setIsAuthenticated(true);
+          setCurrentView('home');
+          setUser(prev => ({ 
+            ...prev, 
+            email: authForm.email, 
+            name: data.user?.user_metadata?.name || authForm.name || 'User'
+          }));
+          setToastMessage('Successfully logged in!');
+          setShowToast(true);
+        } catch (error) {
+          console.error('Login error:', error);
+          setToastMessage('Login failed. Please try again.');
+          setShowToast(true);
+        }
       } else {
-        alert('Please enter email and password');
+        setToastMessage('Please enter email and password');
+        setShowToast(true);
       }
     } else if (authMode === 'signup') {
       if (!authForm.name || !authForm.dateOfBirth || !authForm.phone || !authForm.email || !authForm.password) {
-        alert('Please fill in all required fields');
+        setToastMessage('Please fill in all required fields');
+        setShowToast(true);
         return;
       }
       
       if (authForm.password !== authForm.confirmPassword) {
-        alert('Passwords do not match');
+        setToastMessage('Passwords do not match');
+        setShowToast(true);
         return;
       }
       
@@ -800,45 +827,158 @@ const FadedSkiesApp = () => {
       const age = today.getFullYear() - birthDate.getFullYear();
       
       if (age < 21) {
-        alert('You must be 21 or older to use this service');
+        setToastMessage('You must be 21 or older to use this service');
+        setShowToast(true);
         return;
       }
       
-      setIsAuthenticated(true);
-      setUser(prev => ({ 
-        ...prev, 
-        name: authForm.name, 
-        email: authForm.email,
-        age: age
-      }));
-      setCurrentView('home');
+      try {
+        console.log('🔐 Attempting signup with:', authForm.email);
+        const { data, error } = await supabase.auth.signUp({
+          email: authForm.email,
+          password: authForm.password,
+          options: {
+            data: {
+              name: authForm.name,
+              phone: authForm.phone,
+              age: age,
+              address: '123 Main St, Austin, TX'
+            },
+            emailRedirectTo: window.location.origin
+          }
+        });
+
+        if (error) {
+          console.error('Signup error:', error);
+          setToastMessage('Signup failed. Please try again.');
+          setShowToast(true);
+          return;
+        }
+
+        console.log('✅ Signup successful:', data);
+        
+        // Check if email confirmation is required
+        if (data.user && !data.user.email_confirmed_at) {
+          setToastMessage('Account created! Please check your email (including spam folder) and click the confirmation link, then try logging in again.');
+          setShowToast(true);
+          setAuthMode('login');
+          
+          // Show a more detailed message
+          setTimeout(() => {
+            setToastMessage('If you don\'t see the email, check your spam folder or try creating the account again.');
+            setShowToast(true);
+          }, 5000);
+          return;
+        }
+        
+        // If email is already confirmed or confirmation not required, proceed
+        setIsAuthenticated(true);
+        setCurrentView('home');
+        setUser(prev => ({ 
+          ...prev, 
+          email: authForm.email, 
+          name: authForm.name,
+          phone: authForm.phone,
+          age: age
+        }));
+        setToastMessage('Account created and logged in successfully!');
+        setShowToast(true);
+      } catch (error) {
+        console.error('Signup error:', error);
+        setToastMessage('Signup failed. Please try again.');
+        setShowToast(true);
+      }
     } else if (authMode === 'forgot') {
       if (authForm.email && authForm.email.trim()) {
-        alert('Password reset link sent to your email!');
+        setToastMessage('Password reset link sent to your email!');
         setAuthMode('login');
+        setShowToast(true);
       } else {
-        alert('Please enter your email address');
+        setToastMessage('Please enter your email address');
+        setShowToast(true);
       }
     }
   }, [authMode, authForm]);
 
-  const quickLogin = useCallback(() => {
-    setAuthForm({
-      email: 'demo@fadedskies.com',
-      password: 'demo123',
-      confirmPassword: '',
-      name: 'Demo User',
-      phone: '',
-      dateOfBirth: ''
-    });
-    setIsAuthenticated(true);
-    setCurrentView('home');
-    setUser(prev => ({ ...prev, email: 'demo@fadedskies.com', name: 'Demo User' }));
-  }, []);
+  const quickLogin = useCallback(async () => {
+    try {
+      // Use actual form data for authentication
+      const email = authForm.email || 'demo@fadedskies.com';
+      const password = authForm.password || 'demo123';
+      
+      console.log('🔐 Attempting authentication with:', email);
+      
+      // Use Supabase authentication
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
+
+      if (error) {
+        console.log('Login failed:', error.message);
+        
+        // Check if it's a credentials error
+        if (error.message.includes('Invalid login credentials')) {
+          setToastMessage('Invalid email or password. Please check your credentials or create a new account.');
+          setShowToast(true);
+          return;
+        }
+        
+        // For other errors, try to create account
+        console.log('Attempting to create new account...');
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: email,
+          password: password,
+          options: {
+            data: {
+              name: authForm.name || 'User',
+              phone: authForm.phone || '+1234567890',
+              address: '123 Main St, Austin, TX'
+            }
+          }
+        });
+
+        if (signUpError) {
+          console.error('Sign up error:', signUpError);
+          setToastMessage('Account creation failed. Please try again.');
+          setShowToast(true);
+          return;
+        }
+        
+        console.log('✅ New user created:', signUpData);
+        
+        // Check if email confirmation is required
+        if (signUpData.user && !signUpData.user.email_confirmed_at) {
+          setToastMessage('Account created! Please check your email to confirm before logging in.');
+          setShowToast(true);
+          return;
+        }
+      } else {
+        console.log('✅ User authenticated:', data);
+      }
+
+      setIsAuthenticated(true);
+      setCurrentView('home');
+      setUser(prev => ({ 
+        ...prev, 
+        email: email, 
+        name: authForm.name || data?.user?.user_metadata?.name || 'User',
+        phone: authForm.phone || data?.user?.user_metadata?.phone || '+1234567890',
+        address: data?.user?.user_metadata?.address || '123 Main St, Austin, TX'
+      }));
+      
+      setToastMessage('Successfully authenticated!');
+      setShowToast(true);
+    } catch (error) {
+      console.error('Login error:', error);
+      setToastMessage('Authentication failed. Please try again.');
+      setShowToast(true);
+    }
+  }, [authForm]);
 
   const handleLogout = useCallback(() => {
     setIsAuthenticated(false);
-    setIdVerified(false);
+            // setIdVerified(false);
     setCurrentView('auth');
     setAuthMode('login');
     setCart([]);
@@ -864,34 +1004,57 @@ const FadedSkiesApp = () => {
   }, []);
 
   const handleIdVerification = useCallback(() => {
-    setIdVerified(true);
+            // setIdVerified(true);
     setUser(prev => ({ ...prev, idVerified: true }));
     setCurrentView('cart');
   }, []);
 
-  const proceedToCheckout = useCallback(() => {
+  const proceedToCheckout = useCallback(async () => {
     if (!user.idVerified) {
       setCurrentView('id-verification');
     } else {
-      alert('Order placed successfully!');
-      
-      const newOrder: Order = {
-        id: `#FS2025${String(orders.length + 3).padStart(3, '0')}`,
-        status: 'in-transit',
-        items: cart.map(item => item.name),
-        total: cartTotal + (cartTotal >= 100 ? 0 : 5),
-        date: new Date().toISOString().split('T')[0],
-        estimatedDelivery: '1-2 hours',
-        driver: 'Sarah Johnson',
-        vehicle: 'White Tesla Model 3 - DEF456',
-        currentLocation: '1.2 miles away'
-      };
-      
-      setOrders(prev => [newOrder, ...prev]);
-      setCart([]);
-      setCurrentView('orders');
+      try {
+        // Create order through real-time service
+        const orderData = {
+          user_id: user.email,
+          customer_name: user.name,
+          customer_phone: user.phone || '+1234567890',
+          address: user.address,
+          items: cart.map(item => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price
+          })),
+          total: cartTotal + (cartTotal >= 100 ? 0 : 5)
+        };
+
+        const newOrder = await realTimeService.createOrder(orderData);
+        
+        // Add to local orders
+        const localOrder: Order = {
+          id: newOrder.order_id,
+          status: newOrder.status,
+          items: cart.map(item => item.name),
+          total: newOrder.total,
+          date: newOrder.created_at,
+          estimatedDelivery: '1-2 hours',
+          driver: 'Driver Assigned',
+          vehicle: 'Vehicle Info'
+        };
+        
+        setOrders(prev => [localOrder, ...prev]);
+        setCart([]);
+        setCurrentView('orders');
+        
+        setToastMessage('Order placed successfully!');
+        setShowToast(true);
+      } catch (error) {
+        console.error('Failed to create order:', error);
+        setToastMessage('Failed to place order. Please try again.');
+        setShowToast(true);
+      }
     }
-  }, [user.idVerified, orders.length, cart, cartTotal]);
+  }, [user.idVerified, user.email, user.name, user.phone, user.address, cart, cartTotal]);
 
   // Simulate live driver location updates
   useEffect(() => {

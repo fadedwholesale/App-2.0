@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Home,
   Package,
@@ -32,13 +32,36 @@ import {
   CreditCard,
   Truck,
   Target,
-  Activity
+  Activity,
+  User
 } from 'lucide-react';
 
-// Import simple WebSocket service for real-time admin monitoring
-import { wsService } from '../services/simple-websocket';
+// Import Supabase for authentication and real-time data
+import { supabase } from '../lib/supabase';
 
 const FadedSkiesTrackingAdmin = () => {
+  // Authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [authForm, setAuthForm] = useState({
+    email: '',
+    password: '',
+    name: '',
+    confirmPassword: ''
+  });
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [adminUser, setAdminUser] = useState({
+    email: '',
+    name: 'Admin',
+    role: 'admin'
+  });
+
+  // Live data state
+  const [liveProducts, setLiveProducts] = useState<any[]>([]);
+  const [liveOrders, setLiveOrders] = useState<any[]>([]);
+  const [liveCustomers, setLiveCustomers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
   const [currentView, setCurrentView] = useState('dashboard');
   const [isTrackingLive, setIsTrackingLive] = useState(false);
 
@@ -91,83 +114,62 @@ const FadedSkiesTrackingAdmin = () => {
     if (modalName === 'confirmDelete') setDeleteTarget({ type: '', id: null, name: '' });
   };
 
-  // WebSocket connection for real-time admin monitoring
+  // Supabase real-time connection for admin monitoring
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     try {
-      // Connect WebSocket for admin monitoring
-      wsService.connect('admin-session');
+      console.log('🔗 Setting up Supabase real-time for admin...');
+      
+      // Subscribe to orders table changes
+      const ordersSubscription = supabase
+        .channel('admin-orders')
+        .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'orders' },
+          (payload) => {
+            console.log('📦 Order change:', payload);
+            
+            // Handle new order notifications
+            if (payload.eventType === 'INSERT') {
+              const orderData = payload.new;
+              console.log('🔔 New order received:', orderData);
 
-      // Set up real-time order notifications
-      const handleNewOrder = (orderData: any) => {
-        console.log('🔔 New order received:', orderData);
+              // Show browser notification if permission granted
+              if (Notification.permission === 'granted') {
+                new Notification('New Order - Faded Skies Admin', {
+                  body: `Order ${orderData.order_id} from ${orderData.customer_name} - $${orderData.total.toFixed(2)}`,
+                  icon: '/favicon.ico',
+                  tag: orderData.order_id
+                });
+              }
+            }
+          }
+        )
+        .subscribe();
 
-        // Add visual notification
-        const notification = {
-          id: Date.now(),
-          type: 'order',
-          title: 'New Order Received!',
-          message: `Order ${orderData.orderId} from ${orderData.customerName} - $${orderData.total.toFixed(2)}`,
-          timestamp: new Date(),
-          priority: orderData.priority || 'normal'
-        };
+      // Subscribe to products table changes
+      const productsSubscription = supabase
+        .channel('admin-products')
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'products' },
+          (payload) => {
+            console.log('📦 Product change:', payload);
+          }
+        )
+        .subscribe();
 
-        // Show browser notification if permission granted
-        if (Notification.permission === 'granted') {
-          new Notification('New Order - Faded Skies Admin', {
-            body: notification.message,
-            icon: '/favicon.ico',
-            tag: orderData.orderId
-          });
-        }
+      console.log('✅ Admin Supabase real-time connected');
 
-        // Play notification sound
-        try {
-          const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DwvmEaBy5+zPLZiTYIF2q+8uGVUQwQUarm7bllHgg2jdXxynkpBChxy+/eizEIHWq85OKgUgINeKvgN');
-          audio.volume = 0.3;
-          audio.play().catch(e => console.log('Audio notification failed:', e));
-        } catch (e) {
-          console.log('Audio notification not available');
-        }
-      };
-
-      const handleOrderUpdate = (updateData: any) => {
-        console.log('📊 Order status updated:', updateData);
-      };
-
-      const handleDriverStatusChange = (driverData: any) => {
-        console.log('🚗 Driver status changed:', driverData);
-      };
-
-      // Subscribe to admin-specific channels
-      wsService.send({
-        type: 'admin:subscribe',
-        channels: ['orders', 'drivers', 'system']
-      });
-
-      // Register event listeners for real-time notifications
-      wsService.on('order_placed', handleNewOrder);
-      wsService.on('order_update', handleOrderUpdate);
-      wsService.on('driver_status_change', handleDriverStatusChange);
-
-      console.log('✅ Admin WebSocket connected');
-
+      // Cleanup on unmount
       return () => {
-        try {
-          // Remove event listeners
-          wsService.off('order_placed', handleNewOrder);
-          wsService.off('order_update', handleOrderUpdate);
-          wsService.off('driver_status_change', handleDriverStatusChange);
-
-          wsService.disconnect();
-          console.log('🔌 Admin WebSocket disconnected');
-        } catch (error) {
-          console.warn('WebSocket disconnect error:', error);
-        }
+        ordersSubscription.unsubscribe();
+        productsSubscription.unsubscribe();
+        console.log('🔌 Admin Supabase real-time disconnected');
       };
     } catch (error) {
-      console.error('Admin WebSocket connection failed:', error);
+      console.error('Admin Supabase real-time setup failed:', error);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   // Request notification permission on component mount
   useEffect(() => {
@@ -177,6 +179,146 @@ const FadedSkiesTrackingAdmin = () => {
       });
     }
   }, []);
+
+  // Authentication functions
+  const handleAuthSubmit = useCallback(async () => {
+    if (authMode === 'login') {
+      if (authForm.email && authForm.password) {
+        try {
+          console.log('🔐 Admin login attempt:', authForm.email);
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: authForm.email,
+            password: authForm.password
+          });
+
+          if (error) {
+            console.error('Admin login error:', error);
+            alert('Login failed. Please check your credentials.');
+            return;
+          }
+
+          console.log('✅ Admin login successful:', data);
+          setIsAuthenticated(true);
+          setAdminUser({
+            email: authForm.email,
+            name: data.user?.user_metadata?.name || 'Admin',
+            role: 'admin'
+          });
+          setCurrentView('dashboard');
+        } catch (error) {
+          console.error('Admin login error:', error);
+          alert('Login failed. Please try again.');
+        }
+      } else {
+        alert('Please enter email and password');
+      }
+    } else if (authMode === 'signup') {
+      if (!authForm.name || !authForm.email || !authForm.password) {
+        alert('Please fill in all required fields');
+        return;
+      }
+      
+      if (authForm.password !== authForm.confirmPassword) {
+        alert('Passwords do not match');
+        return;
+      }
+      
+      try {
+        console.log('🔐 Admin signup attempt:', authForm.email);
+        const { data, error } = await supabase.auth.signUp({
+          email: authForm.email,
+          password: authForm.password,
+          options: {
+            data: {
+              name: authForm.name,
+              role: 'admin'
+            }
+          }
+        });
+
+        if (error) {
+          console.error('Admin signup error:', error);
+          alert('Signup failed. Please try again.');
+          return;
+        }
+
+        console.log('✅ Admin signup successful:', data);
+        alert('Admin account created! Please check your email to confirm before logging in.');
+        setAuthMode('login');
+      } catch (error) {
+        console.error('Admin signup error:', error);
+        alert('Signup failed. Please try again.');
+      }
+    }
+  }, [authMode, authForm]);
+
+  const handleLogout = useCallback(() => {
+    setIsAuthenticated(false);
+    setAdminUser({ email: '', name: 'Admin', role: 'admin' });
+    setCurrentView('dashboard');
+    setAuthForm({ email: '', password: '', name: '', confirmPassword: '' });
+  }, []);
+
+  // Fetch live data from Supabase
+  const fetchLiveData = useCallback(async () => {
+    if (!isAuthenticated) return;
+    
+    setLoading(true);
+    try {
+      console.log('📊 Fetching live admin data...');
+      
+      // Fetch products
+      const { data: productsData, error: productsError } = await supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (productsError) {
+        console.error('Failed to fetch products:', productsError);
+      } else {
+        console.log('📦 Products loaded:', productsData?.length || 0);
+        setLiveProducts(productsData || []);
+      }
+
+      // Fetch orders
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (ordersError) {
+        console.error('Failed to fetch orders:', ordersError);
+      } else {
+        console.log('📋 Orders loaded:', ordersData?.length || 0);
+        setLiveOrders(ordersData || []);
+      }
+
+      // Fetch customers (users)
+      const { data: customersData, error: customersError } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (customersError) {
+        console.error('Failed to fetch customers:', customersError);
+      } else {
+        console.log('👥 Customers loaded:', customersData?.length || 0);
+        setLiveCustomers(customersData || []);
+      }
+
+    } catch (error) {
+      console.error('Failed to fetch live data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [isAuthenticated]);
+
+  // Load data when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchLiveData();
+    }
+  }, [isAuthenticated, fetchLiveData]);
 
   const closeAllModals = () => {
     setModals({
@@ -557,56 +699,25 @@ const FadedSkiesTrackingAdmin = () => {
 
       try {
         // Send real-time order status update
-        const statusUpdate = {
-          orderId: selectedOrder?.id,
-          customerId: selectedOrder?.customer,
-          status: newStatus,
-          timestamp: new Date(),
-          message: getStatusMessage(newStatus)
-        };
+        // Update order status in Supabase
 
-        // Notify customer of status change
-        wsService.send({
-          type: 'admin:order_status_update',
-          data: {
-            ...statusUpdate,
-            target: 'customer'
+        // Update order status in Supabase
+        try {
+          const { error } = await supabase
+            .from('orders')
+            .update({ 
+              status: newStatus,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', selectedOrder?.id);
+
+          if (error) {
+            console.error('Failed to update order status:', error);
+          } else {
+            console.log('✅ Order status updated in Supabase:', newStatus);
           }
-        });
-
-        // If order is confirmed or ready, notify available drivers
-        if (newStatus === 'confirmed' || newStatus === 'ready') {
-          wsService.send({
-            type: 'admin:order_available_for_pickup',
-            data: {
-              ...statusUpdate,
-              target: 'drivers',
-              orderDetails: {
-                id: selectedOrder?.id,
-                customer: selectedOrder?.customer,
-                location: selectedOrder?.location || 'Austin, TX',
-                value: selectedOrder?.total,
-                items: selectedOrder?.items,
-                priority: selectedOrder?.total > 150 ? 'high' : 'normal',
-                estimatedDistance: '2.3 miles',
-                pickupLocation: 'Faded Skies Dispensary - 123 Cannabis St'
-              }
-            }
-          });
-
-          console.log('📡 Order sent to available drivers:', selectedOrder?.id);
-        }
-
-        // If driver is assigned, notify specific driver
-        if (newStatus === 'assigned' && selectedOrder?.assignedDriver) {
-          wsService.send({
-            type: 'admin:assign_order',
-            data: {
-              orderId: selectedOrder.id,
-              driverId: selectedOrder.assignedDriver,
-              orderDetails: statusUpdate
-            }
-          });
+        } catch (error) {
+          console.error('Failed to update order status:', error);
         }
 
         console.log('✅ Order status updated and notifications sent:', newStatus);
@@ -616,20 +727,7 @@ const FadedSkiesTrackingAdmin = () => {
       }
     };
 
-    // Helper function to get user-friendly status messages
-    const getStatusMessage = (status: any) => {
-      const messages = {
-        'pending': 'Order received and pending review',
-        'confirmed': 'Order confirmed and being prepared',
-        'preparing': 'Your order is being prepared',
-        'ready': 'Order ready for pickup - driver will be assigned',
-        'assigned': 'Driver assigned to your order',
-        'en-route': 'Driver is on the way to deliver your order',
-        'delivered': 'Order has been delivered successfully',
-        'cancelled': 'Order has been cancelled'
-      };
-      return messages[status as keyof typeof messages] || `Order status updated to ${status}`;
-    };
+
 
     return (
       <Modal
@@ -1055,7 +1153,19 @@ const FadedSkiesTrackingAdmin = () => {
       </nav>
 
       <div className="mt-auto pt-8">
-        <button className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-red-200 hover:text-red-100 hover:bg-red-900/20 transition-all">
+        {/* Admin User Info */}
+        <div className="mb-4 p-3 bg-white/10 rounded-xl">
+          <div className="flex items-center space-x-2">
+            <User className="w-4 h-4 text-green-200" />
+            <span className="text-sm text-green-200">{adminUser.name}</span>
+          </div>
+          <div className="text-xs text-green-300 mt-1">{adminUser.email}</div>
+        </div>
+        
+        <button 
+          onClick={handleLogout}
+          className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-red-200 hover:text-red-100 hover:bg-red-900/20 transition-all"
+        >
           <LogOut className="w-5 h-5" />
           <span className="font-semibold">Sign Out</span>
         </button>
@@ -1071,23 +1181,25 @@ const FadedSkiesTrackingAdmin = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
           <h3 className="text-lg font-bold text-blue-800 mb-2">Total Orders</h3>
-          <p className="text-3xl font-black text-blue-600">{orders.length}</p>
-          <p className="text-xs text-blue-600 mt-1">+12% from last week</p>
+          <p className="text-3xl font-black text-blue-600">{loading ? '...' : liveOrders.length}</p>
+          <p className="text-xs text-blue-600 mt-1">Live from Supabase</p>
         </div>
         <div className="bg-green-50 border border-green-200 rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-green-800 mb-2">Active Drivers</h3>
-          <p className="text-3xl font-black text-green-600">{drivers.filter(d => d.online).length}</p>
-          <p className="text-xs text-green-600 mt-1">All systems operational</p>
+          <h3 className="text-lg font-bold text-green-800 mb-2">Products</h3>
+          <p className="text-3xl font-black text-green-600">{loading ? '...' : liveProducts.length}</p>
+          <p className="text-xs text-green-600 mt-1">Available products</p>
         </div>
         <div className="bg-purple-50 border border-purple-200 rounded-2xl p-6">
           <h3 className="text-lg font-bold text-purple-800 mb-2">Revenue</h3>
-          <p className="text-3xl font-black text-purple-600">$2,847</p>
-          <p className="text-xs text-purple-600 mt-1">Today's earnings</p>
+          <p className="text-3xl font-black text-purple-600">
+            ${loading ? '...' : liveOrders.reduce((sum, order) => sum + (order.total || 0), 0).toFixed(2)}
+          </p>
+          <p className="text-xs text-purple-600 mt-1">Total from orders</p>
         </div>
         <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6">
           <h3 className="text-lg font-bold text-orange-800 mb-2">Customers</h3>
-          <p className="text-3xl font-black text-orange-600">{customers.length}</p>
-          <p className="text-xs text-orange-600 mt-1">Verified users</p>
+          <p className="text-3xl font-black text-orange-600">{loading ? '...' : liveCustomers.length}</p>
+          <p className="text-xs text-orange-600 mt-1">Registered users</p>
         </div>
       </div>
 
@@ -1096,22 +1208,28 @@ const FadedSkiesTrackingAdmin = () => {
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
           <h3 className="text-xl font-bold text-gray-900 mb-4">Recent Orders</h3>
           <div className="space-y-4">
-            {orders.slice(0, 3).map(order => (
-              <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                <div>
-                  <h4 className="font-semibold text-gray-900">{order.orderId}</h4>
-                  <p className="text-sm text-gray-600">{order.customerName}</p>
+            {loading ? (
+              <div className="text-center py-4 text-gray-500">Loading orders...</div>
+            ) : liveOrders.length === 0 ? (
+              <div className="text-center py-4 text-gray-500">No orders yet</div>
+            ) : (
+              liveOrders.slice(0, 3).map(order => (
+                <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                  <div>
+                    <h4 className="font-semibold text-gray-900">{order.order_id}</h4>
+                    <p className="text-sm text-gray-600">{order.customer_name}</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-gray-900">${order.total}</div>
+                    <span className={`text-xs px-2 py-1 rounded-full ${
+                      order.status === 'delivered' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {order.status}
+                    </span>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <div className="font-bold text-gray-900">${order.total}</div>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    order.status === 'delivered' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                  }`}>
-                    {order.status}
-                  </span>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -2191,6 +2309,105 @@ const FadedSkiesTrackingAdmin = () => {
         return <DashboardView />;
     }
   };
+
+  // Show authentication screen if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-blue-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
+          {/* Logo and Title */}
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-gradient-to-r from-emerald-500 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <Shield className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900">Faded Skies Admin</h1>
+            <p className="text-gray-500">Cannabis Delivery Management</p>
+          </div>
+
+          {/* Auth Form */}
+          <form onSubmit={(e) => { e.preventDefault(); handleAuthSubmit(); }} className="space-y-6">
+            {authMode === 'signup' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                <input
+                  type="text"
+                  value={authForm.name}
+                  onChange={(e) => setAuthForm(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="Admin Name"
+                  required
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+              <input
+                type="email"
+                value={authForm.email}
+                onChange={(e) => setAuthForm(prev => ({ ...prev, email: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="admin@fadedskies.com"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={authForm.password}
+                  onChange={(e) => setAuthForm(prev => ({ ...prev, password: e.target.value }))}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 pr-12"
+                  placeholder="••••••••"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <Eye className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {authMode === 'signup' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
+                <input
+                  type="password"
+                  value={authForm.confirmPassword}
+                  onChange={(e) => setAuthForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="w-full bg-gradient-to-r from-emerald-500 to-blue-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-emerald-600 hover:to-blue-700 transition-all duration-200"
+            >
+              {authMode === 'login' ? 'Sign In' : 'Create Admin Account'}
+            </button>
+          </form>
+
+          {/* Toggle Auth Mode */}
+          <div className="mt-6 text-center">
+            <button
+              onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')}
+              className="text-emerald-600 hover:text-emerald-700 font-medium"
+            >
+              {authMode === 'login' ? 'Need an admin account?' : 'Already have an account?'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50">

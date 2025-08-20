@@ -1,4 +1,3 @@
-import { io, Socket } from 'socket.io-client';
 import { supabase } from '../lib/supabase';
 
 export interface Order {
@@ -29,92 +28,58 @@ export interface Product {
 }
 
 class RealTimeService {
-  private socket: Socket | null = null;
   private isConnected = false;
-  private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-  private reconnectDelay = 1000;
+  private subscriptions: any[] = [];
 
   // Event callbacks
   private orderUpdateCallbacks: ((order: Order) => void)[] = [];
-  private orderAssignedCallbacks: ((order: Order) => void)[] = [];
-  private orderDeliveredCallbacks: ((order: Order) => void)[] = [];
+  // private orderAssignedCallbacks: ((order: Order) => void)[] = [];
+  // private orderDeliveredCallbacks: ((order: Order) => void)[] = [];
   private connectionCallbacks: ((connected: boolean) => void)[] = [];
 
   constructor() {
-    this.initializeSocket();
+    this.initializeSupabaseRealtime();
   }
 
-  private initializeSocket() {
+  private initializeSupabaseRealtime() {
     try {
-      this.socket = io('http://192.168.1.151:3006', {
-        transports: ['websocket', 'polling'],
-        timeout: 20000,
-        reconnection: true,
-        reconnectionAttempts: this.maxReconnectAttempts,
-        reconnectionDelay: this.reconnectDelay
-      });
+      // Subscribe to orders table changes
+      const ordersSubscription = supabase
+        .channel('orders')
+        .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'orders' },
+          (payload) => {
+            console.log('📦 Order change:', payload);
+            const order = payload.new as Order;
+            
+            if (payload.eventType === 'UPDATE') {
+              this.notifyOrderUpdateCallbacks(order);
+            } else if (payload.eventType === 'INSERT') {
+              // New order created
+              console.log('🆕 New order created:', order);
+            }
+          }
+        )
+        .subscribe((status) => {
+          console.log('🔗 Supabase real-time status:', status);
+          this.isConnected = status === 'SUBSCRIBED';
+          this.notifyConnectionCallbacks(this.isConnected);
+        });
 
-      this.setupSocketListeners();
+      // Subscribe to products table changes
+      const productsSubscription = supabase
+        .channel('products')
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'products' },
+          (payload) => {
+            console.log('📦 Product change:', payload);
+          }
+        )
+        .subscribe();
+
+      this.subscriptions.push(ordersSubscription, productsSubscription);
     } catch (error) {
-      console.error('Failed to initialize socket:', error);
-    }
-  }
-
-  private setupSocketListeners() {
-    if (!this.socket) return;
-
-    this.socket.on('connect', () => {
-      console.log('🔗 User connected to real-time server');
-      this.isConnected = true;
-      this.reconnectAttempts = 0;
-      this.notifyConnectionCallbacks(true);
-    });
-
-    this.socket.on('disconnect', () => {
-      console.log('🔌 User disconnected from real-time server');
-      this.isConnected = false;
-      this.notifyConnectionCallbacks(false);
-    });
-
-    this.socket.on('connect_error', (error) => {
-      console.error('Connection error:', error);
-      this.reconnectAttempts++;
-      if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-        console.error('Max reconnection attempts reached');
-      }
-    });
-
-    // Order events
-    this.socket.on('order_updated', (order: Order) => {
-      console.log('📦 Order updated:', order);
-      this.notifyOrderUpdateCallbacks(order);
-    });
-
-    this.socket.on('order_assigned', (order: Order) => {
-      console.log('🚗 Order assigned to driver:', order);
-      this.notifyOrderAssignedCallbacks(order);
-    });
-
-    this.socket.on('order_delivered', (order: Order) => {
-      console.log('✅ Order delivered:', order);
-      this.notifyOrderDeliveredCallbacks(order);
-    });
-  }
-
-  // Connection management
-  connect(userId: string) {
-    if (this.socket && this.isConnected) {
-      this.socket.emit('user:connect', { user_id: userId });
-      console.log(`👤 User ${userId} connected to real-time system`);
-    }
-  }
-
-  disconnect() {
-    if (this.socket) {
-      this.socket.disconnect();
-      this.socket = null;
-      this.isConnected = false;
+      console.error('Failed to initialize Supabase real-time:', error);
     }
   }
 
@@ -122,18 +87,32 @@ class RealTimeService {
     return this.isConnected;
   }
 
+  async connect(userId: string) {
+    // Supabase connection is handled automatically
+    console.log('🔗 User connected:', userId);
+  }
+
+  async disconnect() {
+    // Unsubscribe from all channels
+    this.subscriptions.forEach(subscription => {
+      subscription.unsubscribe();
+    });
+    this.subscriptions = [];
+    console.log('🔌 User disconnected');
+  }
+
   // Event listeners
   onOrderUpdate(callback: (order: Order) => void) {
     this.orderUpdateCallbacks.push(callback);
   }
 
-  onOrderAssigned(callback: (order: Order) => void) {
-    this.orderAssignedCallbacks.push(callback);
-  }
+  // onOrderAssigned(callback: (order: Order) => void) {
+  //   this.orderAssignedCallbacks.push(callback);
+  // }
 
-  onOrderDelivered(callback: (order: Order) => void) {
-    this.orderDeliveredCallbacks.push(callback);
-  }
+  // onOrderDelivered(callback: (order: Order) => void) {
+  //   this.orderDeliveredCallbacks.push(callback);
+  // }
 
   onConnectionChange(callback: (connected: boolean) => void) {
     this.connectionCallbacks.push(callback);
@@ -144,13 +123,13 @@ class RealTimeService {
     this.orderUpdateCallbacks.forEach(callback => callback(order));
   }
 
-  private notifyOrderAssignedCallbacks(order: Order) {
-    this.orderAssignedCallbacks.forEach(callback => callback(order));
-  }
+  // private notifyOrderAssignedCallbacks(order: Order) {
+  //   this.orderAssignedCallbacks.forEach(callback => callback(order));
+  // }
 
-  private notifyOrderDeliveredCallbacks(order: Order) {
-    this.orderDeliveredCallbacks.forEach(callback => callback(order));
-  }
+  // private notifyOrderDeliveredCallbacks(order: Order) {
+  //   this.orderDeliveredCallbacks.forEach(callback => callback(order));
+  // }
 
   private notifyConnectionCallbacks(connected: boolean) {
     this.connectionCallbacks.forEach(callback => callback(connected));
@@ -159,14 +138,23 @@ class RealTimeService {
   // API methods
   async getProducts(): Promise<Product[]> {
     try {
-      const response = await fetch('http://192.168.1.151:3006/api/products');
-      const result = await response.json();
-      
-      if (result.success) {
-        return result.data;
-      } else {
-        throw new Error(result.error);
+      console.log('🔍 Fetching products from Supabase...');
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('name');
+
+      if (error) {
+        console.error('Supabase products query error:', error);
+        throw error;
       }
+      
+      console.log('📦 Products fetched from Supabase:', data?.length || 0, 'products');
+      if (data && data.length > 0) {
+        console.log('Sample product:', data[0]);
+      }
+      
+      return data || [];
     } catch (error) {
       console.error('Failed to fetch products:', error);
       throw error;
@@ -182,22 +170,23 @@ class RealTimeService {
     total: number;
   }): Promise<Order> {
     try {
-      const response = await fetch('http://192.168.1.151:3006/api/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(orderData),
-      });
+      const { data, error } = await supabase
+        .from('orders')
+        .insert([{
+          user_id: orderData.user_id,
+          customer_name: orderData.customer_name,
+          customer_phone: orderData.customer_phone,
+          address: orderData.address,
+          items: orderData.items,
+          total: orderData.total,
+          status: 'pending'
+        }])
+        .select()
+        .single();
 
-      const result = await response.json();
-      
-      if (result.success) {
-        console.log('📦 Order created successfully:', result.data);
-        return result.data;
-      } else {
-        throw new Error(result.error);
-      }
+      if (error) throw error;
+      console.log('📦 Order created successfully:', data);
+      return data;
     } catch (error) {
       console.error('Failed to create order:', error);
       throw error;
@@ -239,8 +228,8 @@ class RealTimeService {
   // Cleanup
   removeAllListeners() {
     this.orderUpdateCallbacks = [];
-    this.orderAssignedCallbacks = [];
-    this.orderDeliveredCallbacks = [];
+    // this.orderAssignedCallbacks = [];
+    // this.orderDeliveredCallbacks = [];
     this.connectionCallbacks = [];
   }
 }
