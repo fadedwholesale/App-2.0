@@ -37,7 +37,8 @@ import {
 } from 'lucide-react';
 
 // Import Supabase for authentication and real-time data
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseService } from '../lib/supabase';
+import AdminMapComponent from './AdminMapComponent';
 
 const FadedSkiesTrackingAdmin = () => {
   // Authentication state
@@ -51,6 +52,7 @@ const FadedSkiesTrackingAdmin = () => {
   });
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [adminUser, setAdminUser] = useState({
+    id: '',
     email: '',
     name: 'Admin',
     role: 'admin'
@@ -60,6 +62,7 @@ const FadedSkiesTrackingAdmin = () => {
   const [liveProducts, setLiveProducts] = useState<any[]>([]);
   const [liveOrders, setLiveOrders] = useState<any[]>([]);
   const [liveCustomers, setLiveCustomers] = useState<any[]>([]);
+  const [liveDrivers, setLiveDrivers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   const [currentView, setCurrentView] = useState('dashboard');
@@ -71,6 +74,8 @@ const FadedSkiesTrackingAdmin = () => {
     editProduct: false,
     orderDetails: false,
     customerDetails: false,
+    driverDetails: false,
+    editDriver: false,
     userManagement: false,
     confirmDelete: false
   });
@@ -79,6 +84,7 @@ const FadedSkiesTrackingAdmin = () => {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [selectedDriver, setSelectedDriver] = useState<any>(null);
 
   const [deleteTarget, setDeleteTarget] = useState({ type: '', id: null, name: '' });
 
@@ -96,7 +102,10 @@ const FadedSkiesTrackingAdmin = () => {
         case 'customerDetails':
           setSelectedCustomer(item);
           break;
-
+        case 'driverDetails':
+        case 'editDriver':
+          setSelectedDriver(item);
+          break;
         case 'confirmDelete':
           setDeleteTarget(item);
           break;
@@ -110,6 +119,7 @@ const FadedSkiesTrackingAdmin = () => {
     if (modalName === 'editProduct' || modalName === 'addProduct') setSelectedProduct(null);
     if (modalName === 'orderDetails') setSelectedOrder(null);
     if (modalName === 'customerDetails') setSelectedCustomer(null);
+    if (modalName === 'driverDetails' || modalName === 'editDriver') setSelectedDriver(null);
 
     if (modalName === 'confirmDelete') setDeleteTarget({ type: '', id: null, name: '' });
   };
@@ -200,6 +210,7 @@ const FadedSkiesTrackingAdmin = () => {
           console.log('✅ Admin login successful:', data);
           setIsAuthenticated(true);
           setAdminUser({
+            id: data.user?.id || '',
             email: authForm.email,
             name: data.user?.user_metadata?.name || 'Admin',
             role: 'admin'
@@ -254,7 +265,7 @@ const FadedSkiesTrackingAdmin = () => {
 
   const handleLogout = useCallback(() => {
     setIsAuthenticated(false);
-    setAdminUser({ email: '', name: 'Admin', role: 'admin' });
+    setAdminUser({ id: '', email: '', name: 'Admin', role: 'admin' });
     setCurrentView('dashboard');
     setAuthForm({ email: '', password: '', name: '', confirmPassword: '' });
   }, []);
@@ -280,30 +291,59 @@ const FadedSkiesTrackingAdmin = () => {
         setLiveProducts(productsData || []);
       }
 
-      // Fetch orders
+      // Fetch orders with detailed logging
+      console.log('🔍 Fetching orders from Supabase...');
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false });
       
       if (ordersError) {
-        console.error('Failed to fetch orders:', ordersError);
+        console.error('❌ Failed to fetch orders:', ordersError);
+        console.error('Error details:', ordersError);
       } else {
         console.log('📋 Orders loaded:', ordersData?.length || 0);
+        console.log('📋 Orders data:', ordersData);
+        if (ordersData && ordersData.length > 0) {
+          console.log('📋 Sample order data:', ordersData[0]);
+          console.log('📋 Order ID field:', ordersData[0].order_id || ordersData[0].id);
+          console.log('📋 Order status:', ordersData[0].status);
+        } else {
+          console.log('⚠️ No orders found in database');
+        }
         setLiveOrders(ordersData || []);
       }
 
-      // Fetch customers (users)
-      const { data: customersData, error: customersError } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Fetch customers (users) from auth.users
+      const { data: customersData, error: customersError } = await supabaseService.auth.admin.listUsers();
       
       if (customersError) {
         console.error('Failed to fetch customers:', customersError);
       } else {
-        console.log('👥 Customers loaded:', customersData?.length || 0);
-        setLiveCustomers(customersData || []);
+        console.log('👥 Customers loaded:', customersData?.users?.length || 0);
+        setLiveCustomers(customersData?.users || []);
+      }
+
+      // Fetch drivers with detailed logging
+      console.log('🔍 Fetching drivers from Supabase...');
+      const { data: driversData, error: driversError } = await supabase
+        .from('drivers')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (driversError) {
+        console.error('❌ Failed to fetch drivers:', driversError);
+        console.error('Error details:', driversError);
+      } else {
+        console.log('🚚 Drivers loaded:', driversData?.length || 0);
+        if (driversData && driversData.length > 0) {
+          console.log('🚚 Sample driver data:', driversData[0]);
+          console.log('🚚 Online drivers:', driversData.filter(d => d.is_online).length);
+          console.log('🚚 Available drivers:', driversData.filter(d => d.is_available).length);
+        } else {
+          console.log('⚠️ No drivers found in database');
+        }
+        setLiveDrivers(driversData || []);
       }
 
     } catch (error) {
@@ -320,18 +360,189 @@ const FadedSkiesTrackingAdmin = () => {
     }
   }, [isAuthenticated, fetchLiveData]);
 
+  // Set up real-time subscriptions
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    console.log('🔌 Setting up real-time subscriptions...');
+
+    // Enhanced real-time subscriptions for instant updates
+    const channel = supabase
+      .channel('admin-realtime')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'products' },
+        (payload) => {
+          console.log('📦 Products change detected:', payload);
+          // Immediate update for products
+          if (payload.eventType === 'UPDATE' && payload.new) {
+            setLiveProducts(prev => 
+              prev.map(product => 
+                product.id === payload.new.id ? payload.new : product
+              )
+            );
+          } else if (payload.eventType === 'INSERT' && payload.new) {
+            setLiveProducts(prev => [payload.new, ...prev]);
+          } else if (payload.eventType === 'DELETE') {
+            setLiveProducts(prev => prev.filter(product => product.id !== payload.old.id));
+          }
+        }
+      )
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'orders' },
+        (payload) => {
+          console.log('📋 Orders change detected:', payload);
+          console.log('📋 Current liveOrders before update:', liveOrders.length);
+          
+          // Immediate update for orders
+          if (payload.eventType === 'UPDATE' && payload.new) {
+            console.log('📋 Updating order:', payload.new.id, 'with status:', payload.new.status);
+            setLiveOrders(prev => {
+              const updated = prev.map(order => 
+                order.id === payload.new.id ? payload.new : order
+              );
+              console.log('📋 Updated liveOrders:', updated.length);
+              return updated;
+            });
+            
+            // Update selected order if it's the one being modified
+            if (selectedOrder && selectedOrder.id === payload.new.id) {
+              console.log('📋 Updating selected order:', payload.new);
+              setSelectedOrder(payload.new);
+            }
+          } else if (payload.eventType === 'INSERT' && payload.new) {
+            console.log('📋 Adding new order:', payload.new);
+            setLiveOrders(prev => [payload.new, ...prev]);
+          } else if (payload.eventType === 'DELETE') {
+            console.log('📋 Removing order:', payload.old.id);
+            setLiveOrders(prev => prev.filter(order => order.id !== payload.old.id));
+          }
+        }
+      )
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'drivers' },
+        (payload) => {
+          console.log('🚚 Drivers change detected:', payload);
+          console.log('🚚 Current liveDrivers before update:', liveDrivers.length);
+          
+          // Immediate update for drivers
+          if (payload.eventType === 'UPDATE' && payload.new) {
+            console.log('🚚 Updating driver:', payload.new.id, 'online:', payload.new.is_online, 'available:', payload.new.is_available);
+            setLiveDrivers(prev => {
+              const updated = prev.map(driver => 
+                driver.id === payload.new.id ? payload.new : driver
+              );
+              console.log('🚚 Updated liveDrivers:', updated.length);
+              console.log('🚚 Online drivers after update:', updated.filter(d => d.is_online).length);
+              return updated;
+            });
+          } else if (payload.eventType === 'INSERT' && payload.new) {
+            console.log('🚚 Adding new driver:', payload.new);
+            setLiveDrivers(prev => [payload.new, ...prev]);
+          } else if (payload.eventType === 'DELETE') {
+            console.log('🚚 Removing driver:', payload.old.id);
+            setLiveDrivers(prev => prev.filter(driver => driver.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('🔌 Enhanced real-time subscription status:', status);
+      });
+
+    // Cleanup subscription on unmount
+    return () => {
+      console.log('🔌 Cleaning up real-time subscription...');
+      supabase.removeChannel(channel);
+    };
+  }, [isAuthenticated, selectedOrder, liveOrders]);
+
+  // Driver approval functions
+  const approveDriver = useCallback(async (driverId: string) => {
+    try {
+      const { error } = await supabase
+        .from('drivers')
+        .update({ 
+          is_approved: true, 
+          approved_at: new Date().toISOString(),
+          approved_by: adminUser.id || null
+        })
+        .eq('id', driverId);
+
+      if (error) {
+        console.error('Failed to approve driver:', error);
+        return;
+      }
+
+      console.log('Driver approved successfully');
+      await fetchLiveData(); // Refresh data
+    } catch (error) {
+      console.error('Error approving driver:', error);
+    }
+  }, [adminUser.id, fetchLiveData]);
+
+  const rejectDriver = useCallback(async (driverId: string) => {
+    try {
+      const { error } = await supabase
+        .from('drivers')
+        .update({ 
+          is_approved: false, 
+          approved_at: null,
+          approved_by: null
+        })
+        .eq('id', driverId);
+
+      if (error) {
+        console.error('Failed to reject driver:', error);
+        return;
+      }
+
+      console.log('Driver rejected successfully');
+      await fetchLiveData(); // Refresh data
+    } catch (error) {
+      console.error('Error rejecting driver:', error);
+    }
+  }, [fetchLiveData]);
+
+  // Dedicated function to refresh driver data
+  const refreshDriverData = useCallback(async () => {
+    try {
+      console.log('🔄 Manually refreshing driver data...');
+      setLoading(true);
+      
+      const { data: driversData, error: driversError } = await supabase
+        .from('drivers')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (driversError) {
+        console.error('❌ Failed to refresh drivers:', driversError);
+      } else {
+        console.log('🚚 Drivers refreshed:', driversData?.length || 0);
+        console.log('🚚 Online drivers:', driversData?.filter(d => d.is_online).length || 0);
+        console.log('🚚 Available drivers:', driversData?.filter(d => d.is_available).length || 0);
+        setLiveDrivers(driversData || []);
+      }
+    } catch (error) {
+      console.error('Error refreshing driver data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const closeAllModals = () => {
     setModals({
       addProduct: false,
       editProduct: false,
       orderDetails: false,
       customerDetails: false,
+      driverDetails: false,
+      editDriver: false,
       userManagement: false,
       confirmDelete: false
     });
     setSelectedProduct(null);
     setSelectedOrder(null);
     setSelectedCustomer(null);
+    setSelectedDriver(null);
     
     setDeleteTarget({ type: '', id: null, name: '' });
   };
@@ -351,130 +562,7 @@ const FadedSkiesTrackingAdmin = () => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [modals]);
 
-  // Sample data
-  const [products] = useState([
-    {
-      id: 1,
-      name: 'Premium Cannabis Flower - Blue Dream',
-      category: 'Flower',
-      price: 45.00,
-      stock: 150,
-      thc: '18%',
-      cbd: '2%',
-      status: 'active',
-      supplier: 'Green Valley Farms'
-    },
-    {
-      id: 2,
-      name: 'Artisan Edibles - Gummy Bears 10mg',
-      category: 'Edibles',
-      price: 25.00,
-      stock: 85,
-      thc: '10mg per piece',
-      cbd: '0mg',
-      status: 'active',
-      supplier: 'Sweet Relief Co.'
-    }
-  ]);
-
-  const [customers] = useState([
-    {
-      id: 1,
-      name: 'Sarah Johnson',
-      email: 'sarah.johnson@email.com',
-      phone: '+1 (555) 234-5678',
-      address: '456 Oak Ave, Austin, TX 78701',
-      totalOrders: 12,
-      totalSpent: 540.00,
-      status: 'verified'
-    },
-    {
-      id: 2,
-      name: 'Mike Rodriguez',
-      email: 'mike.r@email.com',
-      phone: '+1 (555) 345-6789',
-      address: '789 Pine St, Austin, TX 78702',
-      totalOrders: 8,
-      totalSpent: 320.00,
-      status: 'verified'
-    }
-  ]);
-
-  const [orders] = useState([
-    {
-      id: 1,
-      orderId: '#FS2025001',
-      customerName: 'Sarah Johnson',
-      items: [
-        { name: 'Premium Cannabis Flower - Blue Dream', quantity: 2, price: 45.00 },
-        { name: 'Artisan Edibles - Gummy Bears 10mg', quantity: 1, price: 25.00 }
-      ],
-      total: 115.00,
-      status: 'delivered',
-      orderDate: '2025-01-10',
-      address: '456 Oak Ave, Austin, TX 78701'
-    },
-    {
-      id: 2,
-      orderId: '#FS2025002',
-      customerName: 'Mike Rodriguez',
-      items: [
-        { name: 'Concentrate - Live Resin Cart', quantity: 1, price: 65.00 }
-      ],
-      total: 65.00,
-      status: 'en-route',
-      orderDate: '2025-01-11',
-      address: '789 Pine St, Austin, TX 78702'
-    }
-  ]);
-
-  const [drivers] = useState([
-    {
-      id: 1,
-      name: 'Marcus Johnson',
-      phone: '+1 (555) 234-5678',
-      vehicle: 'Honda Civic - ABC123',
-      status: 'delivering',
-      ordersToday: 8,
-      rating: 4.9,
-      online: true,
-      currentLocation: 'Downtown Austin'
-    },
-    {
-      id: 2,
-      name: 'Sarah Williams',
-      phone: '+1 (555) 345-6789',
-      vehicle: 'Toyota Prius - XYZ789',
-      status: 'available',
-      ordersToday: 12,
-      rating: 4.8,
-      online: true,
-      currentLocation: 'East Austin'
-    }
-  ]);
-
-  const [activeDeliveries] = useState([
-    {
-      orderId: '#FS2025002',
-      customer: 'Sarah Johnson',
-      address: '456 Oak Ave, Austin, TX',
-      estimatedTime: '12 minutes',
-      progress: 65,
-      status: 'en-route',
-      priority: 'normal',
-      driverId: 1
-    },
-    {
-      orderId: '#FS2025004',
-      customer: 'Emma Davis',
-      address: '321 Elm St, Austin, TX',
-      estimatedTime: '18 minutes',
-      progress: 40,
-      status: 'en-route',
-      priority: 'high',
-      driverId: 1
-    }
-  ]);
+  // Live data state - no more mock data
 
   // Base Modal Component
   const Modal = ({ isOpen, onClose, title, children, size = 'md' }: any) => {
@@ -512,23 +600,190 @@ const FadedSkiesTrackingAdmin = () => {
   const ProductModal = () => {
     const isEdit = modals.editProduct;
     const [formData, setFormData] = useState({
-      name: selectedProduct?.name || '',
-      category: selectedProduct?.category || 'Flower',
-      price: selectedProduct?.price || '',
-      stock: selectedProduct?.stock || '',
-      thc: selectedProduct?.thc || '',
-      cbd: selectedProduct?.cbd || '',
-      supplier: selectedProduct?.supplier || '',
+      name: '',
+      category: 'Flower',
+      price: '',
+      stock: '',
+      thc: '',
+      cbd: '',
+      supplier: '',
       description: '',
+      image: null as File | null,
       featured: false,
       status: 'active'
     });
 
-    const handleSubmit = (e: any) => {
+    // Update form data when selectedProduct changes
+    useEffect(() => {
+      if (selectedProduct && isEdit) {
+        console.log('🔄 Updating form data for edit:', selectedProduct);
+        setFormData({
+          name: selectedProduct.name || '',
+          category: selectedProduct.category || 'Flower',
+          price: selectedProduct.price?.toString() || '',
+          stock: selectedProduct.stock?.toString() || '',
+          thc: selectedProduct.thc || '',
+          cbd: selectedProduct.cbd || '',
+          supplier: selectedProduct.supplier || '',
+          description: selectedProduct.description || '',
+          image: null,
+          featured: selectedProduct.featured || false,
+          status: selectedProduct.status || 'active'
+        });
+      } else if (!isEdit) {
+        // Reset form for new product
+        console.log('🔄 Resetting form data for new product');
+        setFormData({
+          name: '',
+          category: 'Flower',
+          price: '',
+          stock: '',
+          thc: '',
+          cbd: '',
+          supplier: '',
+          description: '',
+          image: null,
+          featured: false,
+          status: 'active'
+        });
+      }
+    }, [selectedProduct, isEdit]);
+
+    const handleSubmit = async (e: any) => {
       e.preventDefault();
-      // Handle form submission
-      console.log('Product data:', formData);
-      closeModal(isEdit ? 'editProduct' : 'addProduct');
+      
+      try {
+        let imageUrl = selectedProduct?.image_url || null;
+        
+        // Upload image if provided
+        if (formData.image) {
+          console.log('Starting image upload...', formData.image.name);
+          
+          // Delete old image if it exists
+          if (isEdit && selectedProduct?.image_url) {
+            try {
+              console.log('🗑️  Deleting old image:', selectedProduct.image_url);
+              const oldImagePath = selectedProduct.image_url.split('/').pop();
+              if (oldImagePath) {
+                const { error: deleteError } = await supabaseService.storage
+                  .from('product-images')
+                  .remove([oldImagePath]);
+                
+                if (deleteError) {
+                  console.log('⚠️  Could not delete old image:', deleteError.message);
+                } else {
+                  console.log('✅ Old image deleted successfully');
+                }
+              }
+            } catch (error) {
+              console.log('⚠️  Error deleting old image:', error);
+            }
+          }
+          
+          const fileExt = formData.image.name.split('.').pop();
+          const fileName = `${Date.now()}.${fileExt}`;
+          
+          const { error: uploadError } = await supabaseService.storage
+            .from('product-images')
+            .upload(fileName, formData.image);
+          
+          if (uploadError) {
+            console.error('Error uploading image:', uploadError);
+            alert(`Failed to upload image: ${uploadError.message}. Please try again.`);
+            return;
+          }
+          
+          console.log('Image uploaded successfully, getting public URL...');
+          
+          // Get public URL
+          const { data: urlData } = supabaseService.storage
+            .from('product-images')
+            .getPublicUrl(fileName);
+          
+          imageUrl = urlData.publicUrl;
+          console.log('Image URL:', imageUrl);
+        }
+        
+        const productData: any = {
+          name: formData.name,
+          category: formData.category,
+          price: parseFloat(formData.price),
+          stock: parseInt(formData.stock),
+          thc: formData.thc,
+          cbd: formData.cbd,
+          supplier: formData.supplier,
+          description: formData.description,
+          image_url: imageUrl,
+          featured: formData.featured,
+          status: formData.status,
+          updated_at: new Date().toISOString()
+        };
+        
+        // Only add created_at for new products
+        if (!isEdit) {
+          productData.created_at = new Date().toISOString();
+        }
+        
+        if (isEdit && selectedProduct) {
+          // Update existing product
+          console.log('🔄 Updating product with ID:', selectedProduct.id);
+          console.log('📝 Form data being submitted:', formData);
+          console.log('📦 Update data:', productData);
+          
+          const { data, error } = await supabase
+            .from('products')
+            .update(productData)
+            .eq('id', selectedProduct.id)
+            .select();
+          
+          if (error) {
+            console.error('❌ Error updating product:', error);
+            console.error('❌ Error details:', error.message, error.details, error.hint);
+            alert(`Failed to update product: ${error.message}. Please try again.`);
+            return;
+          }
+          
+          console.log('✅ Product updated successfully:', data);
+        } else {
+          // Create new product
+          console.log('Creating new product with data:', productData);
+          
+          const { data, error } = await supabase
+            .from('products')
+            .insert([productData])
+            .select();
+          
+          if (error) {
+            console.error('Error creating product:', error);
+            console.error('Error details:', error.message, error.details, error.hint);
+            alert(`Failed to create product: ${error.message}. Please try again.`);
+            return;
+          }
+          
+          console.log('Product created successfully:', data);
+        }
+        
+        // Close modal and show success message
+        closeModal(isEdit ? 'editProduct' : 'addProduct');
+        alert(isEdit ? 'Product updated successfully!' : 'Product created successfully!');
+        
+        // Force refresh data immediately
+        console.log('🔄 Forcing data refresh after product operation...');
+        
+        // Force immediate refresh
+        await fetchLiveData();
+        
+        // Additional refresh after a short delay to ensure data is loaded
+        setTimeout(() => {
+          console.log('🔄 Additional refresh to ensure data is loaded...');
+          fetchLiveData();
+        }, 1000);
+        
+      } catch (error) {
+        console.error('Error handling product submission:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        alert(`An error occurred: ${errorMessage}. Please try again.`);
+      }
     };
 
     const handleChange = (field: any, value: any) => {
@@ -642,6 +897,88 @@ const FadedSkiesTrackingAdmin = () => {
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Product Image</label>
+            {formData.image ? (
+              <div className="mt-1">
+                <div className="flex items-center space-x-4 p-4 border-2 border-emerald-200 bg-emerald-50 rounded-xl">
+                  <img
+                    src={URL.createObjectURL(formData.image)}
+                    alt="Preview"
+                    className="w-16 h-16 rounded-lg object-cover"
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900">{formData.image.name}</p>
+                    <p className="text-xs text-gray-500">
+                      {(formData.image.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleChange('image', null)}
+                    className="text-red-600 hover:text-red-700 p-1"
+                    title="Remove image"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <p className="mt-2 text-xs text-emerald-600">✅ Image selected and ready to upload</p>
+              </div>
+            ) : (
+              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:border-emerald-400 transition-colors">
+                <div className="space-y-1 text-center">
+                  <svg
+                    className="mx-auto h-12 w-12 text-gray-400"
+                    stroke="currentColor"
+                    fill="none"
+                    viewBox="0 0 48 48"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <div className="flex text-sm text-gray-600">
+                    <label
+                      htmlFor="product-image"
+                      className="relative cursor-pointer bg-white rounded-md font-medium text-emerald-600 hover:text-emerald-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-emerald-500"
+                    >
+                      <span>Upload a file</span>
+                      <input
+                        id="product-image"
+                        name="product-image"
+                        type="file"
+                        className="sr-only"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            console.log('Image selected:', file.name, file.size);
+                            
+                            // Check file size (50MB limit)
+                            const maxSize = 50 * 1024 * 1024; // 50MB in bytes
+                            if (file.size > maxSize) {
+                              alert(`File too large. Maximum size is 50MB. Your file is ${(file.size / 1024 / 1024).toFixed(2)}MB.`);
+                              e.target.value = ''; // Clear the input
+                              return;
+                            }
+                            
+                            handleChange('image', file);
+                          }
+                        }}
+                      />
+                    </label>
+                    <p className="pl-1">or drag and drop</p>
+                  </div>
+                  <p className="text-xs text-gray-500">PNG, JPG, GIF up to 50MB</p>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="flex items-center space-x-6">
             <div className="flex items-center space-x-3">
               <input
@@ -693,39 +1030,113 @@ const FadedSkiesTrackingAdmin = () => {
   // Order Details Modal
   const OrderDetailsModal = () => {
     const [orderStatus, setOrderStatus] = useState(selectedOrder?.status || 'pending');
+    const [isUpdating, setIsUpdating] = useState(false);
 
-    const updateOrderStatus = async (newStatus: any) => {
-      setOrderStatus(newStatus);
-
+    const updateOrderStatus = async (newStatus: string) => {
+      if (!selectedOrder?.id) return;
+      
+      setIsUpdating(true);
       try {
-        // Send real-time order status update
-        // Update order status in Supabase
+        console.log('🔄 Updating order status:', selectedOrder.id, 'to', newStatus);
+        console.log('🔄 Current order data:', selectedOrder);
+        
+        const { data, error } = await supabase
+          .from('orders')
+          .update({ 
+            status: newStatus,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', selectedOrder.id)
+          .select()
+          .single();
 
-        // Update order status in Supabase
-        try {
-          const { error } = await supabase
-            .from('orders')
-            .update({ 
-              status: newStatus,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', selectedOrder?.id);
-
-          if (error) {
-            console.error('Failed to update order status:', error);
-          } else {
-            console.log('✅ Order status updated in Supabase:', newStatus);
-          }
-        } catch (error) {
+        if (error) {
           console.error('Failed to update order status:', error);
+          alert('Failed to update order status. Please try again.');
+        } else {
+          console.log('✅ Order status updated successfully:', data);
+          
+          // Update local state immediately
+          setOrderStatus(newStatus);
+          setSelectedOrder(data);
+          
+          // Update the orders list immediately
+          setLiveOrders(prev => 
+            prev.map(order => 
+              order.id === selectedOrder.id 
+                ? data
+                : order
+            )
+          );
+          
+          // Show success message
+          alert(`Order status updated to: ${newStatus}`);
         }
-
-        console.log('✅ Order status updated and notifications sent:', newStatus);
-
       } catch (error) {
-        console.error('Failed to send status update notifications:', error);
+        console.error('Failed to update order status:', error);
+        alert('Failed to update order status. Please try again.');
+      } finally {
+        setIsUpdating(false);
       }
     };
+
+    const assignDriverToOrder = async (driverId: string) => {
+      if (!selectedOrder?.id) return;
+      
+      setIsUpdating(true);
+      try {
+        console.log('🔄 Assigning driver:', driverId, 'to order:', selectedOrder.id);
+        
+        const { data, error } = await supabase
+          .from('orders')
+          .update({ 
+            driver_id: driverId || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', selectedOrder.id)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Failed to assign driver to order:', error);
+          alert('Failed to assign driver to order. Please try again.');
+        } else {
+          console.log('✅ Driver assigned successfully:', data);
+          
+          // Update local state immediately
+          setSelectedOrder(data);
+          
+          // Update the orders list immediately
+          setLiveOrders(prev => 
+            prev.map(order => 
+              order.id === selectedOrder.id 
+                ? data
+                : order
+            )
+          );
+          
+          // Show success message
+          if (driverId) {
+            const assignedDriver = liveDrivers.find(d => d.id === driverId);
+            alert(`Driver ${assignedDriver?.name || 'Unknown'} assigned to order successfully!`);
+          } else {
+            alert('Driver assignment removed from order.');
+          }
+        }
+      } catch (error) {
+        console.error('Failed to assign driver to order:', error);
+        alert('Failed to assign driver to order. Please try again.');
+      } finally {
+        setIsUpdating(false);
+      }
+    };
+
+    // Find customer details from liveCustomers with better debugging
+    const customerDetails = liveCustomers.find(customer => customer.id === selectedOrder?.user_id);
+    console.log('🔍 Customer lookup for order:', selectedOrder?.user_id);
+    console.log('🔍 Available customers:', liveCustomers.length);
+    console.log('🔍 Found customer:', customerDetails);
+    console.log('🔍 Order user_id:', selectedOrder?.user_id);
 
 
 
@@ -733,31 +1144,69 @@ const FadedSkiesTrackingAdmin = () => {
       <Modal
         isOpen={modals.orderDetails}
         onClose={() => closeModal('orderDetails')}
-        title={`Order Details - ${selectedOrder?.orderId}`}
+        title={`Order Details - ${selectedOrder?.order_id || selectedOrder?.id}`}
         size="lg"
       >
         {selectedOrder && (
           <div className="space-y-6">
             {/* Order Status Update */}
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-              <h4 className="text-lg font-bold text-blue-800 mb-3">Order Status</h4>
-              <div className="flex items-center space-x-3">
-                <select
-                  value={orderStatus}
-                  onChange={(e) => updateOrderStatus(e.target.value)}
-                  className="px-4 py-2 border border-blue-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="pending">Pending</option>
-                  <option value="confirmed">Confirmed</option>
-                  <option value="preparing">Preparing</option>
-                  <option value="ready">Ready for Pickup</option>
-                  <option value="en-route">En Route</option>
-                  <option value="delivered">Delivered</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-                <button className="px-4 py-2 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors">
-                  Update Status
-                </button>
+              <h4 className="text-lg font-bold text-blue-800 mb-3">Order Status Management</h4>
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3">
+                  <label className="text-sm font-semibold text-blue-700">Current Status:</label>
+                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                    selectedOrder?.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                    selectedOrder?.status === 'en-route' ? 'bg-blue-100 text-blue-800' :
+                    selectedOrder?.status === 'ready' ? 'bg-purple-100 text-purple-800' :
+                    selectedOrder?.status === 'preparing' ? 'bg-orange-100 text-orange-800' :
+                    selectedOrder?.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
+                    'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {selectedOrder?.status || 'pending'}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <label className="text-sm font-semibold text-blue-700">Change to:</label>
+                  <select
+                    value={orderStatus}
+                    onChange={(e) => setOrderStatus(e.target.value)}
+                    disabled={isUpdating}
+                    className="px-4 py-2 border border-blue-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="preparing">Preparing</option>
+                    <option value="ready">Ready for Pickup</option>
+                    <option value="en-route">En Route</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+                <div className="flex items-center space-x-3 pt-2">
+                  <button 
+                    onClick={() => updateOrderStatus(orderStatus)}
+                    disabled={isUpdating || orderStatus === selectedOrder?.status}
+                    className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  >
+                    {isUpdating ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Updating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        <span>Save Status Change</span>
+                      </>
+                    )}
+                  </button>
+                  {orderStatus !== selectedOrder?.status && (
+                    <span className="text-sm text-emerald-600 font-semibold">
+                      Status will change from "{selectedOrder?.status}" to "{orderStatus}"
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -769,9 +1218,12 @@ const FadedSkiesTrackingAdmin = () => {
                   <span>Customer Details</span>
                 </h4>
                 <div className="space-y-2">
-                  <p><span className="font-semibold">Name:</span> {selectedOrder?.customerName}</p>
-                  <p><span className="font-semibold">Order Date:</span> {selectedOrder?.orderDate}</p>
-                  <p><span className="font-semibold">Address:</span> {selectedOrder?.address}</p>
+                  <p><span className="font-semibold">Name:</span> {selectedOrder?.customer_name || customerDetails?.user_metadata?.name || customerDetails?.email || 'N/A'}</p>
+                  <p><span className="font-semibold">Email:</span> {customerDetails?.email || selectedOrder?.customer_email || 'N/A'}</p>
+                  <p><span className="font-semibold">Phone:</span> {selectedOrder?.customer_phone || 'N/A'}</p>
+                  <p><span className="font-semibold">Order Date:</span> {new Date(selectedOrder?.created_at).toLocaleString()}</p>
+                  <p><span className="font-semibold">Address:</span> {selectedOrder?.address || 'N/A'}</p>
+                  <p><span className="font-semibold">User ID:</span> {selectedOrder?.user_id || 'N/A'}</p>
                 </div>
               </div>
 
@@ -781,9 +1233,22 @@ const FadedSkiesTrackingAdmin = () => {
                   <span>Order Summary</span>
                 </h4>
                 <div className="space-y-2">
-                  <p><span className="font-semibold">Order ID:</span> {selectedOrder?.orderId}</p>
-                  <p><span className="font-semibold">Total:</span> ${selectedOrder?.total}</p>
+                  <p><span className="font-semibold">Order ID:</span> {selectedOrder?.order_id || selectedOrder?.id}</p>
+                  <p><span className="font-semibold">Status:</span> 
+                    <span className={`ml-2 px-2 py-1 rounded-full text-xs font-semibold ${
+                      selectedOrder?.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                      selectedOrder?.status === 'en-route' ? 'bg-blue-100 text-blue-800' :
+                      selectedOrder?.status === 'ready' ? 'bg-purple-100 text-purple-800' :
+                      selectedOrder?.status === 'preparing' ? 'bg-orange-100 text-orange-800' :
+                      selectedOrder?.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {selectedOrder?.status}
+                    </span>
+                  </p>
+                  <p><span className="font-semibold">Total:</span> ${selectedOrder?.total?.toFixed(2) || '0.00'}</p>
                   <p><span className="font-semibold">Items:</span> {selectedOrder?.items?.length || 0} item(s)</p>
+                  <p><span className="font-semibold">Driver:</span> {selectedOrder?.driver_id ? 'Assigned' : 'Not Assigned'}</p>
                 </div>
               </div>
             </div>
@@ -812,6 +1277,67 @@ const FadedSkiesTrackingAdmin = () => {
                     )) || []}
                   </tbody>
                 </table>
+              </div>
+            </div>
+
+            {/* Driver Assignment */}
+            <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+              <h4 className="text-lg font-bold text-purple-800 mb-3 flex items-center space-x-2">
+                <Truck className="w-5 h-5" />
+                <span>Driver Assignment</span>
+              </h4>
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3">
+                  <label className="text-sm font-semibold text-purple-700">Current Driver:</label>
+                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                    selectedOrder?.driver_id ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {selectedOrder?.driver_id ? 'Assigned' : 'Not Assigned'}
+                  </span>
+                </div>
+                
+                {/* Available Drivers */}
+                <div>
+                  <label className="block text-sm font-semibold text-purple-700 mb-2">Assign to Driver:</label>
+                  <select
+                    value={selectedOrder?.driver_id || ''}
+                    onChange={(e) => assignDriverToOrder(e.target.value)}
+                    disabled={isUpdating}
+                    className="w-full px-4 py-2 border border-purple-300 rounded-xl bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 disabled:opacity-50"
+                  >
+                    <option value="">Select a driver...</option>
+                    {liveDrivers
+                      .filter(driver => driver.is_online && driver.is_available && driver.is_approved)
+                      .map(driver => (
+                        <option key={driver.id} value={driver.id}>
+                          {driver.name} - {driver.vehicle_make} {driver.vehicle_model} (Rating: {driver.rating})
+                        </option>
+                      ))}
+                  </select>
+                  {liveDrivers.filter(d => d.is_online && d.is_available && d.is_approved).length === 0 && (
+                    <p className="text-sm text-red-600 mt-1">No drivers available online</p>
+                  )}
+                </div>
+                
+                {/* Driver Stats */}
+                {selectedOrder?.driver_id && (
+                  <div className="bg-white border border-purple-200 rounded-lg p-3">
+                    <h5 className="font-semibold text-purple-800 mb-2">Assigned Driver Info:</h5>
+                    {(() => {
+                      const assignedDriver = liveDrivers.find(d => d.id === selectedOrder?.driver_id);
+                      return assignedDriver ? (
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <p><span className="font-semibold">Name:</span> {assignedDriver.name}</p>
+                          <p><span className="font-semibold">Vehicle:</span> {assignedDriver.vehicle_make} {assignedDriver.vehicle_model}</p>
+                          <p><span className="font-semibold">Rating:</span> ⭐ {assignedDriver.rating}</p>
+                          <p><span className="font-semibold">Deliveries:</span> {assignedDriver.total_deliveries}</p>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-600">Driver information not available</p>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1069,9 +1595,55 @@ const FadedSkiesTrackingAdmin = () => {
 
   // Confirmation Modal
   const ConfirmationModal = () => {
-    const handleConfirm = () => {
-      console.log(`Deleting ${deleteTarget.type}:`, deleteTarget.id);
-      closeModal('confirmDelete');
+    const handleConfirm = async () => {
+      console.log(`🗑️  Deleting ${deleteTarget.type}:`, deleteTarget.id);
+      
+      try {
+        if (deleteTarget.type === 'product') {
+          // Find the product to get its image URL
+          const product = liveProducts.find(p => p.id === deleteTarget.id);
+          
+          if (product?.image_url) {
+            try {
+              console.log('🗑️  Deleting product image:', product.image_url);
+              const imagePath = product.image_url.split('/').pop();
+              if (imagePath) {
+                const { error: deleteImageError } = await supabaseService.storage
+                  .from('product-images')
+                  .remove([imagePath]);
+                
+                if (deleteImageError) {
+                  console.log('⚠️  Could not delete product image:', deleteImageError.message);
+                } else {
+                  console.log('✅ Product image deleted successfully');
+                }
+              }
+            } catch (error) {
+              console.log('⚠️  Error deleting product image:', error);
+            }
+          }
+          
+          // Delete the product from database
+          const { error: deleteError } = await supabase
+            .from('products')
+            .delete()
+            .eq('id', deleteTarget.id);
+          
+          if (deleteError) {
+            console.error('❌ Error deleting product:', deleteError);
+            alert('Failed to delete product. Please try again.');
+            return;
+          }
+          
+          console.log('✅ Product deleted successfully');
+          fetchLiveData(); // Refresh the data
+        }
+        
+        closeModal('confirmDelete');
+      } catch (error) {
+        console.error('❌ Error in delete operation:', error);
+        alert('An error occurred during deletion. Please try again.');
+      }
     };
 
     return (
@@ -1132,6 +1704,8 @@ const FadedSkiesTrackingAdmin = () => {
           { id: 'dashboard', icon: Home, label: 'Dashboard' },
           { id: 'products', icon: Package, label: 'Products' },
           { id: 'orders', icon: ShoppingCart, label: 'Orders' },
+          { id: 'drivers', icon: Truck, label: 'Drivers' },
+          { id: 'map', icon: MapPin, label: 'Delivery Map' },
           { id: 'tracking', icon: Navigation, label: 'Live Tracking' },
           { id: 'customers', icon: Users, label: 'Customers' },
           { id: 'analytics', icon: BarChart3, label: 'Analytics' },
@@ -1236,24 +1810,9 @@ const FadedSkiesTrackingAdmin = () => {
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
           <h3 className="text-xl font-bold text-gray-900 mb-4">Driver Status</h3>
           <div className="space-y-4">
-            {drivers.map(driver => (
-              <div key={driver.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-3 h-3 rounded-full ${driver.online ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900">{driver.name}</h4>
-                    <p className="text-sm text-gray-600">{driver.currentLocation}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="font-bold text-gray-900">{driver.ordersToday} orders</div>
-                  <div className="flex items-center space-x-1 text-sm">
-                    <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                    <span>{driver.rating}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
+            <div className="text-center py-4 text-gray-500">
+              Driver management coming soon...
+            </div>
           </div>
         </div>
       </div>
@@ -1277,6 +1836,7 @@ const FadedSkiesTrackingAdmin = () => {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Image</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Product</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Category</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Price</th>
@@ -1286,8 +1846,34 @@ const FadedSkiesTrackingAdmin = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {products.map(product => (
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
+                    Loading products...
+                  </td>
+                </tr>
+              ) : liveProducts.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
+                    No products found. Add your first product!
+                  </td>
+                </tr>
+              ) : (
+                liveProducts.map(product => (
                 <tr key={product.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4">
+                    {product.image_url ? (
+                      <img 
+                        src={product.image_url} 
+                        alt={product.name}
+                        className="w-12 h-12 rounded-lg object-cover"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
+                        <span className="text-gray-400 text-xs">No img</span>
+                      </div>
+                    )}
+                  </td>
                   <td className="px-6 py-4">
                     <div>
                       <h4 className="font-semibold text-gray-900">{product.name}</h4>
@@ -1323,7 +1909,8 @@ const FadedSkiesTrackingAdmin = () => {
                     </div>
                   </td>
                 </tr>
-              ))}
+              ))
+            )}
             </tbody>
           </table>
         </div>
@@ -1335,9 +1922,53 @@ const FadedSkiesTrackingAdmin = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Order Management</h1>
-        <button className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-emerald-700 transition-colors">
-          New Order
-        </button>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={fetchLiveData}
+            className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-emerald-700 transition-colors flex items-center space-x-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>Refresh</span>
+          </button>
+          <button 
+            onClick={async () => {
+              try {
+                console.log('🧪 Creating test order...');
+                const { data, error } = await supabase
+                  .from('orders')
+                  .insert([{
+                    user_id: '00000000-0000-0000-0000-000000000000', // Test user ID
+                    order_id: `TEST-${Date.now()}`,
+                    customer_name: 'Test Customer',
+                    customer_phone: '555-1234',
+                    address: '123 Test St, Austin, TX',
+                    items: [
+                      { name: 'Test Product', quantity: 1, price: 25.00 }
+                    ],
+                    total: 25.00,
+                    status: 'pending'
+                  }])
+                  .select()
+                  .single();
+
+                if (error) {
+                  console.error('Failed to create test order:', error);
+                  alert('Failed to create test order: ' + error.message);
+                } else {
+                  console.log('✅ Test order created:', data);
+                  alert('Test order created successfully!');
+                  fetchLiveData(); // Refresh the data
+                }
+              } catch (error) {
+                console.error('Error creating test order:', error);
+                alert('Error creating test order');
+              }
+            }}
+            className="bg-blue-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+          >
+            Create Test Order
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
@@ -1350,24 +1981,41 @@ const FadedSkiesTrackingAdmin = () => {
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Items</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Total</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Status</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Driver</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {orders.map(order => (
-                <tr key={order.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div className="font-semibold text-blue-600">{order.orderId}</div>
-                    <div className="text-sm text-gray-600">{order.orderDate}</div>
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
+                    Loading orders...
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="font-semibold text-gray-900">{order.customerName}</div>
-                    <div className="text-sm text-gray-600">{order.address}</div>
+                </tr>
+              ) : liveOrders.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
+                    No orders found.
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-700">
-                    {order.items.length} item{order.items.length !== 1 ? 's' : ''}
-                  </td>
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-900">${order.total}</td>
+                </tr>
+              ) : (
+                liveOrders.map(order => {
+                  // Find customer details
+                  const customerDetails = liveCustomers.find(customer => customer.id === order.user_id);
+                  return (
+                    <tr key={order.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <div className="font-semibold text-blue-600">{order.order_id || order.id}</div>
+                        <div className="text-sm text-gray-600">{new Date(order.created_at).toLocaleDateString()}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-semibold text-gray-900">{order.customer_name || customerDetails?.user_metadata?.name || 'N/A'}</div>
+                        <div className="text-sm text-gray-600">{order.address || 'N/A'}</div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700">
+                        {order.items?.length || 0} item{(order.items?.length || 0) !== 1 ? 's' : ''}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">${order.total?.toFixed(2) || '0.00'}</td>
                   <td className="px-6 py-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                       order.status === 'delivered' ? 'bg-green-100 text-green-800' :
@@ -1376,6 +2024,74 @@ const FadedSkiesTrackingAdmin = () => {
                     }`}>
                       {order.status}
                     </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center space-x-2">
+                      {order.driver_id ? (
+                        <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">
+                          Assigned
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-semibold">
+                          Unassigned
+                        </span>
+                      )}
+                      <select
+                        value={order.driver_id || ''}
+                        onChange={async (e) => {
+                          const driverId = e.target.value;
+                          console.log('🔄 Quick driver assignment:', order.id, '→', driverId);
+                          
+                          try {
+                            const { data, error } = await supabase
+                              .from('orders')
+                              .update({ 
+                                driver_id: driverId || null,
+                                updated_at: new Date().toISOString()
+                              })
+                              .eq('id', order.id)
+                              .select()
+                              .single();
+
+                            if (error) {
+                              console.error('Failed to assign driver:', error);
+                              alert('Failed to assign driver. Please try again.');
+                            } else {
+                              console.log('✅ Quick driver assignment successful:', data);
+                              // Update local state immediately
+                              setLiveOrders(prev => 
+                                prev.map(o => 
+                                  o.id === order.id 
+                                    ? data
+                                    : o
+                                )
+                              );
+                              
+                              if (driverId) {
+                                const assignedDriver = liveDrivers.find(d => d.id === driverId);
+                                alert(`Driver ${assignedDriver?.name || 'Unknown'} assigned!`);
+                              } else {
+                                alert('Driver assignment removed.');
+                              }
+                            }
+                          } catch (error) {
+                            console.error('Quick driver assignment failed:', error);
+                            alert('Failed to assign driver. Please try again.');
+                          }
+                        }}
+                        className="text-xs border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50"
+                        title="Quick Driver Assignment"
+                      >
+                        <option value="">Select Driver</option>
+                        {liveDrivers
+                          .filter(driver => driver.is_online && driver.is_available && driver.is_approved)
+                          .map(driver => (
+                            <option key={driver.id} value={driver.id}>
+                              {driver.name}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex space-x-2">
@@ -1393,10 +2109,249 @@ const FadedSkiesTrackingAdmin = () => {
                       >
                         <CheckCircle className="w-4 h-4" />
                       </button>
+                      <select
+                        value={order.status}
+                        onChange={async (e) => {
+                          const newStatus = e.target.value;
+                          console.log('🔄 Quick status update:', order.id, '→', newStatus);
+                          
+                          try {
+                            const { data, error } = await supabase
+                              .from('orders')
+                              .update({ 
+                                status: newStatus,
+                                updated_at: new Date().toISOString()
+                              })
+                              .eq('id', order.id)
+                              .select()
+                              .single();
+
+                            if (error) {
+                              console.error('Failed to update order status:', error);
+                              alert('Failed to update order status. Please try again.');
+                            } else {
+                              console.log('✅ Quick status update successful:', data);
+                              // Update local state immediately
+                              setLiveOrders(prev => 
+                                prev.map(o => 
+                                  o.id === order.id 
+                                    ? data
+                                    : o
+                                )
+                              );
+                            }
+                          } catch (error) {
+                            console.error('Quick status update failed:', error);
+                            alert('Failed to update order status. Please try again.');
+                          }
+                        }}
+                        className="text-xs border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50"
+                        title="Quick Status Update"
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="preparing">Preparing</option>
+                        <option value="ready">Ready</option>
+                        <option value="en-route">En Route</option>
+                        <option value="delivered">Delivered</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
                     </div>
                   </td>
                 </tr>
-              ))}
+              )
+            })
+            )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  const DriversView = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold text-gray-900">Driver Management</h1>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={refreshDriverData}
+            className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-emerald-700 transition-colors flex items-center space-x-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>Refresh Drivers</span>
+          </button>
+          <div className="text-sm text-gray-600">
+            Online: {liveDrivers.filter(d => d.is_online).length} | Available: {liveDrivers.filter(d => d.is_available).length}
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
+          <h3 className="text-lg font-bold text-blue-800 mb-2">Total Drivers</h3>
+          <p className="text-3xl font-black text-blue-600">{loading ? '...' : liveDrivers.length}</p>
+          <p className="text-xs text-blue-600 mt-1">Registered drivers</p>
+        </div>
+        <div className="bg-green-50 border border-green-200 rounded-2xl p-6">
+          <h3 className="text-lg font-bold text-green-800 mb-2">Online Drivers</h3>
+          <p className="text-3xl font-black text-green-600">
+            {loading ? '...' : liveDrivers.filter(driver => driver.is_online).length}
+          </p>
+          <p className="text-xs text-green-600 mt-1">Currently active</p>
+        </div>
+        <div className="bg-purple-50 border border-purple-200 rounded-2xl p-6">
+          <h3 className="text-lg font-bold text-purple-800 mb-2">Available Drivers</h3>
+          <p className="text-3xl font-black text-purple-600">
+            {loading ? '...' : liveDrivers.filter(driver => driver.is_available).length}
+          </p>
+          <p className="text-xs text-purple-600 mt-1">Ready for orders</p>
+        </div>
+        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6">
+          <h3 className="text-lg font-bold text-orange-800 mb-2">Avg Rating</h3>
+          <p className="text-3xl font-black text-orange-600">
+            {loading ? '...' : liveDrivers.length > 0 
+              ? (liveDrivers.reduce((sum, driver) => sum + (driver.rating || 5.0), 0) / liveDrivers.length).toFixed(1)
+              : '5.0'
+            }
+          </p>
+          <p className="text-xs text-orange-600 mt-1">Driver satisfaction</p>
+        </div>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-6">
+          <h3 className="text-lg font-bold text-yellow-800 mb-2">Pending Approval</h3>
+          <p className="text-3xl font-black text-yellow-600">
+            {loading ? '...' : liveDrivers.filter(driver => !driver.is_approved).length}
+          </p>
+          <p className="text-xs text-yellow-600 mt-1">Awaiting review</p>
+        </div>
+      </div>
+
+      {/* Drivers Table */}
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
+        <div className="p-6 border-b border-gray-100">
+          <h2 className="text-xl font-bold text-gray-900">All Drivers</h2>
+        </div>
+        
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Driver</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Vehicle</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Approval</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Rating</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Deliveries</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500">Loading drivers...</td>
+                </tr>
+              ) : liveDrivers.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500">No drivers found</td>
+                </tr>
+              ) : (
+                liveDrivers.map((driver) => (
+                  <tr key={driver.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center">
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                          <span className="text-white font-bold text-sm">{driver.name?.charAt(0) || 'D'}</span>
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-semibold text-gray-900">{driver.name}</div>
+                          <div className="text-sm text-gray-500">{driver.email}</div>
+                          <div className="text-xs text-gray-400">{driver.phone}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-900">
+                        {driver.vehicle_make} {driver.vehicle_model} ({driver.vehicle_year})
+                      </div>
+                      <div className="text-sm text-gray-500">{driver.vehicle_color}</div>
+                      <div className="text-xs text-gray-400">{driver.license_plate}</div>
+                    </td>
+                                         <td className="px-6 py-4">
+                       <div className="flex items-center space-x-2">
+                         <div className={`w-2 h-2 rounded-full ${
+                           driver.is_online ? 'bg-green-500' : 'bg-gray-400'
+                         }`}></div>
+                         <span className={`text-sm font-semibold ${
+                           driver.is_online ? 'text-green-600' : 'text-gray-500'
+                         }`}>
+                           {driver.is_online ? 'Online' : 'Offline'}
+                         </span>
+                       </div>
+                       <div className="text-xs text-gray-500 mt-1">
+                         {driver.is_available ? 'Available' : 'Busy'}
+                       </div>
+                     </td>
+                     <td className="px-6 py-4">
+                       <div className="flex items-center space-x-2">
+                         {driver.is_approved ? (
+                           <div className="flex items-center space-x-1">
+                             <CheckCircle className="w-4 h-4 text-green-500" />
+                             <span className="text-sm font-semibold text-green-600">Approved</span>
+                           </div>
+                         ) : (
+                           <div className="flex items-center space-x-1">
+                             <AlertTriangle className="w-4 h-4 text-yellow-500" />
+                             <span className="text-sm font-semibold text-yellow-600">Pending</span>
+                           </div>
+                         )}
+                       </div>
+                     </td>
+                     <td className="px-6 py-4">
+                       <div className="flex items-center space-x-1">
+                         <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                         <span className="text-sm font-semibold text-gray-900">{driver.rating || 5.0}</span>
+                       </div>
+                     </td>
+                     <td className="px-6 py-4">
+                       <div className="text-sm font-semibold text-gray-900">{driver.total_deliveries || 0}</div>
+                       <div className="text-xs text-gray-500">deliveries</div>
+                     </td>
+                     <td className="px-6 py-4">
+                       <div className="flex items-center space-x-2">
+                         <button
+                           onClick={() => openModal('driverDetails', driver)}
+                           className="text-blue-600 hover:text-blue-800 text-sm font-semibold"
+                         >
+                           View Details
+                         </button>
+                         <button
+                           onClick={() => openModal('editDriver', driver)}
+                           className="text-emerald-600 hover:text-emerald-800 text-sm font-semibold"
+                         >
+                           Edit
+                         </button>
+                         {!driver.is_approved && (
+                           <button
+                             onClick={() => approveDriver(driver.id)}
+                             className="text-green-600 hover:text-green-800 text-sm font-semibold"
+                           >
+                             Approve
+                           </button>
+                         )}
+                         {driver.is_approved && (
+                           <button
+                             onClick={() => rejectDriver(driver.id)}
+                             className="text-red-600 hover:text-red-800 text-sm font-semibold"
+                           >
+                             Reject
+                           </button>
+                         )}
+                       </div>
+                     </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -1426,11 +2381,11 @@ const FadedSkiesTrackingAdmin = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
           <h3 className="text-lg font-bold text-blue-800 mb-2">Active Deliveries</h3>
-          <p className="text-3xl font-black text-blue-600">{activeDeliveries.length}</p>
+          <p className="text-3xl font-black text-blue-600">0</p>
         </div>
         <div className="bg-green-50 border border-green-200 rounded-2xl p-6">
           <h3 className="text-lg font-bold text-green-800 mb-2">Drivers Online</h3>
-          <p className="text-3xl font-black text-green-600">{drivers.filter(d => d.online).length}</p>
+          <p className="text-3xl font-black text-green-600">0</p>
         </div>
         <div className="bg-purple-50 border border-purple-200 rounded-2xl p-6">
           <h3 className="text-lg font-bold text-purple-800 mb-2">Avg Delivery Time</h3>
@@ -1455,7 +2410,7 @@ const FadedSkiesTrackingAdmin = () => {
                 <div className="text-center">
                   <MapPin className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
                   <p className="text-lg font-semibold text-gray-700">Live Map Integration</p>
-                  <p className="text-sm text-gray-500">Showing {activeDeliveries.length} active deliveries</p>
+                  <p className="text-sm text-gray-500">Showing 0 active deliveries</p>
                 </div>
               </div>
               
@@ -1473,36 +2428,11 @@ const FadedSkiesTrackingAdmin = () => {
               <h3 className="text-lg font-bold text-gray-900">Active Deliveries</h3>
             </div>
             <div className="p-4 space-y-4 max-h-96 overflow-y-auto">
-              {activeDeliveries.map(delivery => (
-                <div key={delivery.orderId} className={`rounded-xl p-4 border-2 ${
-                  delivery.priority === 'high' ? 'bg-orange-50 border-orange-200' : 'bg-blue-50 border-blue-200'
-                }`}>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="font-bold text-blue-600">{delivery.orderId}</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      delivery.priority === 'high' ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {delivery.priority.toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="font-semibold text-gray-900">{delivery.customer}</p>
-                    <p className="text-sm text-gray-600">{delivery.address}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">ETA: {delivery.estimatedTime}</span>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-16 bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
-                            style={{ width: `${delivery.progress}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-sm font-semibold text-gray-700">{delivery.progress}%</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                            {loading ? (
+                <div className="text-center py-4 text-gray-500">Loading deliveries...</div>
+              ) : (
+                <div className="text-center py-4 text-gray-500">No active deliveries</div>
+              )}
             </div>
           </div>
         </div>
@@ -1685,7 +2615,7 @@ const FadedSkiesTrackingAdmin = () => {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="font-medium text-gray-700">Active Drivers</span>
-              <span className="font-bold text-blue-600">{drivers.filter(d => d.online).length}</span>
+              <span className="font-bold text-blue-600">0</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="font-medium text-gray-700">Average Rating</span>
@@ -2220,85 +3150,578 @@ const FadedSkiesTrackingAdmin = () => {
     </div>
   );
 
-  const CustomersView = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Customer Management</h1>
-        <button
-          onClick={() => openModal('customerDetails')}
-          className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-emerald-700 transition-colors"
-        >
-          Add Customer
-        </button>
-      </div>
+  const CustomersView = () => {
+    // Calculate user statistics
+    const getUserStats = (userId: string) => {
+      const userOrders = liveOrders.filter(order => order.user_id === userId);
+      const totalSpent = userOrders.reduce((sum, order) => sum + (order.total || 0), 0);
+      return {
+        totalOrders: userOrders.length,
+        totalSpent: totalSpent.toFixed(2)
+      };
+    };
 
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Customer</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Contact</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Orders</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Total Spent</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Status</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {customers.map(customer => (
-                <tr key={customer.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div>
-                      <h4 className="font-semibold text-gray-900">{customer.name}</h4>
-                      <p className="text-sm text-gray-600">{customer.address}</p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-700">
-                      <div>{customer.email}</div>
-                      <div>{customer.phone}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-900">{customer.totalOrders}</td>
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-900">${customer.totalSpent}</td>
-                  <td className="px-6 py-4">
-                    <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
-                      {customer.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => openModal('customerDetails', customer)}
-                        className="text-blue-600 hover:text-blue-700 p-1"
-                        title="Edit Customer"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => openModal('customerDetails', customer)}
-                        className="text-green-600 hover:text-green-700 p-1"
-                        title="View Customer Details"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
+          <div className="flex space-x-3">
+            <button
+              onClick={() => fetchLiveData()}
+              className="bg-blue-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-blue-700 transition-colors flex items-center space-x-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Refresh</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">User</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Contact</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Orders</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Total Spent</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Status</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                      Loading users...
+                    </td>
+                  </tr>
+                ) : liveCustomers.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                      No users found.
+                    </td>
+                  </tr>
+                ) : (
+                  liveCustomers.map(user => {
+                    const stats = getUserStats(user.id);
+                    return (
+                      <tr key={user.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4">
+                          <div>
+                            <h4 className="font-semibold text-gray-900">
+                              {user.user_metadata?.name || user.email?.split('@')[0] || 'Unknown'}
+                            </h4>
+                            <p className="text-sm text-gray-600">
+                              {user.user_metadata?.address || 'No address provided'}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-700">
+                            <div>{user.email}</div>
+                            <div>{user.user_metadata?.phone || 'No phone'}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                          {stats.totalOrders}
+                        </td>
+                        <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                          ${stats.totalSpent}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                            user.email_confirmed_at 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {user.email_confirmed_at ? 'Verified' : 'Pending'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => openModal('customerDetails', user)}
+                              className="text-blue-600 hover:text-blue-700 p-1"
+                              title="View User Details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                // Show user's orders
+                                const userOrders = liveOrders.filter(order => order.user_id === user.id);
+                                console.log('User orders:', userOrders);
+                                alert(`User ${user.email} has ${userOrders.length} orders`);
+                              }}
+                              className="text-green-600 hover:text-green-700 p-1"
+                              title="View Orders"
+                            >
+                              <Package className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
+
+  // Driver Details Modal
+  const DriverDetailsModal = () => {
+    if (!selectedDriver) return null;
+
+    return (
+      <Modal
+        isOpen={modals.driverDetails}
+        onClose={() => closeModal('driverDetails')}
+        title="Driver Details"
+        size="lg"
+      >
+        <div className="space-y-6">
+          {/* Driver Info */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h4 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h4>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Full Name</label>
+                  <p className="text-lg font-semibold text-gray-900">{selectedDriver.name}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Email</label>
+                  <p className="text-lg text-gray-900">{selectedDriver.email}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Phone</label>
+                  <p className="text-lg text-gray-900">{selectedDriver.phone || 'Not provided'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Driver's License</label>
+                  <p className="text-lg text-gray-900">{selectedDriver.license_number}</p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-lg font-semibold text-gray-900 mb-4">Vehicle Information</h4>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Vehicle</label>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {selectedDriver.vehicle_make} {selectedDriver.vehicle_model} ({selectedDriver.vehicle_year})
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Color</label>
+                  <p className="text-lg text-gray-900">{selectedDriver.vehicle_color}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-600">License Plate</label>
+                  <p className="text-lg text-gray-900">{selectedDriver.license_plate}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Status & Performance */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-gray-50 rounded-xl p-4">
+              <h5 className="text-sm font-medium text-gray-600 mb-2">Status</h5>
+              <div className="flex items-center space-x-2">
+                <div className={`w-3 h-3 rounded-full ${
+                  selectedDriver.is_online ? 'bg-green-500' : 'bg-gray-400'
+                }`}></div>
+                <span className={`font-semibold ${
+                  selectedDriver.is_online ? 'text-green-600' : 'text-gray-500'
+                }`}>
+                  {selectedDriver.is_online ? 'Online' : 'Offline'}
+                </span>
+              </div>
+              <p className="text-sm text-gray-500 mt-1">
+                {selectedDriver.is_available ? 'Available for orders' : 'Currently busy'}
+              </p>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-4">
+              <h5 className="text-sm font-medium text-gray-600 mb-2">Rating</h5>
+              <div className="flex items-center space-x-1">
+                <Star className="w-5 h-5 text-yellow-400 fill-current" />
+                <span className="text-xl font-bold text-gray-900">{selectedDriver.rating || 5.0}</span>
+              </div>
+              <p className="text-sm text-gray-500 mt-1">Customer satisfaction</p>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-4">
+              <h5 className="text-sm font-medium text-gray-600 mb-2">Deliveries</h5>
+              <p className="text-xl font-bold text-gray-900">{selectedDriver.total_deliveries || 0}</p>
+              <p className="text-sm text-gray-500 mt-1">Total completed</p>
+            </div>
+          </div>
+
+          {/* Approval Status */}
+          <div className="bg-gray-50 rounded-xl p-4">
+            <h5 className="text-sm font-medium text-gray-600 mb-2">Approval Status</h5>
+            <div className="flex items-center space-x-2">
+              {selectedDriver.is_approved ? (
+                <>
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                  <span className="font-semibold text-green-600">Approved</span>
+                  {selectedDriver.approved_at && (
+                    <span className="text-sm text-gray-500">
+                      on {new Date(selectedDriver.approved_at).toLocaleDateString()}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="w-5 h-5 text-yellow-500" />
+                  <span className="font-semibold text-yellow-600">Pending Approval</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200">
+            <button
+              onClick={() => closeModal('driverDetails')}
+              className="px-4 py-2 text-gray-600 hover:text-gray-800 font-semibold"
+            >
+              Close
+            </button>
+            <button
+              onClick={() => {
+                closeModal('driverDetails');
+                openModal('editDriver', selectedDriver);
+              }}
+              className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors"
+            >
+              Edit Driver
+            </button>
+            {!selectedDriver.is_approved && (
+              <button
+                onClick={() => {
+                  approveDriver(selectedDriver.id);
+                  closeModal('driverDetails');
+                }}
+                className="px-4 py-2 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition-colors"
+              >
+                Approve Driver
+              </button>
+            )}
+            {selectedDriver.is_approved && (
+              <button
+                onClick={() => {
+                  rejectDriver(selectedDriver.id);
+                  closeModal('driverDetails');
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition-colors"
+              >
+                Reject Driver
+              </button>
+            )}
+          </div>
+        </div>
+      </Modal>
+    );
+  };
+
+  // Edit Driver Modal
+  const EditDriverModal = () => {
+    if (!selectedDriver) return null;
+
+    const [formData, setFormData] = useState({
+      name: selectedDriver.name || '',
+      phone: selectedDriver.phone || '',
+      license_number: selectedDriver.license_number || '',
+      vehicle_make: selectedDriver.vehicle_make || '',
+      vehicle_model: selectedDriver.vehicle_model || '',
+      vehicle_year: selectedDriver.vehicle_year || '',
+      vehicle_color: selectedDriver.vehicle_color || '',
+      license_plate: selectedDriver.license_plate || '',
+      is_approved: selectedDriver.is_approved || false
+    });
+
+    const handleSubmit = async (e: any) => {
+      e.preventDefault();
+      
+      try {
+        const { error } = await supabase
+          .from('drivers')
+          .update({
+            name: formData.name,
+            phone: formData.phone,
+            license_number: formData.license_number,
+            vehicle_make: formData.vehicle_make,
+            vehicle_model: formData.vehicle_model,
+            vehicle_year: parseInt(formData.vehicle_year.toString()),
+            vehicle_color: formData.vehicle_color,
+            license_plate: formData.license_plate,
+            is_approved: formData.is_approved,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', selectedDriver.id);
+
+        if (error) {
+          console.error('Failed to update driver:', error);
+          return;
+        }
+
+        console.log('Driver updated successfully');
+        await fetchLiveData();
+        closeModal('editDriver');
+      } catch (error) {
+        console.error('Error updating driver:', error);
+      }
+    };
+
+    return (
+      <Modal
+        isOpen={modals.editDriver}
+        onClose={() => closeModal('editDriver')}
+        title="Edit Driver"
+        size="lg"
+      >
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Driver's License</label>
+              <input
+                type="text"
+                value={formData.license_number}
+                onChange={(e) => setFormData(prev => ({ ...prev, license_number: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Vehicle Make</label>
+              <input
+                type="text"
+                value={formData.vehicle_make}
+                onChange={(e) => setFormData(prev => ({ ...prev, vehicle_make: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Vehicle Model</label>
+              <input
+                type="text"
+                value={formData.vehicle_model}
+                onChange={(e) => setFormData(prev => ({ ...prev, vehicle_model: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Vehicle Year</label>
+              <input
+                type="number"
+                value={formData.vehicle_year}
+                onChange={(e) => setFormData(prev => ({ ...prev, vehicle_year: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Vehicle Color</label>
+              <input
+                type="text"
+                value={formData.vehicle_color}
+                onChange={(e) => setFormData(prev => ({ ...prev, vehicle_color: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">License Plate</label>
+              <input
+                type="text"
+                value={formData.license_plate}
+                onChange={(e) => setFormData(prev => ({ ...prev, license_plate: e.target.value }))}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            <input
+              type="checkbox"
+              id="is_approved"
+              checked={formData.is_approved}
+              onChange={(e) => setFormData(prev => ({ ...prev, is_approved: e.target.checked }))}
+              className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+            />
+            <label htmlFor="is_approved" className="text-sm font-medium text-gray-700">
+              Approve this driver
+            </label>
+          </div>
+
+          <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={() => closeModal('editDriver')}
+              className="px-4 py-2 text-gray-600 hover:text-gray-800 font-semibold"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors"
+            >
+              Update Driver
+            </button>
+          </div>
+        </form>
+      </Modal>
+    );
+  };
+
+  const MapView = () => {
+    // Mock data for drivers and deliveries
+    const mockDrivers = [
+      {
+        id: '1',
+        name: 'John Driver',
+        location: [-97.7431, 30.2672] as [number, number],
+        status: 'available' as const,
+        currentOrder: undefined
+      },
+      {
+        id: '2',
+        name: 'Sarah Driver',
+        location: [-97.7435, 30.2675] as [number, number],
+        status: 'busy' as const,
+        currentOrder: 'Order #1234'
+      }
+    ];
+
+    const mockDeliveries = liveOrders.map(order => ({
+      id: order.id,
+      customerName: order.customer_name,
+      address: order.address,
+      status: order.status as 'pending' | 'assigned' | 'in-transit' | 'delivered',
+      driverId: order.driver_id,
+      location: [-97.7431, 30.2672] as [number, number] // Mock location
+    }));
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold text-gray-900">Delivery Map</h1>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              <span className="text-sm text-gray-600">Available Drivers</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+              <span className="text-sm text-gray-600">Pending Deliveries</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <AdminMapComponent
+            drivers={mockDrivers}
+            deliveries={mockDeliveries}
+            onDriverSelect={(driver) => {
+              console.log('Selected driver:', driver);
+              // Handle driver selection
+            }}
+            onDeliverySelect={(delivery) => {
+              console.log('Selected delivery:', delivery);
+              // Handle delivery selection
+            }}
+            className="w-full h-96 rounded-xl"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Active Drivers</h3>
+            <div className="space-y-3">
+              {mockDrivers.map(driver => (
+                <div key={driver.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                  <div>
+                    <h4 className="font-semibold text-gray-900">{driver.name}</h4>
+                    <p className={`text-sm ${
+                      driver.status === 'available' ? 'text-green-600' : 'text-yellow-600'
+                    }`}>
+                      {driver.status === 'available' ? 'Available' : 'Busy'}
+                    </p>
+                  </div>
+                  {driver.currentOrder && (
+                    <span className="text-sm text-blue-600 font-medium">{driver.currentOrder}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Recent Deliveries</h3>
+            <div className="space-y-3">
+              {mockDeliveries.slice(0, 5).map(delivery => (
+                <div key={delivery.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                  <div>
+                    <h4 className="font-semibold text-gray-900">{delivery.customerName}</h4>
+                    <p className="text-sm text-gray-600">{delivery.address}</p>
+                  </div>
+                  <span className={`text-sm px-2 py-1 rounded-full ${
+                    delivery.status === 'pending' ? 'bg-red-100 text-red-600' :
+                    delivery.status === 'assigned' ? 'bg-yellow-100 text-yellow-600' :
+                    delivery.status === 'in-transit' ? 'bg-blue-100 text-blue-600' :
+                    'bg-green-100 text-green-600'
+                  }`}>
+                    {delivery.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const renderCurrentView = () => {
     switch (currentView) {
       case 'dashboard': return <DashboardView />;
       case 'products': return <ProductsView />;
       case 'orders': return <OrdersView />;
+      case 'drivers': return <DriversView />;
+      case 'map': return <MapView />;
       case 'tracking': return <TrackingView />;
       case 'customers': return <CustomersView />;
       case 'analytics':
@@ -2420,6 +3843,8 @@ const FadedSkiesTrackingAdmin = () => {
       <ProductModal />
       <OrderDetailsModal />
       <CustomerDetailsModal />
+      <DriverDetailsModal />
+      <EditDriverModal />
       <UserManagementModal />
       <ConfirmationModal />
     </div>

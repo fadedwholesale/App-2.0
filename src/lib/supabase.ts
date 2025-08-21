@@ -3,7 +3,11 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hdqbnhtimuynuypwouwf.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhkcWJuaHRpbXV5bnV5cHdvdXdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUzOTExMTIsImV4cCI6MjA3MDk2NzExMn0.JU4TzFtiUmVDAJ0QNu7lcu5RcXEJw6jhNUB86L1YTSQ'
 
+// Service role key for storage operations (bypasses RLS)
+const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhkcWJuaHRpbXV5bnV5cHdvdXdmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTM5MTExMiwiZXhwIjoyMDcwOTY3MTEyfQ.-FMqyNZagI4H6srNWFK5VabSSl4FW0bidDrvl2v9CfQ'
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabaseService = createClient(supabaseUrl, supabaseServiceKey)
 
 // Database types
 export interface Database {
@@ -51,6 +55,9 @@ export interface Database {
           thc: string
           cbd: string
           supplier: string
+          description?: string
+          image_url?: string
+          featured?: boolean
           status: string
           created_at: string
           updated_at: string
@@ -64,6 +71,9 @@ export interface Database {
           thc: string
           cbd: string
           supplier: string
+          description?: string
+          image_url?: string
+          featured?: boolean
           status?: string
           created_at?: string
           updated_at?: string
@@ -77,6 +87,9 @@ export interface Database {
           thc?: string
           cbd?: string
           supplier?: string
+          description?: string
+          image_url?: string
+          featured?: boolean
           status?: string
           created_at?: string
           updated_at?: string
