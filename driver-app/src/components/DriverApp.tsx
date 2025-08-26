@@ -1,4 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
+
+// Extend Window interface for GPS tracking
+declare global {
+  interface Window {
+    gpsTrackingId?: number;
+    locationSweepInterval?: NodeJS.Timeout;
+  }
+}
 import { 
   MapPin, 
   Navigation, 
@@ -34,11 +42,13 @@ import {
   Power,
   PowerOff,
   Timer,
-  Award
+  Award,
+
 } from 'lucide-react';
 
 // Import simple WebSocket service for real-time driver updates
-import { wsService } from '../services/simple-websocket';
+
+import { supabase, supabaseService } from '../lib/supabase';
 
 // TypeScript interfaces
 interface Order {
@@ -53,7 +63,7 @@ interface Order {
   paymentMethod: string;
   specialInstructions?: string;
   priority: 'normal' | 'high' | 'urgent';
-  status: 'assigned' | 'accepted' | 'picked_up' | 'in_transit' | 'delivered' | 'cancelled';
+  status: 'assigned' | 'accepted' | 'ready' | 'picked_up' | 'in_transit' | 'delivered' | 'cancelled';
   timestamp: string;
   acceptedAt?: Date;
   lat: number;
@@ -64,6 +74,7 @@ interface Order {
   mileagePayment: number;
   basePay: number;
   totalDriverPay: number;
+  driver_id?: string;
 }
 
 interface Driver {
@@ -85,7 +96,7 @@ interface Driver {
   currentLocation: {
     lat: number;
     lng: number;
-  };
+  } | null;
   earnings: {
     today: number;
     week: number;
@@ -137,11 +148,12 @@ const Toast = React.memo(({ showToast, toastMessage, type = 'success' }: {
   ) : null;
 });
 
-const OrderCard = React.memo(({ order, onAccept, onDecline, onViewDetails, isActive = false }: {
+const OrderCard = React.memo(({ order, onAccept, onDecline, onViewDetails, onUpdateStatus, isActive = false }: {
   order: Order;
   onAccept: (order: Order) => void;
   onDecline: (order: Order) => void;
   onViewDetails: (order: Order) => void;
+  onUpdateStatus: (order: Order, status: Order['status']) => void;
   isActive?: boolean;
 }) => {
   const priorityColors = {
@@ -217,41 +229,148 @@ const OrderCard = React.memo(({ order, onAccept, onDecline, onViewDetails, isAct
         </div>
       )}
 
-      {order.status === 'assigned' ? (
-        <div className="flex space-x-3">
+      {/* Delivery Action Buttons - Enhanced Demo Style */}
+      <div className="mt-6 space-y-3">
+        {order.status === 'assigned' && (
+          <>
+            <div className="text-center mb-3">
+              <p className="text-sm text-gray-600 font-medium">New order assigned! Ready to accept?</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => onDecline(order)}
+                className="bg-gray-100 text-gray-700 py-4 rounded-2xl font-bold text-lg hover:bg-gray-200 transition-all shadow-lg flex items-center justify-center space-x-2"
+              >
+                <X className="w-6 h-6" />
+                <span>Decline</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onAccept(order)}
+                className="bg-gradient-to-r from-emerald-600 to-green-600 text-white py-4 rounded-2xl font-bold text-lg hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
+              >
+                <CheckCircle className="w-6 h-6" />
+                <span>Accept Order</span>
+              </button>
+            </div>
+          </>
+        )}
+
+        {order.status === 'accepted' && (
+          <>
+            <div className="text-center mb-3">
+              <p className="text-sm text-gray-600 font-medium">Order accepted! Ready to pick up from store?</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => onViewDetails(order)}
+                className="bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-blue-700 transition-all shadow-lg flex items-center justify-center space-x-2"
+              >
+                <Eye className="w-6 h-6" />
+                <span>View Details</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdateStatus(order, 'picked_up')}
+                className="bg-gradient-to-r from-orange-600 to-red-600 text-white py-4 rounded-2xl font-bold text-lg hover:from-orange-700 hover:to-red-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
+              >
+                <Package className="w-6 h-6" />
+                <span>Pick Up Order</span>
+              </button>
+            </div>
+          </>
+        )}
+
+        {order.status === 'picked_up' && (
+          <>
+            <div className="text-center mb-3">
+              <p className="text-sm text-gray-600 font-medium">Order picked up! Ready to start delivery?</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => onViewDetails(order)}
+                className="bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-blue-700 transition-all shadow-lg flex items-center justify-center space-x-2"
+              >
+                <Eye className="w-6 h-6" />
+                <span>View Details</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdateStatus(order, 'in_transit')}
+                className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 rounded-2xl font-bold text-lg hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
+              >
+                <Navigation className="w-6 h-6" />
+                <span>Start Delivery</span>
+              </button>
+            </div>
+          </>
+        )}
+
+        {order.status === 'in_transit' && (
+          <>
+            <div className="text-center mb-3">
+              <p className="text-sm text-gray-600 font-medium">En route to customer! Ready to complete delivery?</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => onViewDetails(order)}
+                className="bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-blue-700 transition-all shadow-lg flex items-center justify-center space-x-2"
+              >
+                <Eye className="w-6 h-6" />
+                <span>View Details</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdateStatus(order, 'delivered')}
+                className="bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-2xl font-bold text-lg hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
+              >
+                <CheckCircle className="w-6 h-6" />
+                <span>Complete Delivery</span>
+              </button>
+            </div>
+          </>
+        )}
+
+        {order.status === 'delivered' && (
+          <div className="text-center py-4">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <CheckCircle className="w-8 h-8 text-green-600" />
+            </div>
+            <h4 className="font-bold text-green-800 text-lg">Delivery Completed!</h4>
+            <p className="text-green-600 text-sm">Order has been successfully delivered</p>
+            <button
+              type="button"
+              onClick={() => onViewDetails(order)}
+              className="mt-3 bg-blue-600 text-white py-3 px-6 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg flex items-center justify-center space-x-2 mx-auto"
+            >
+              <Eye className="w-5 h-5" />
+              <span>View Details</span>
+            </button>
+          </div>
+        )}
+
+        {!['assigned', 'accepted', 'picked_up', 'in_transit', 'delivered'].includes(order.status) && (
           <button
             type="button"
-            onClick={() => onDecline(order)}
-            className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-2xl font-bold hover:bg-gray-200 transition-colors"
+            onClick={() => onViewDetails(order)}
+            className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-blue-700 transition-all shadow-lg flex items-center justify-center space-x-2"
           >
-            Decline
+            <Eye className="w-6 h-6" />
+            <span>View Details</span>
           </button>
-          <button
-            type="button"
-            onClick={() => onAccept(order)}
-            className="flex-2 bg-gradient-to-r from-emerald-600 to-green-600 text-white py-3 rounded-2xl font-bold hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg flex items-center justify-center space-x-2"
-          >
-            <CheckCircle className="w-5 h-5" />
-            <span>Accept</span>
-          </button>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => onViewDetails(order)}
-          className="w-full bg-blue-600 text-white py-3 rounded-2xl font-bold hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
-        >
-          <Eye className="w-5 h-5" />
-          <span>View Details</span>
-        </button>
-      )}
+        )}
+      </div>
     </div>
   );
 });
 
 const FadedSkiesDriverApp = () => {
   const [currentView, setCurrentView] = useState<string>('auth');
-  const [authMode] = useState<'login' | 'signup' | 'forgot'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [authForm, setAuthForm] = useState({
@@ -264,78 +383,53 @@ const FadedSkiesDriverApp = () => {
   });
 
   const [driver, setDriver] = useState<Driver>({
-    id: 'driver_001',
-    name: 'Marcus Chen',
-    phone: '(512) 555-0123',
-    email: 'marcus@example.com',
-    rating: 4.8,
-    totalDeliveries: 1247,
+    id: '',
+    name: '',
+    phone: '',
+    email: '',
+    rating: 5.0,
+    totalDeliveries: 0,
     vehicle: {
-      make: 'Toyota',
-      model: 'Prius',
-      year: 2022,
-      color: 'Blue',
-      licensePlate: 'ABC789'
+      make: '',
+      model: '',
+      year: 0,
+      color: '',
+      licensePlate: ''
     },
     isOnline: false,
     isAvailable: false,
-    currentLocation: {
-      lat: 30.2672,
-      lng: -97.7431
-    },
+    currentLocation: null,
     earnings: {
-      today: 156.50,
-      week: 892.30,
-      month: 3420.75,
-      todayMileage: 64.50,
-      todayBase: 72.00,
-      todayTips: 20.00,
-      totalMilesDriven: 129,
-      pending: 156.50
+      today: 0,
+      week: 0,
+      month: 0,
+      todayMileage: 0,
+      todayBase: 0,
+      todayTips: 0,
+      totalMilesDriven: 0,
+      pending: 0
     },
     schedule: {
       isScheduled: false
     },
     payoutSettings: {
       method: 'three_day',
-      primaryAccount: 'Chase Bank ••••4567',
+      primaryAccount: '',
       instantFee: 0.50
     }
   });
 
-  const [availableOrders, setAvailableOrders] = useState<Order[]>([
-    {
-      id: '#FS2025003',
-      customerName: 'Sarah Johnson',
-      customerPhone: '(512) 555-0456',
-      address: '789 Oak Street, Austin, TX 78701',
-      items: ['Purple Haze Cart', 'Indica Gummies'],
-      total: 89.50,
-      distance: 2.3,
-      estimatedTime: 8,
-      paymentMethod: 'Apple Pay',
-      priority: 'normal',
-      status: 'assigned',
-      timestamp: new Date().toISOString(),
-      lat: 30.2849,
-      lng: -97.7341,
-      zone: 'Downtown',
-      tip: 15.00,
-      basePay: 6.00,
-      mileagePayment: 1.15,
-      totalDriverPay: 22.15
-    }
-  ]);
+  const [availableOrders, setAvailableOrders] = useState<Order[]>([]);
 
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const [completedOrders, setCompletedOrders] = useState<Order[]>([]);
   console.log('Completed orders count:', completedOrders.length);
 
   // Geofencing states
-  const [driverLocation, setDriverLocation] = useState<{lat: number; lng: number} | null>(null);
+  const [driverLocation, setDriverLocation] = useState<{lat: number; lng: number}>({ lat: 30.2672, lng: -97.7431 }); // Default to Austin
   const [isWithinDeliveryRadius, setIsWithinDeliveryRadius] = useState(false);
   const [distanceToCustomer, setDistanceToCustomer] = useState<number | null>(null);
-  const [geofenceError, setGeofenceError] = useState<string | null>(null);
+
   const [locationWatchId, setLocationWatchId] = useState<number | null>(null);
 
   // Geofencing constants
@@ -356,6 +450,14 @@ const FadedSkiesDriverApp = () => {
     payoutSettings: false,
     changeBankAccount: false,
     settings: false
+  });
+
+  // App settings state
+  const [appSettings, setAppSettings] = useState({
+    pushNotifications: true,
+    locationServices: true,
+    autoAcceptOrders: false,
+    nightMode: false
   });
 
   // Modal management functions
@@ -379,6 +481,115 @@ const FadedSkiesDriverApp = () => {
     });
   };
 
+  // App settings toggle functions
+  const toggleAppSetting = useCallback((setting: keyof typeof appSettings) => {
+    setAppSettings(prev => {
+      const newSettings = { ...prev, [setting]: !prev[setting] };
+      
+      // Handle specific setting actions
+      if (setting === 'locationServices') {
+        if (newSettings.locationServices) {
+          console.log('📍 Location services enabled - starting GPS tracking');
+          startContinuousGPSTracking();
+        } else {
+          console.log('📍 Location services disabled - stopping GPS tracking');
+          stopContinuousGPSTracking();
+        }
+      }
+      
+      if (setting === 'autoAcceptOrders') {
+        if (newSettings.autoAcceptOrders) {
+          console.log('🤖 Auto-accept orders enabled');
+          showToastMessage('Auto-accept orders enabled', 'success');
+        } else {
+          console.log('🤖 Auto-accept orders disabled');
+          showToastMessage('Auto-accept orders disabled', 'info');
+        }
+      }
+      
+      if (setting === 'pushNotifications') {
+        if (newSettings.pushNotifications) {
+          console.log('🔔 Push notifications enabled');
+          showToastMessage('Push notifications enabled', 'success');
+        } else {
+          console.log('🔔 Push notifications disabled');
+          showToastMessage('Push notifications disabled', 'info');
+        }
+      }
+      
+      if (setting === 'nightMode') {
+        if (newSettings.nightMode) {
+          console.log('🌙 Night mode enabled');
+          showToastMessage('Night mode enabled', 'success');
+        } else {
+          console.log('🌙 Night mode disabled');
+          showToastMessage('Night mode disabled', 'info');
+        }
+      }
+      
+      return newSettings;
+    });
+  }, []);
+
+  // Check authentication state on app load
+  useEffect(() => {
+    const checkAuthState = async () => {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        
+        if (error) {
+          console.error('Auth state check error:', error);
+          return;
+        }
+
+        if (user) {
+          console.log('✅ User already authenticated:', user.email);
+          
+          // Load driver profile from database
+          const { data: driverData, error: driverError } = await supabase
+            .from('drivers')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
+
+          if (driverError) {
+            console.error('Failed to load driver profile:', driverError);
+            return;
+          }
+
+          console.log('✅ Driver profile loaded:', driverData);
+          
+          // Update driver state with database data
+          setDriver(prev => ({
+            ...prev,
+            id: driverData.id,
+            name: driverData.name || '',
+            email: driverData.email || '',
+            phone: driverData.phone || '',
+            isOnline: driverData.is_online || false,
+            isAvailable: driverData.is_available || false,
+            rating: driverData.rating || 5.0,
+            totalDeliveries: driverData.total_deliveries || 0,
+            vehicle: {
+              make: driverData.vehicle_make || '',
+              model: driverData.vehicle_model || '',
+              year: driverData.vehicle_year || 0,
+              color: driverData.vehicle_color || '',
+              licensePlate: driverData.license_plate || ''
+            }
+          }));
+
+          setIsAuthenticated(true);
+          setCurrentView('home');
+        }
+      } catch (error) {
+        console.error('Auth state check error:', error);
+      }
+    };
+
+    checkAuthState();
+  }, []);
+
   // Handle keyboard events for modals
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -394,6 +605,8 @@ const FadedSkiesDriverApp = () => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [modals]);
 
+
+
   // Geofencing utilities
   const calculateDistance = useCallback((lat1: number, lng1: number, lat2: number, lng2: number): number => {
     const R = 6371000; // Earth's radius in meters
@@ -406,88 +619,349 @@ const FadedSkiesDriverApp = () => {
     return R * c; // Distance in meters
   }, []);
 
-  const updateDriverLocation = useCallback((position: GeolocationPosition) => {
-    const newLocation = {
-      lat: position.coords.latitude,
-      lng: position.coords.longitude
+  // Calculate distance in miles for pay calculation
+  const calculateDistanceInMiles = useCallback((lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 3959; // Earth's radius in miles
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return Math.round(R * c * 100) / 100; // Round to 2 decimal places
+  }, []);
+
+    // Production-ready continuous GPS tracking for 1000+ drivers
+  const forceUpdateDriverLocation = useCallback(async (location: { lat: number; lng: number }, accuracy?: number, heading?: number, speed?: number, altitude?: number) => {
+    try {
+      // Get the authenticated user's UUID
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.id) {
+        console.error('❌ No authenticated user found for location update');
+        return;
+      }
+
+      // Get driver ID from user ID
+      const { data: driverData, error: driverError } = await supabase
+        .from('drivers')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (driverError || !driverData) {
+        console.error('❌ Failed to get driver ID:', driverError);
+        return;
+      }
+
+      console.log('📍 Attempting to insert GPS data:', {
+        driver_id: driverData.id,
+        lat: location.lat,
+        lng: location.lng,
+        accuracy: accuracy || null
+      });
+
+      // Insert location into dedicated locations table using service client to bypass RLS
+      const { error: locationError } = await supabaseService
+        .from('driver_locations')
+        .upsert({
+          driver_id: driverData.id,
+          latitude: location.lat,
+          longitude: location.lng,
+          accuracy: accuracy || null,
+          heading: heading || null,
+          speed: speed || null,
+          altitude: altitude || null
+        }, {
+          onConflict: 'driver_id'
+        });
+
+      if (locationError) {
+        console.error('❌ GPS insert failed:', locationError);
+        
+        // Fallback to RPC function using service client
+        const { error: rpcError } = await supabaseService.rpc('insert_driver_location', {
+          p_driver_id: driverData.id,
+          p_latitude: location.lat,
+          p_longitude: location.lng,
+          p_accuracy: accuracy || null,
+          p_heading: heading || null,
+          p_speed: speed || null,
+          p_altitude: altitude || null
+        });
+
+        if (rpcError) {
+          console.error('❌ RPC location insert failed:', rpcError);
+          return;
+        }
+      } else {
+        console.log('✅ GPS data inserted successfully');
+      }
+      
+      // Update local state immediately
+      setDriverLocation(location);
+      setDriver(prev => ({
+        ...prev,
+        currentLocation: location
+      }));
+
+      // PRODUCTION: Refresh orders with new GPS location for accurate pay calculation
+      if (driver.isOnline && driver.isAvailable) {
+        console.log('📍 GPS location updated, refreshing orders with new pay calculation...');
+        setTimeout(() => {
+          fetchAvailableOrders();
+        }, 1000); // Small delay to ensure GPS state is updated
+      }
+
+      // Check geofencing for active order
+      if (activeOrder && activeOrder.status === 'in_transit') {
+        const distance = calculateDistance(
+          location.lat,
+          location.lng,
+          activeOrder.lat,
+          activeOrder.lng
+        );
+
+        setDistanceToCustomer(distance);
+        const withinRadius = distance <= DELIVERY_RADIUS_METERS;
+        setIsWithinDeliveryRadius(withinRadius);
+
+        console.log('📍 Location updated, distance to customer:', distance, 'm');
+
+        // Show notification when entering/leaving delivery zone
+        if (withinRadius && distanceToCustomer && distanceToCustomer > DELIVERY_RADIUS_METERS) {
+          showToastMessage('🎯 You\'re within delivery range! You can now mark as delivered.', 'success');
+        } else if (!withinRadius && distanceToCustomer && distanceToCustomer <= DELIVERY_RADIUS_METERS) {
+          showToastMessage('⚠️ You\'ve moved outside the delivery zone.', 'warning');
+        }
+      }
+      
+          } catch (error) {
+        console.error('❌ GPS tracking error:', error);
+      }
+    }, [activeOrder, calculateDistance, distanceToCustomer]);
+
+  // Production live GPS tracking system for real-time driver location
+  const startContinuousGPSTracking = useCallback(() => {
+    if (!navigator.geolocation) {
+      console.error('❌ GPS not supported - live tracking unavailable');
+      showToastMessage('GPS not supported on this device', 'error');
+      return;
+    }
+
+    console.log('📍 Starting production live GPS tracking system...');
+    
+    // Check GPS permission status first
+    if (navigator.permissions) {
+      navigator.permissions.query({ name: 'geolocation' }).then((permissionStatus) => {
+        console.log('📍 GPS permission status:', permissionStatus.state);
+        
+        if (permissionStatus.state === 'denied') {
+          console.error('❌ GPS permission denied - please enable location access');
+          showToastMessage('GPS permission denied. Please enable location access in browser settings.', 'error');
+          return;
+        }
+        
+        if (permissionStatus.state === 'prompt') {
+          console.log('📍 GPS permission prompt needed');
+        }
+        
+        // Listen for permission changes
+        permissionStatus.onchange = () => {
+          console.log('📍 GPS permission changed to:', permissionStatus.state);
+          if (permissionStatus.state === 'granted') {
+            console.log('📍 GPS permission granted - starting tracking');
+            startContinuousTracking();
+          }
+        };
+      }).catch((error) => {
+        console.error('❌ GPS permission check failed:', error);
+      });
+    }
+    
+    // Test database connection first
+    const testDatabaseConnection = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.id) {
+          console.log('✅ Database connection test - user authenticated:', user.id);
+          
+          // Test a simple database read
+          const { data, error } = await supabase
+            .from('drivers')
+            .select('id, name')
+            .eq('user_id', user.id)
+            .single();
+            
+          if (error) {
+            console.error('❌ Database connection test failed:', error);
+          } else {
+            console.log('✅ Database connection test successful - driver found:', data.name);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Database connection test error:', error);
+      }
+    };
+    
+    testDatabaseConnection();
+    
+    // Request GPS permission and start tracking
+    console.log('📍 Requesting initial GPS permission...');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        console.log('📍 Initial GPS permission granted');
+        console.log('📍 Initial location:', {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy
+        });
+        
+        // Log the GPS coordinates received
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        
+        console.log('✅ GPS coordinates detected:', { lat, lng });
+        
+        // Start continuous tracking after permission is granted
+        console.log('📍 Starting continuous tracking...');
+        startContinuousTracking();
+        console.log('📍 Continuous tracking started');
+      },
+      (error) => {
+        console.error('📍 GPS permission denied:', error.message);
+        showToastMessage('GPS permission required for live tracking', 'error');
+      },
+      { enableHighAccuracy: true, timeout: 25000, maximumAge: 30000 }
+    );
+    
+    const startContinuousTracking = () => {
+    
+    // Clear any existing tracking
+    if (window.gpsTrackingId) {
+      navigator.geolocation.clearWatch(window.gpsTrackingId);
+    }
+
+    // Production live GPS tracking - updates every 1 second for real-time admin tracking
+    window.gpsTrackingId = navigator.geolocation.watchPosition(
+      async (position) => {
+        const location = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
+        
+        console.log('📍 LIVE GPS COORDINATES RECEIVED:', location);
+        console.log('📍 Raw GPS data:', {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          timestamp: new Date(position.timestamp).toISOString()
+        });
+        
+        // Immediately update database for admin tracking with full GPS data
+        await forceUpdateDriverLocation(
+          location,
+          position.coords.accuracy || undefined,
+          position.coords.heading || undefined,
+          position.coords.speed || undefined,
+          position.coords.altitude || undefined
+        );
+        
+        console.log('📍 GPS update sent to admin:', location);
+      },
+      (error) => {
+        console.error('📍 Live GPS tracking error:', error.code, error.message);
+        console.error('📍 Error details:', {
+          code: error.code,
+          message: error.message,
+          PERMISSION_DENIED: error.PERMISSION_DENIED,
+          POSITION_UNAVAILABLE: error.POSITION_UNAVAILABLE,
+          TIMEOUT: error.TIMEOUT
+        });
+        
+        // Production fallback: try to get location with different settings
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const fallbackLocation = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+            };
+            console.log('📍 Fallback GPS location:', fallbackLocation);
+            await forceUpdateDriverLocation(fallbackLocation);
+          },
+          (fallbackError) => {
+            console.error('📍 All GPS methods failed:', fallbackError);
+            showToastMessage('GPS location unavailable - check device settings', 'error');
+          },
+          { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
+        );
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000, // Increased timeout for better reliability
+        maximumAge: 5000 // Allow cached location up to 5 seconds old
+      }
+    );
+
     };
 
-    setDriverLocation(newLocation);
-    setGeofenceError(null);
+    console.log('✅ Production live GPS tracking system active - admin/customer tracking enabled');
+  }, [forceUpdateDriverLocation]);
 
-    // Update driver's current location in state
-    setDriver(prev => ({
-      ...prev,
-      currentLocation: newLocation
-    }));
-
-    // Check if within delivery radius for active order
-    if (activeOrder && activeOrder.status === 'in_transit') {
-      const distance = calculateDistance(
-        newLocation.lat,
-        newLocation.lng,
-        activeOrder.lat,
-        activeOrder.lng
-      );
-
-      setDistanceToCustomer(distance);
-      const withinRadius = distance <= DELIVERY_RADIUS_METERS;
-      setIsWithinDeliveryRadius(withinRadius);
-
-      // Send real-time location update
-      try {
-        wsService.send({
-          type: 'driver:location_update',
-          data: {
-            orderId: activeOrder.id,
-            driverId: driver.id,
-            location: newLocation,
-            distanceToCustomer: distance,
-            withinDeliveryRadius: withinRadius,
-            timestamp: new Date()
-          }
-        });
-      } catch (error) {
-        console.warn('Failed to send location update:', error);
-      }
-
-      // Show notification when entering/leaving delivery zone
-      if (withinRadius && distanceToCustomer && distanceToCustomer > DELIVERY_RADIUS_METERS) {
-        setToastMessage('🎯 You\'re within delivery range! You can now mark as delivered.');
-        setToastType('success');
-        setShowToast(true);
-        setTimeout(() => setShowToast(false), 3000);
-      } else if (!withinRadius && distanceToCustomer && distanceToCustomer <= DELIVERY_RADIUS_METERS) {
-        setToastMessage('⚠️ You\'ve moved outside the delivery zone.');
-        setToastType('warning');
-        setShowToast(true);
-        setTimeout(() => setShowToast(false), 3000);
-      }
+  // Stop live GPS tracking
+  const stopContinuousGPSTracking = useCallback(() => {
+    if (window.gpsTrackingId) {
+      navigator.geolocation.clearWatch(window.gpsTrackingId);
+      window.gpsTrackingId = undefined;
+      console.log('📍 Live GPS tracking stopped');
     }
-  }, [activeOrder, driver.id, calculateDistance, distanceToCustomer]);
-
-  const handleLocationError = useCallback((error: GeolocationPositionError) => {
-    let errorMessage = 'Location access required for delivery verification.';
-
-    switch (error.code) {
-      case error.PERMISSION_DENIED:
-        errorMessage = 'Location permission denied. Please enable location access in your browser settings.';
-        break;
-      case error.POSITION_UNAVAILABLE:
-        errorMessage = 'Location information unavailable. Please check your GPS/internet connection.';
-        break;
-      case error.TIMEOUT:
-        errorMessage = 'Location request timed out. Please try again.';
-        break;
+    
+    // Clear periodic location sweep
+    if (window.locationSweepInterval) {
+      clearInterval(window.locationSweepInterval);
+      window.locationSweepInterval = undefined;
+      console.log('📍 Periodic location sweep stopped');
     }
-
-    setGeofenceError(errorMessage);
-    setIsWithinDeliveryRadius(false);
-    setToastMessage(errorMessage);
-    setToastType('error');
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
   }, []);
+
+  // Periodic location sweep for admin/customer tracking
+  const startPeriodicLocationSweep = useCallback(() => {
+    console.log('📍 Starting periodic location sweep for admin/customer tracking...');
+    
+    // Clear any existing sweep
+    if (window.locationSweepInterval) {
+      clearInterval(window.locationSweepInterval);
+    }
+
+    // Force location update every 2 seconds for admin/customer tracking
+    window.locationSweepInterval = setInterval(async () => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const location = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+            };
+            await forceUpdateDriverLocation(location, position.coords.accuracy || undefined);
+          },
+          (error) => {
+            console.log('📍 Periodic sweep GPS error:', error.message);
+          },
+          { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 }
+        );
+      }
+    }, 2000); // Every 2 seconds
+
+    console.log('✅ Periodic location sweep active - admin/customer tracking guaranteed');
+  }, [forceUpdateDriverLocation]);
+
+  // Manual GPS test function for debugging
+
+
+
+
+
+
+
 
   const stopLocationTracking = useCallback(() => {
     if (locationWatchId !== null) {
@@ -497,41 +971,7 @@ const FadedSkiesDriverApp = () => {
     }
   }, [locationWatchId]);
 
-  const startLocationTracking = useCallback(() => {
-    if (!navigator.geolocation) {
-      setGeofenceError('Geolocation is not supported by this browser.');
-      setToastMessage('Geolocation not supported');
-      setToastType('error');
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
-      return;
-    }
 
-    // Get initial location
-    navigator.geolocation.getCurrentPosition(
-      updateDriverLocation,
-      handleLocationError,
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000
-      }
-    );
-
-    // Start watching location changes
-    const watchId = navigator.geolocation.watchPosition(
-      updateDriverLocation,
-      handleLocationError,
-      {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 30000
-      }
-    );
-
-    setLocationWatchId(watchId);
-    console.log('📍 Location tracking started for geofencing');
-  }, [updateDriverLocation, handleLocationError]);
 
   const showToastMessage = useCallback((message: string, type: 'success' | 'error' | 'warning' | 'info' = 'success') => {
     setToastMessage(message);
@@ -540,147 +980,660 @@ const FadedSkiesDriverApp = () => {
     setTimeout(() => setShowToast(false), 3000);
   }, []);
 
-  // WebSocket connection for real-time driver updates
+  // Real-time updates handled by Supabase subscriptions
   useEffect(() => {
     if (isAuthenticated && driver.isOnline) {
-      try {
-        // Connect WebSocket for driver
-        wsService.connect(`driver-${driver.name}`);
-
-        // Send driver online status
-        wsService.send({
-          type: 'driver:online',
-          data: {
-            driverId: driver.id,
-            location: driver.currentLocation,
-            isAvailable: driver.isAvailable
-          }
-        });
-
-        // Register event listeners for real-time notifications
-        wsService.on('order_available_for_pickup', (orderData: any) => {
-          console.log('🆕 New order available:', orderData);
-          setAvailableOrders(prev => {
-            const exists = prev.some(order => order.id === orderData.orderId);
-            if (!exists) {
-              const newOrder: Order = {
-                id: orderData.orderId,
-                customerName: orderData.customerName || 'Customer',
-                customerPhone: orderData.customerPhone || '',
-                address: orderData.location || '',
-                items: orderData.items || [],
-                total: orderData.total || 0,
-                distance: parseFloat(orderData.estimatedDistance) || 2.3,
-                estimatedTime: 15,
-                paymentMethod: orderData.paymentMethod || 'Credit Card',
-                priority: orderData.priority || 'normal',
-                status: 'assigned',
-                timestamp: new Date().toISOString(),
-                lat: orderData.lat || 30.2672,
-                lng: orderData.lng || -97.7431,
-                zone: orderData.zone || 'Downtown',
-                tip: orderData.tip || 0,
-                mileagePayment: parseFloat(orderData.estimatedDistance) * 0.5 || 1.15,
-                basePay: 6.00,
-                totalDriverPay: (orderData.total || 0) * 0.25 + (parseFloat(orderData.estimatedDistance) * 0.5 || 1.15)
-              };
-
-              showToastMessage(`New order available: ${orderData.orderId} - $${orderData.total}`, 'info');
-              return [...prev, newOrder];
-            }
-            return prev;
-          });
-        });
-
-        console.log('✅ Driver WebSocket connected for:', driver.name);
-
-        return () => {
-          try {
-            // Send driver offline status before disconnecting
-            wsService.send({
-              type: 'driver:offline',
-              data: {
-                driverId: driver.id
-              }
-            });
-
-            // Remove event listeners
-            wsService.off('order_available_for_pickup');
-
-            // Stop location tracking on disconnect
-            stopLocationTracking();
-
-            wsService.disconnect();
-            console.log('🔌 Driver WebSocket disconnected');
-          } catch (error) {
-            console.warn('WebSocket disconnect error:', error);
-          }
-        };
-
-      } catch (error) {
-        console.error('Driver WebSocket connection failed:', error);
-      }
+      console.log('✅ Driver online, real-time updates active for:', driver.name);
+      
+      return () => {
+        console.log('🔌 Driver offline, cleaning up real-time subscriptions');
+      };
     }
-  }, [isAuthenticated, driver.isOnline, driver.id, driver.name, driver.currentLocation, driver.isAvailable, stopLocationTracking]);
+  }, [isAuthenticated, driver.isOnline, driver.id, driver.name]);
 
-  // Cleanup location tracking on component unmount
+  // Real-time subscriptions for orders and driver updates
   useEffect(() => {
-    return () => {
-      stopLocationTracking();
-    };
-  }, [stopLocationTracking]);
+    if (!isAuthenticated) return;
 
+    console.log('🔌 Setting up driver real-time subscriptions...');
 
-  const toggleOnlineStatus = useCallback(() => {
-    setDriver(prev => ({
-      ...prev,
-      isOnline: !prev.isOnline
-    }));
-    
-    showToastMessage(
-      driver.isOnline ? 'You are now offline' : 'You are now online and ready for deliveries!',
-      driver.isOnline ? 'warning' : 'success'
-    );
-  }, [driver.isOnline, showToastMessage]);
-
-  const acceptOrder = useCallback((order: Order) => {
-    const acceptedOrder: Order = { ...order, status: 'accepted' as const, acceptedAt: new Date() };
-    setActiveOrder(acceptedOrder);
-    setAvailableOrders(prev => prev.filter(o => o.id !== order.id));
-
-    // Start location tracking when order is accepted
-    startLocationTracking();
-
-    // Send real-time notification to admin and customer
-    try {
-      wsService.send({
-        type: 'driver:accept_order',
-        data: {
-          orderId: order.id,
-          driverId: driver.id,
-          driverName: driver.name,
-          driverPhone: driver.phone,
-          vehicle: `${driver.vehicle?.color} ${driver.vehicle?.make} ${driver.vehicle?.model}`,
-          estimatedArrival: '15-20 minutes',
-          timestamp: new Date()
+    // Subscribe to ALL order changes (no filter) to catch any orders assigned to this driver
+    const ordersChannel = supabase
+      .channel('all-orders-for-driver')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'orders'
+        },
+        (payload) => {
+          console.log('📋 Order change detected:', payload);
+          console.log('🔍 Current driver ID:', driver.id);
+          console.log('🔍 Order driver_id:', (payload.new as any)?.driver_id || (payload.old as any)?.driver_id);
+          
+          if (payload.eventType === 'INSERT' && payload.new) {
+            // New order assigned to this driver
+            const order = payload.new;
+            console.log('🎯 Checking if order is for this driver:', order.driver_id, '===', driver.id);
+            if (order.driver_id === driver.id) {
+              console.log('🎯 New order assigned to driver:', order.id);
+              showToastMessage(`New order assigned: ${order.order_id || order.id}`, 'success');
+              
+              // Transform the new order and add it to available orders immediately
+              const newOrder: Order = {
+                id: order.id,
+                customerName: order.customer_name || 'Unknown Customer',
+                customerPhone: order.customer_phone || '',
+                address: order.address || '',
+                items: order.items || [],
+                total: order.total || 0,
+                distance: 2.5,
+                estimatedTime: 15,
+                paymentMethod: 'Credit Card',
+                priority: 'normal' as const,
+                status: order.status as any,
+                timestamp: order.created_at,
+                lat: order.delivery_lat || 0,
+                lng: order.delivery_lng || 0,
+                zone: 'Downtown',
+                tip: 0,
+                            basePay: order.driver_base_pay || 2.00, // Use database value or default
+            mileagePayment: order.driver_mileage_pay || ((order.distance || 5) * 0.70), // Use database value or calculate
+            totalDriverPay: order.driver_total_pay || (2.00 + ((order.distance || 5) * 0.70) + (order.tip || 0)) // Use database value or calculate
+              };
+              
+              // Add to available orders immediately
+              setAvailableOrders(prev => [newOrder, ...prev]);
+            }
+          } else if (payload.eventType === 'UPDATE' && payload.new) {
+            const order = payload.new;
+            
+            // Update current order if it's assigned to this driver
+            if (order.driver_id === driver.id) {
+              setActiveOrder(prev => {
+                if (prev && prev.id === order.id) {
+                  return {
+                    ...prev,
+                    status: order.status
+                  };
+                }
+                return prev;
+              });
+              
+              // Update order in available orders list immediately
+              setAvailableOrders(prev => prev.map(availableOrder => 
+                availableOrder.id === order.id 
+                  ? { ...availableOrder, status: order.status }
+                  : availableOrder
+              ));
+              
+              // Show status update notification
+              showToastMessage(`Order status updated: ${order.status}`, 'info');
+            }
+          } else if (payload.eventType === 'DELETE' && payload.old) {
+            // Order removed from this driver
+            const order = payload.old;
+            if (order.driver_id === driver.id) {
+              console.log('🗑️ Order removed from driver:', order.id);
+              
+              // Remove order from available orders immediately
+              setAvailableOrders(prev => prev.filter(availableOrder => availableOrder.id !== order.id));
+            }
+          }
         }
+      )
+      .subscribe((status) => {
+        console.log('🔌 Driver orders subscription status:', status);
       });
 
-      console.log('📡 Order acceptance notification sent:', order.id);
-    } catch (error) {
-      console.error('Failed to send order acceptance notification:', error);
-    }
 
-    showToastMessage(`Order ${order.id} accepted!`, 'success');
-    setTimeout(() => setCurrentView('active-delivery'), 500);
-  }, [driver.id, driver.name, driver.phone, driver.vehicle, showToastMessage, startLocationTracking]);
+
+    // Subscribe to driver profile changes
+    const driverChannel = supabase
+      .channel('driver-profile')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'drivers' },
+        (payload) => {
+          console.log('🚚 Driver profile change detected:', payload);
+          
+          if (payload.eventType === 'UPDATE' && payload.new) {
+            const driverData = payload.new;
+            
+            // Update driver state if it's this driver
+            if (driverData.user_id === driver.id) {
+              setDriver(prev => ({
+                ...prev,
+                isOnline: driverData.is_online || false,
+                isAvailable: driverData.is_available || false,
+                rating: driverData.rating || 5.0,
+                totalDeliveries: driverData.total_deliveries || 0
+              }));
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('🔌 Cleaning up driver real-time subscriptions...');
+      supabase.removeChannel(ordersChannel);
+      supabase.removeChannel(driverChannel);
+    };
+  }, [isAuthenticated, driver.id, showToastMessage]);
+
+  // Periodic refresh of available orders when driver is online
+  useEffect(() => {
+    if (!isAuthenticated || !driver.isOnline) return;
+
+    const interval = setInterval(() => {
+      console.log('🔄 Periodic refresh of available orders...');
+      fetchAvailableOrders();
+    }, 5000); // Refresh every 5 seconds when online
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, driver.isOnline]);
+
+  // Function to fetch available orders for this driver
+  const fetchAvailableOrders = useCallback(async () => {
+    if (!isAuthenticated) {
+      console.log('❌ Not authenticated, skipping order fetch');
+      return;
+    }
+    
+    try {
+      console.log('📋 Fetching available orders...');
+      
+      // Get the authenticated user first
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user?.id) {
+        console.error('❌ Failed to get authenticated user:', userError);
+        return;
+      }
+      
+      console.log('✅ Authenticated user:', user.id);
+      
+      // Get driver record using user ID
+      const { data: driverRecord, error: driverError } = await supabase
+        .from('drivers')
+        .select('id, name, is_online, is_available')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (driverError || !driverRecord) {
+        console.error('❌ Failed to get driver record:', driverError);
+        return;
+      }
+      
+      console.log('✅ Driver record found:', driverRecord);
+      
+      // Get current GPS location for real distance calculation
+      let currentGPSLocation = driverLocation;
+      console.log('📍 Starting order fetch with driverLocation:', driverLocation);
+      
+      // Get fresh GPS location with improved error handling
+      console.log('📍 Getting fresh GPS location for pay calculation...');
+      try {
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          // First try with high accuracy
+          navigator.geolocation.getCurrentPosition(resolve, (_error) => {
+            console.log('📍 High accuracy GPS failed, trying low accuracy...');
+            // Fallback to low accuracy if high accuracy fails
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: false,
+              timeout: 15000,
+              maximumAge: 30000 // Allow cached position up to 30 seconds old
+            });
+          }, {
+            enableHighAccuracy: true,
+            timeout: 20000, // 20 seconds for production reliability
+            maximumAge: 5000 // Allow cached location up to 5 seconds old
+          });
+        });
+        
+        currentGPSLocation = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
+        console.log('📍 Fresh GPS location obtained:', currentGPSLocation);
+        
+        // Update driver location state immediately
+        setDriverLocation(currentGPSLocation);
+        setDriver(prev => ({
+          ...prev,
+          currentLocation: currentGPSLocation
+        }));
+        
+        // Update driver location in database using service client
+        try {
+          const { error: locationError } = await supabaseService
+            .from('driver_locations')
+            .upsert({
+              driver_id: driverRecord.id,
+              latitude: currentGPSLocation.lat,
+              longitude: currentGPSLocation.lng,
+              updated_at: new Date().toISOString()
+            }, {
+              onConflict: 'driver_id'
+            });
+          
+          if (locationError) {
+            console.error('❌ Failed to update driver location in database:', locationError);
+          } else {
+            console.log('✅ Driver location updated in database');
+          }
+        } catch (dbError) {
+          console.error('❌ Database update error:', dbError);
+        }
+        
+      } catch (gpsError) {
+        console.error('❌ Failed to get fresh GPS location:', gpsError);
+        
+        // Use existing location if available
+        if (currentGPSLocation && currentGPSLocation.lat !== 0 && currentGPSLocation.lng !== 0) {
+          console.log('📍 Using existing GPS location:', currentGPSLocation);
+        } else {
+          console.error('❌ No GPS location available for pay calculation!');
+          // Set default Austin location as fallback
+          currentGPSLocation = { lat: 30.2672, lng: -97.7431 };
+          console.log('📍 Using default Austin location as fallback');
+        }
+      }
+      
+      // PRODUCTION: Force use of real GPS coordinates if available
+      if (currentGPSLocation && currentGPSLocation.lat !== 0 && currentGPSLocation.lng !== 0) {
+        console.log('📍 Using real GPS coordinates for pay calculation:', currentGPSLocation);
+      } else {
+        console.error('❌ No valid GPS coordinates available for pay calculation!');
+      }
+      
+      // Get orders assigned to this driver
+      const { data: assignedOrders, error: assignedError } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('driver_id', driverRecord.id)
+        .in('status', ['pending', 'confirmed', 'preparing', 'ready', 'assigned', 'accepted'])
+        .order('created_at', { ascending: false });
+      
+      if (assignedError) {
+        console.error('❌ Failed to fetch assigned orders:', assignedError);
+      } else {
+        console.log('✅ Assigned orders loaded:', assignedOrders?.length || 0);
+      }
+      
+      // Get available orders (no driver assigned)
+      const { data: availableOrders, error: availableError } = await supabase
+        .from('orders')
+        .select('*')
+        .is('driver_id', null)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+      
+      if (availableError) {
+        console.error('❌ Failed to fetch available orders:', availableError);
+      } else {
+        console.log('✅ Available orders loaded:', availableOrders?.length || 0);
+      }
+      
+      if (assignedError && availableError) {
+        console.error('❌ Both order fetches failed');
+        return;
+      }
+      
+      // Combine both sets of orders
+      const orders = [...(assignedOrders || []), ...(availableOrders || [])];
+      
+      console.log('✅ Total orders loaded:', orders?.length || 0);
+      
+      if (orders && orders.length > 0) {
+        console.log('📋 Sample order:', orders[0]);
+      }
+      
+      // Transform database orders to match the Order interface
+      const transformedOrders: Order[] = await Promise.all((orders || []).map(async order => {
+        // Calculate real distance if we have coordinates
+        let calculatedDistance = order.distance || 2.5; // Default fallback
+        let calculatedMileagePay = order.driver_mileage_pay || (calculatedDistance * 0.70);
+        let calculatedTotalPay = order.driver_total_pay || (2.00 + calculatedMileagePay + (order.tip || 0));
+        
+        // If we have delivery coordinates and current GPS location, calculate real distance
+        if (order.delivery_lat && order.delivery_lng && currentGPSLocation && 
+            currentGPSLocation.lat !== 0 && currentGPSLocation.lng !== 0) {
+          calculatedDistance = calculateDistanceInMiles(
+            currentGPSLocation.lat, 
+            currentGPSLocation.lng, 
+            order.delivery_lat, 
+            order.delivery_lng
+          );
+          calculatedMileagePay = calculatedDistance * 0.70;
+          calculatedTotalPay = 2.00 + calculatedMileagePay + (order.tip || 0);
+          
+          console.log(`📍 Real distance calculated for order ${order.id}: ${calculatedDistance} miles`);
+          console.log(`📍 From driver location (${currentGPSLocation.lat}, ${currentGPSLocation.lng}) to delivery (${order.delivery_lat}, ${order.delivery_lng})`);
+          console.log(`💰 Real pay calculated: Base=$2.00 + Mileage=$${calculatedMileagePay.toFixed(2)} + Tip=$${order.tip || 0} = $${calculatedTotalPay.toFixed(2)}`);
+          
+          // PRODUCTION: Update database with real pay calculation
+          try {
+            const { error: updateError } = await supabase
+              .from('orders')
+              .update({
+                distance: calculatedDistance,
+                driver_mileage_pay: calculatedMileagePay,
+                driver_total_pay: calculatedTotalPay,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', order.id);
+            
+            if (updateError) {
+              console.error('❌ Failed to update order pay in database:', updateError);
+            } else {
+              console.log('✅ Order pay updated in database with real calculation');
+            }
+          } catch (updateError) {
+            console.error('❌ Error updating order pay:', updateError);
+          }
+        } else {
+          console.log(`⚠️ Using default distance for order ${order.id}: ${calculatedDistance} miles (no GPS or delivery coordinates)`);
+        }
+        
+        return {
+          id: order.id,
+          customerName: order.customer_name || 'Unknown Customer',
+          customerPhone: order.customer_phone || '',
+          address: order.address || '',
+          items: order.items || [],
+          total: order.total || 0,
+          distance: calculatedDistance,
+          estimatedTime: 15, // Default time - could be calculated
+          paymentMethod: 'Credit Card', // Default payment method
+          priority: 'normal' as const,
+          status: order.status as any,
+          timestamp: order.created_at,
+          lat: order.delivery_lat || 0, // Use actual delivery coordinates
+          lng: order.delivery_lng || 0,
+          zone: 'Downtown', // Default zone
+          tip: order.tip || 0,
+          basePay: order.driver_base_pay || 2.00,
+          mileagePayment: calculatedMileagePay,
+          totalDriverPay: calculatedTotalPay
+        };
+      }));
+      
+      console.log('✅ Transformed orders:', transformedOrders.length);
+      setAvailableOrders(transformedOrders);
+      
+    } catch (error) {
+      console.error('❌ Error fetching available orders:', error);
+    }
+  }, [isAuthenticated, driverLocation, calculateDistanceInMiles]);
+
+  // Cleanup continuous GPS tracking on component unmount
+  useEffect(() => {
+    return () => {
+      stopContinuousGPSTracking();
+      stopLocationTracking();
+    };
+  }, [stopContinuousGPSTracking, stopLocationTracking]);
+
+
+  const toggleOnlineStatus = useCallback(async () => {
+    try {
+      console.log('🔄 Toggling online status for driver:', driver.id);
+      
+      const newOnlineStatus = !driver.isOnline;
+      const newAvailableStatus = newOnlineStatus; // When going online, also become available
+      
+      console.log('🔄 Attempting to update driver status in database...');
+      console.log('🔄 Driver ID:', driver.id);
+      console.log('🔄 Driver user_id:', driver.id);
+      console.log('🔄 New online status:', newOnlineStatus);
+      console.log('🔄 New available status:', newAvailableStatus);
+      
+      // Get the current user to use their ID
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('🔄 Current user ID:', user?.id);
+      
+      if (!user?.id) {
+        console.error('❌ No authenticated user found');
+        showToastMessage('Authentication error. Please sign in again.', 'error');
+        return;
+      }
+      
+      // Update in database using the authenticated user's ID
+      const { data, error } = await supabase
+        .from('drivers')
+        .update({ 
+          is_online: newOnlineStatus, 
+          is_available: newAvailableStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id) // Use the authenticated user's ID
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Failed to update driver status:', error);
+        console.error('❌ Error code:', error.code);
+        console.error('❌ Error message:', error.message);
+        console.error('❌ Error details:', error.details);
+        console.error('❌ Error hint:', error.hint);
+        showToastMessage(`Failed to update status: ${error.message}`, 'error');
+        return;
+      }
+
+      console.log('✅ Driver status updated in database:', data);
+      
+      // Update local state immediately
+      setDriver(prev => {
+        const updatedDriver = {
+          ...prev,
+          isOnline: newOnlineStatus,
+          isAvailable: newAvailableStatus
+        };
+        console.log('🔄 Updated local driver state:', updatedDriver);
+        return updatedDriver;
+      });
+      
+      showToastMessage(
+        newOnlineStatus ? 'You are now online and ready for deliveries!' : 'You are now offline',
+        newOnlineStatus ? 'success' : 'warning'
+      );
+      
+            // If going online, start live GPS tracking and fetch orders
+      if (newOnlineStatus) {
+        console.log('🔄 Driver went online, starting live GPS tracking for admin/customer...');
+        
+        // Start live GPS tracking for real-time location updates
+        console.log('📍 Starting GPS tracking...');
+        startContinuousGPSTracking();
+        console.log('📍 GPS tracking started');
+        
+        // Start periodic location sweep for guaranteed admin/customer tracking
+        startPeriodicLocationSweep();
+        
+        // Refresh location from database
+        // GPS tracking now handled by startContinuousGPSTracking
+        
+        // Fetch available orders
+        fetchAvailableOrders();
+        
+        // Also check for any orders that might have been assigned while offline
+        setTimeout(() => {
+          fetchAvailableOrders();
+        }, 2000);
+      } else {
+        // If going offline, stop all GPS tracking
+        console.log('🔄 Driver going offline, stopping all GPS tracking...');
+        stopContinuousGPSTracking();
+      }
+      
+    } catch (error) {
+      console.error('Error toggling online status:', error);
+      showToastMessage('Failed to update status. Please try again.', 'error');
+    }
+  }, [driver.id, driver.isOnline, showToastMessage]);
+
+  const acceptOrder = useCallback(async (order: Order) => {
+    try {
+      console.log('📋 Accepting order:', order.id);
+      
+      // Get the authenticated user first
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user?.id) {
+        console.error('❌ Failed to get authenticated user:', userError);
+        showToastMessage('Authentication error. Please sign in again.', 'error');
+        return;
+      }
+      
+      // Get driver record using user ID
+      const { data: driverRecord, error: driverError } = await supabase
+        .from('drivers')
+        .select('id, name')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (driverError || !driverRecord) {
+        console.error('❌ Failed to get driver record:', driverError);
+        showToastMessage('Driver profile error. Please contact support.', 'error');
+        return;
+      }
+      
+      console.log('✅ Driver record found for order assignment:', driverRecord);
+      
+      // Update order in database with driver assignment and status change
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({ 
+          driver_id: driverRecord.id,
+          status: 'accepted',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', order.id);
+      
+      if (updateError) {
+        console.error('❌ Failed to update order in database:', updateError);
+        showToastMessage('Failed to accept order. Please try again.', 'error');
+        return;
+      }
+      
+      console.log('✅ Order successfully updated in database');
+      
+      // Update local state
+      const acceptedOrder: Order = { ...order, status: 'accepted' as const, acceptedAt: new Date() };
+      setActiveOrder(acceptedOrder);
+      setAvailableOrders(prev => prev.filter(o => o.id !== order.id));
+      
+      // Start GPS tracking for delivery
+      startContinuousGPSTracking();
+      
+      showToastMessage(`Order ${order.id} accepted!`, 'success');
+      setTimeout(() => setCurrentView('active-delivery'), 500);
+      
+    } catch (error) {
+      console.error('❌ Error accepting order:', error);
+      showToastMessage('Failed to accept order. Please try again.', 'error');
+    }
+  }, [driver.id, driver.name, driver.phone, driver.vehicle, showToastMessage, startContinuousGPSTracking]);
+
+  // Auto-accept orders when enabled
+  useEffect(() => {
+    if (appSettings.autoAcceptOrders && availableOrders.length > 0 && driver.isOnline && driver.isAvailable) {
+      console.log('🤖 Auto-accepting order due to auto-accept setting');
+      const firstOrder = availableOrders[0];
+      acceptOrder(firstOrder);
+    }
+  }, [appSettings.autoAcceptOrders, availableOrders, driver.isOnline, driver.isAvailable, acceptOrder]);
+
+  // Force GPS tracking to start immediately when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log('🚀 Driver authenticated, starting GPS tracking immediately...');
+      startContinuousGPSTracking();
+    }
+  }, [isAuthenticated, startContinuousGPSTracking]);
 
   const declineOrder = useCallback((order: Order) => {
     setAvailableOrders(prev => prev.filter(o => o.id !== order.id));
     showToastMessage(`Order ${order.id} declined`, 'info');
   }, [showToastMessage]);
 
-  const updateOrderStatus = useCallback((status: Order['status']) => {
+  const updateOrderStatusFromCard = useCallback(async (order: Order, status: Order['status']) => {
+    try {
+      console.log('📋 Updating order status:', order.id, 'to', status);
+      
+      // Get the authenticated user first
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user?.id) {
+        console.error('❌ Failed to get authenticated user:', userError);
+        showToastMessage('Authentication error. Please sign in again.', 'error');
+        return;
+      }
+      
+      // Get driver record using user ID
+      const { data: driverRecord, error: driverError } = await supabase
+        .from('drivers')
+        .select('id, name')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (driverError || !driverRecord) {
+        console.error('❌ Failed to get driver record:', driverError);
+        showToastMessage('Driver profile error. Please contact support.', 'error');
+        return;
+      }
+      
+      // Update order status in database
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({ 
+          status: status,
+          driver_id: status === 'accepted' ? driverRecord.id : order.driver_id,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', order.id);
+
+      if (updateError) {
+        console.error('❌ Failed to update order status in database:', updateError);
+        showToastMessage('Failed to update order status. Please try again.', 'error');
+        return;
+      }
+
+      console.log('✅ Order status updated in database:', status);
+
+      // Update the order in available orders
+      setAvailableOrders(prev => prev.map(o => 
+        o.id === order.id ? { ...o, status, lastUpdate: new Date() } : o
+      ));
+
+      // If this becomes an active order, set it as active
+      if (status === 'accepted') {
+        const acceptedOrder: Order = { ...order, status: 'accepted' as const, acceptedAt: new Date() };
+        setActiveOrder(acceptedOrder);
+        setAvailableOrders(prev => prev.filter(o => o.id !== order.id));
+        startContinuousGPSTracking();
+        setTimeout(() => setCurrentView('active-delivery'), 500);
+      }
+
+      const statusMessages = {
+        assigned: 'Order assigned to you',
+        accepted: 'Order accepted successfully',
+        ready: 'Order is ready for pickup',
+        picked_up: 'Order picked up! En route to customer.',
+        in_transit: 'Delivery in progress',
+        delivered: 'Order delivered successfully!',
+        cancelled: 'Order was cancelled'
+      };
+
+      // Status update will be handled by Supabase real-time subscription
+      console.log('📡 Order status updated in database, admin will receive real-time update');
+
+      showToastMessage(statusMessages[status] || `Order status updated to ${status}`, 'success');
+    } catch (error) {
+      console.error('❌ Error updating order status:', error);
+      showToastMessage('Failed to update order status. Please try again.', 'error');
+    }
+  }, [driver.id, driver.name, driver.currentLocation, showToastMessage, startContinuousGPSTracking]);
+
+  const updateOrderStatus = useCallback(async (status: Order['status']) => {
     if (!activeOrder) return;
 
     // Check geofencing for delivery completion
@@ -689,41 +1642,66 @@ const FadedSkiesDriverApp = () => {
       return;
     }
 
-    const updatedOrder = { ...activeOrder, status, lastUpdate: new Date() };
-    setActiveOrder(updatedOrder);
-
-    const statusMessages = {
-      assigned: 'Order assigned to you',
-      accepted: 'Order accepted successfully',
-      picked_up: 'Order picked up! En route to customer.',
-      in_transit: 'Delivery in progress',
-      delivered: 'Order delivered successfully!',
-      cancelled: 'Order was cancelled'
-    };
-
-    // Send real-time status update notification
     try {
-      wsService.send({
-        type: 'driver:update_order_status',
-        data: {
-          orderId: activeOrder.id,
-          driverId: driver.id,
-          driverName: driver.name,
+      console.log('📋 Updating active order status:', activeOrder.id, 'to', status);
+      
+      // Get the authenticated user first
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user?.id) {
+        console.error('❌ Failed to get authenticated user:', userError);
+        showToastMessage('Authentication error. Please sign in again.', 'error');
+        return;
+      }
+      
+      // Get driver record using user ID
+      const { data: driverRecord, error: driverError } = await supabase
+        .from('drivers')
+        .select('id, name')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (driverError || !driverRecord) {
+        console.error('❌ Failed to get driver record:', driverError);
+        showToastMessage('Driver profile error. Please contact support.', 'error');
+        return;
+      }
+      
+      // Update order status in database
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({ 
           status: status,
-          timestamp: new Date(),
-          location: driver.currentLocation,
-          message: statusMessages[status] || `Order status updated to ${status}`,
-          notes: status === 'delivered' ? 'Package delivered successfully' : undefined
-        }
-      });
+          driver_id: driverRecord.id,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', activeOrder.id);
 
-      console.log('📡 Order status update notification sent:', status);
-    } catch (error) {
-      console.error('Failed to send status update notification:', error);
-    }
+      if (updateError) {
+        console.error('❌ Failed to update order status in database:', updateError);
+        showToastMessage('Failed to update order status. Please try again.', 'error');
+        return;
+      }
 
-    if (status === 'delivered') {
-      setCompletedOrders((prev: Order[]) => [updatedOrder, ...prev]);
+      console.log('✅ Order status updated in database:', status);
+
+      const updatedOrder = { ...activeOrder, status, lastUpdate: new Date() };
+      setActiveOrder(updatedOrder);
+
+      const statusMessages = {
+        assigned: 'Order assigned to you',
+        accepted: 'Order accepted successfully',
+        ready: 'Order is ready for pickup',
+        picked_up: 'Order picked up! En route to customer.',
+        in_transit: 'Delivery in progress',
+        delivered: 'Order delivered successfully!',
+        cancelled: 'Order was cancelled'
+      };
+
+      // Status update will be handled by Supabase real-time subscription
+      console.log('📡 Order status updated in database, admin will receive real-time update');
+
+      if (status === 'delivered') {
+        setCompletedOrders((prev: Order[]) => [updatedOrder, ...prev]);
       setActiveOrder(null);
 
       // Stop location tracking when delivery is completed
@@ -752,48 +1730,171 @@ const FadedSkiesDriverApp = () => {
     }
 
     showToastMessage(statusMessages[status] || 'Status updated', 'success');
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      showToastMessage('Failed to update order status. Please try again.', 'error');
+    }
   }, [activeOrder, driver.id, driver.name, driver.currentLocation, showToastMessage, isWithinDeliveryRadius, stopLocationTracking]);
 
-  const handleAuthSubmit = useCallback(() => {
-    if (authMode === 'login') {
-      if (authForm.email && authForm.password) {
-        setIsAuthenticated(true);
-        setCurrentView('home');
-        showToastMessage('Welcome back!', 'success');
-      } else {
-        showToastMessage('Please enter email and password', 'error');
+  const handleAuthSubmit = useCallback(async () => {
+    try {
+      if (authMode === 'login') {
+        if (authForm.email && authForm.password) {
+          console.log('🔐 Driver login attempt:', authForm.email);
+          
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: authForm.email,
+            password: authForm.password
+          });
+
+          if (error) {
+            console.error('Driver login error:', error);
+            showToastMessage('Login failed. Please check your credentials.', 'error');
+            return;
+          }
+
+          console.log('✅ Driver login successful:', data);
+          
+          // Load driver profile from database
+          const { data: driverData, error: driverError } = await supabase
+            .from('drivers')
+            .select('*')
+            .eq('user_id', data.user.id)
+            .single();
+
+          if (driverError) {
+            console.error('Failed to load driver profile:', driverError);
+            showToastMessage('Failed to load driver profile.', 'error');
+            return;
+          }
+
+          console.log('✅ Driver profile loaded:', driverData);
+          
+          // Update driver state with database data
+          setDriver(prev => ({
+            ...prev,
+            id: driverData.id,
+            name: driverData.name || '',
+            email: driverData.email || '',
+            phone: driverData.phone || '',
+            isOnline: driverData.is_online || false,
+            isAvailable: driverData.is_available || false,
+            rating: driverData.rating || 5.0,
+            totalDeliveries: driverData.total_deliveries || 0,
+            vehicle: {
+              make: driverData.vehicle_make || '',
+              model: driverData.vehicle_model || '',
+              year: driverData.vehicle_year || 0,
+              color: driverData.vehicle_color || '',
+              licensePlate: driverData.license_plate || ''
+            }
+          }));
+
+          setIsAuthenticated(true);
+          setCurrentView('home');
+          showToastMessage('Welcome back!', 'success');
+          
+          // Fetch available orders for this driver
+          fetchAvailableOrders();
+        } else {
+          showToastMessage('Please enter email and password', 'error');
+        }
+      } else if (authMode === 'signup') {
+        if (authForm.name && authForm.email && authForm.password && authForm.licenseNumber) {
+          console.log('🔐 Driver signup attempt:', authForm.email);
+          
+          const { data, error } = await supabase.auth.signUp({
+            email: authForm.email,
+            password: authForm.password,
+            options: {
+              data: {
+                name: authForm.name,
+                role: 'driver'
+              }
+            }
+          });
+
+          if (error) {
+            console.error('Driver signup error:', error);
+            showToastMessage('Signup failed. Please try again.', 'error');
+            return;
+          }
+
+          console.log('✅ Driver signup successful:', data);
+          
+          // Create driver profile in database
+          const { data: driverData, error: driverError } = await supabase
+            .from('drivers')
+            .insert([{
+              user_id: data.user?.id,
+              name: authForm.name,
+              email: authForm.email,
+              phone: authForm.phone,
+              license_number: authForm.licenseNumber,
+              vehicle_make: '',
+              vehicle_model: '',
+              vehicle_year: null,
+              vehicle_color: '',
+              license_plate: '',
+              is_online: false,
+              is_available: false,
+              is_approved: false
+            }])
+            .select()
+            .single();
+
+          if (driverError) {
+            console.error('Failed to create driver profile:', driverError);
+            showToastMessage('Account created but profile setup failed. Contact support.', 'error');
+            return;
+          }
+
+          console.log('✅ Driver profile created:', driverData);
+          
+          // Update driver state
+          setDriver(prev => ({
+            ...prev,
+            id: driverData.id,
+            name: driverData.name,
+            email: driverData.email,
+            phone: driverData.phone,
+            isOnline: false,
+            isAvailable: false
+          }));
+
+          setIsAuthenticated(true);
+          setCurrentView('home');
+          showToastMessage('Account created successfully! Please wait for admin approval.', 'success');
+        } else {
+          showToastMessage('Please fill in all required fields', 'error');
+        }
       }
-    } else if (authMode === 'signup') {
-      if (authForm.name && authForm.email && authForm.password && authForm.licenseNumber) {
-        setIsAuthenticated(true);
-        setCurrentView('home');
-        showToastMessage('Account created successfully!', 'success');
-      } else {
-        showToastMessage('Please fill in all required fields', 'error');
-      }
+    } catch (error) {
+      console.error('Authentication error:', error);
+      showToastMessage('Authentication failed. Please try again.', 'error');
     }
   }, [authMode, authForm, showToastMessage]);
 
-  const quickLogin = useCallback(() => {
-    setAuthForm({
-      email: 'marcus@driver.com',
-      password: 'demo123',
-      confirmPassword: '',
-      name: 'Marcus Chen',
-      phone: '',
-      licenseNumber: ''
-    });
-    setIsAuthenticated(true);
-    setCurrentView('home');
-    showToastMessage('Demo login successful!', 'success');
-  }, [showToastMessage]);
 
-  const handleLogout = useCallback(() => {
-    setIsAuthenticated(false);
-    setCurrentView('auth');
-    setDriver(prev => ({ ...prev, isOnline: false }));
-    setActiveOrder(null);
-    showToastMessage('Logged out successfully', 'info');
+
+  const handleLogout = useCallback(async () => {
+    try {
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Logout error:', error);
+      }
+      
+      setIsAuthenticated(false);
+      setCurrentView('auth');
+      setDriver(prev => ({ ...prev, isOnline: false }));
+      setActiveOrder(null);
+      showToastMessage('Logged out successfully', 'info');
+    } catch (error) {
+      console.error('Logout error:', error);
+      showToastMessage('Logout failed. Please try again.', 'error');
+    }
   }, [showToastMessage]);
 
   // Base Modal Component
@@ -1909,22 +3010,20 @@ const FadedSkiesDriverApp = () => {
                  authMode === 'signup' ? 'Apply to Drive' : 
                  'Send Reset Link'}
               </button>
-            </div>
 
-            {authMode === 'login' && (
-              <div className="mt-6 space-y-3">
-                <div className="text-xs text-gray-500 text-center bg-gray-50 p-4 rounded-xl">
-                  <strong>Demo Mode:</strong> Test the driver app functionality
-                </div>
+              {/* Toggle between login and signup */}
+              <div className="text-center pt-4">
                 <button
                   type="button"
-                  onClick={quickLogin}
-                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-xl font-bold hover:from-green-700 hover:to-emerald-700 transition-all"
+                  onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')}
+                  className="text-blue-600 hover:text-blue-700 font-semibold text-sm transition-colors"
                 >
-                  🚚 Quick Demo Login
+                  {authMode === 'login' ? 'Need to sign up? Create account' : 'Already have an account? Sign in'}
                 </button>
               </div>
-            )}
+            </div>
+
+
           </div>
         </div>
       ) : (
@@ -2050,9 +3149,42 @@ const FadedSkiesDriverApp = () => {
                     <h3 className="font-bold text-xl text-gray-900">
                       Available Orders ({availableOrders.length})
                     </h3>
-                    <button type="button" className="text-blue-600 hover:text-blue-700 font-semibold text-sm">
-                      <Filter className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center space-x-2">
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          console.log('🧪 Testing GPS location...');
+                          navigator.geolocation.getCurrentPosition(
+                            (position) => {
+                              const location = {
+                                lat: position.coords.latitude,
+                                lng: position.coords.longitude
+                              };
+                              console.log('✅ GPS Test Location:', location);
+                              setDriverLocation(location);
+                              setDriver(prev => ({
+                                ...prev,
+                                currentLocation: location
+                              }));
+                              showToastMessage(`GPS: ${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`, 'success');
+                            },
+                            (error) => {
+                              console.error('❌ GPS Test Failed:', error);
+                              showToastMessage('GPS test failed - check permissions', 'error');
+                            },
+                            { enableHighAccuracy: true, timeout: 5000 }
+                          );
+                        }}
+                        className="text-green-600 hover:text-green-700 font-semibold text-sm flex items-center space-x-1"
+                        title="Test GPS Location"
+                      >
+                        <Target className="w-4 h-4" />
+                        <span>Test GPS</span>
+                      </button>
+                      <button type="button" className="text-blue-600 hover:text-blue-700 font-semibold text-sm">
+                        <Filter className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
 
                   {!driver.isOnline ? (
@@ -2086,7 +3218,11 @@ const FadedSkiesDriverApp = () => {
                           order={order}
                           onAccept={acceptOrder}
                           onDecline={declineOrder}
-                          onViewDetails={(order) => alert(`Order details: ${order.id}`)}
+                          onViewDetails={(order) => {
+                            setActiveOrder(order);
+                            setCurrentView('active-delivery');
+                          }}
+                          onUpdateStatus={updateOrderStatusFromCard}
                         />
                       ))}
                     </div>
@@ -2138,20 +3274,7 @@ const FadedSkiesDriverApp = () => {
                         isWithinDeliveryRadius ? 'text-green-600' : 'text-amber-600'
                       }`} />
                     </div>
-                    {geofenceError && (
-                      <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl">
-                        <p className="text-sm text-red-700">
-                          ⚠️ {geofenceError}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={startLocationTracking}
-                          className="mt-2 text-xs bg-red-100 text-red-800 px-3 py-1 rounded-full hover:bg-red-200 transition-colors"
-                        >
-                          Retry Location Access
-                        </button>
-                      </div>
-                    )}
+
                   </div>
                 )}
 
@@ -2202,45 +3325,95 @@ const FadedSkiesDriverApp = () => {
                     })}
                   </div>
 
-                  <div className="mt-6 grid grid-cols-2 gap-3">
-                    {activeOrder.status === 'accepted' && (
-                      <button
-                        type="button"
-                        onClick={() => updateOrderStatus('picked_up')}
-                        className="bg-gradient-to-r from-amber-600 to-orange-600 text-white py-3 rounded-2xl font-bold hover:from-amber-700 hover:to-orange-700 transition-all shadow-lg col-span-2"
-                      >
-                        📦 Mark as Picked Up
-                      </button>
+                  {/* ALWAYS SHOW DELIVERY ACTIONS - PROMINENT */}
+                  <div className="mt-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-3xl p-6 border-2 border-blue-200">
+                    <h3 className="font-bold text-xl text-blue-900 mb-4 text-center">🚚 DELIVERY ACTIONS</h3>
+                    
+                    {(activeOrder.status === 'accepted' || activeOrder.status === 'ready') && (
+                      <div className="text-center">
+                        <p className="text-sm text-blue-700 font-medium mb-4">
+                          {activeOrder.status === 'ready' 
+                            ? "Order is ready for pickup! Head to the store to collect the order."
+                            : "Ready to pick up the order from the store?"
+                          }
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => updateOrderStatus('picked_up')}
+                          className="w-full bg-gradient-to-r from-orange-600 to-red-600 text-white py-5 rounded-2xl font-bold text-xl hover:from-orange-700 hover:to-red-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center space-x-3"
+                        >
+                          <Package className="w-7 h-7" />
+                          <span>PICK UP ORDER</span>
+                        </button>
+                      </div>
                     )}
                     
                     {activeOrder.status === 'picked_up' && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          updateOrderStatus('in_transit');
-                          // Start intensive location tracking for geofencing
-                          startLocationTracking();
-                        }}
-                        className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-2xl font-bold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg col-span-2"
-                      >
-                        🚗 Start Delivery
-                      </button>
+                      <div className="text-center">
+                        <p className="text-sm text-blue-700 font-medium mb-4">Order picked up! Ready to start delivery to customer?</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateOrderStatus('in_transit');
+                            // Start intensive location tracking for geofencing
+                            startContinuousGPSTracking();
+                          }}
+                          className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-5 rounded-2xl font-bold text-xl hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center space-x-3"
+                        >
+                          <Navigation className="w-7 h-7" />
+                          <span>START DELIVERY</span>
+                        </button>
+                      </div>
                     )}
                     
                     {activeOrder.status === 'in_transit' && (
-                      <button
-                        type="button"
-                        onClick={() => updateOrderStatus('delivered')}
-                        disabled={!isWithinDeliveryRadius}
-                        className={`py-3 rounded-2xl font-bold transition-all shadow-lg col-span-2 ${
-                          isWithinDeliveryRadius
-                            ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700'
-                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        }`}
-                        title={!isWithinDeliveryRadius ? 'You must be within 100 meters of the customer location to mark as delivered' : 'Mark order as delivered'}
-                      >
-                        {isWithinDeliveryRadius ? '✅ Mark as Delivered' : '🔒 Not Within Delivery Zone'}
-                      </button>
+                      <div className="text-center">
+                        <p className="text-sm text-blue-700 font-medium mb-4">
+                          {isWithinDeliveryRadius 
+                            ? "You're within delivery range! Ready to complete delivery?"
+                            : "Get within 100m of the customer to enable delivery completion"
+                          }
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => updateOrderStatus('delivered')}
+                          disabled={!isWithinDeliveryRadius}
+                          className={`w-full py-5 rounded-2xl font-bold text-xl transition-all shadow-lg flex items-center justify-center space-x-3 ${
+                            isWithinDeliveryRadius
+                              ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 hover:shadow-xl'
+                              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          }`}
+                          title={!isWithinDeliveryRadius ? 'You must be within 100 meters of the customer location to mark as delivered' : 'Mark order as delivered'}
+                        >
+                          <CheckCircle className="w-7 h-7" />
+                          <span>{isWithinDeliveryRadius ? 'COMPLETE DELIVERY' : 'NOT WITHIN DELIVERY ZONE'}</span>
+                        </button>
+                        {!isWithinDeliveryRadius && (
+                          <p className="text-xs text-amber-600 mt-3 font-semibold">
+                            Current distance: {distanceToCustomer ? `${Math.round(distanceToCustomer)}m` : 'Calculating...'}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {activeOrder.status === 'delivered' && (
+                      <div className="text-center">
+                        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <CheckCircle className="w-10 h-10 text-green-600" />
+                        </div>
+                        <h4 className="font-bold text-green-800 text-xl mb-2">DELIVERY COMPLETED!</h4>
+                        <p className="text-green-600 text-sm">Order has been successfully delivered</p>
+                      </div>
+                    )}
+
+                    {!['accepted', 'ready', 'picked_up', 'in_transit', 'delivered'].includes(activeOrder.status) && (
+                      <div className="text-center">
+                        <p className="text-sm text-blue-700 font-medium mb-4">Waiting for order to be ready...</p>
+                        <div className="w-full bg-gray-200 text-gray-500 py-5 rounded-2xl font-bold text-xl flex items-center justify-center space-x-3">
+                          <Clock className="w-7 h-7" />
+                          <span>ORDER STATUS: {activeOrder.status.toUpperCase()}</span>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -2281,18 +3454,7 @@ const FadedSkiesDriverApp = () => {
                           lat: activeOrder.lat + 0.0001,
                           lng: activeOrder.lng + 0.0001
                         };
-                        updateDriverLocation({
-                          coords: {
-                            latitude: simulatedLocation.lat,
-                            longitude: simulatedLocation.lng,
-                            accuracy: 10,
-                            altitude: null,
-                            altitudeAccuracy: null,
-                            heading: null,
-                            speed: null
-                          },
-                          timestamp: Date.now()
-                        } as GeolocationPosition);
+                        forceUpdateDriverLocation(simulatedLocation, 10);
                       }}
                       className="mt-2 w-full bg-blue-100 text-blue-700 py-2 px-3 rounded-xl text-xs font-semibold hover:bg-blue-200 transition-colors"
                     >
@@ -2360,6 +3522,8 @@ const FadedSkiesDriverApp = () => {
                     </button>
                   </div>
                 </div>
+
+
               </div>
             </div>
           )}
@@ -2665,27 +3829,35 @@ const FadedSkiesDriverApp = () => {
                   <h3 className="font-bold text-xl text-gray-900 mb-4">App Settings</h3>
                   <div className="space-y-4">
                     {[
-                      { label: 'Push Notifications', icon: Bell, enabled: true },
-                      { label: 'Location Services', icon: MapPin, enabled: true },
-                      { label: 'Auto-Accept Orders', icon: Timer, enabled: false },
-                      { label: 'Night Mode', icon: Settings, enabled: false }
-                    ].map((setting, index) => (
-                      <div key={index} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
+                      { key: 'pushNotifications', label: 'Push Notifications', icon: Bell },
+                      { key: 'locationServices', label: 'Location Services', icon: MapPin },
+                      { key: 'autoAcceptOrders', label: 'Auto-Accept Orders', icon: Timer },
+                      { key: 'nightMode', label: 'Night Mode', icon: Settings }
+                    ].map((setting) => (
+                      <div key={setting.key} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
                         <div className="flex items-center space-x-3">
                           <setting.icon className="w-5 h-5 text-gray-500" />
                           <span className="font-medium text-gray-700">{setting.label}</span>
                         </div>
-                        <div className={`w-12 h-6 rounded-full relative transition-colors ${
-                          setting.enabled ? 'bg-blue-600' : 'bg-gray-300'
-                        }`}>
+                        <button
+                          onClick={() => toggleAppSetting(setting.key as keyof typeof appSettings)}
+                          className={`w-12 h-6 rounded-full relative transition-colors ${
+                            appSettings[setting.key as keyof typeof appSettings] ? 'bg-blue-600' : 'bg-gray-300'
+                          }`}
+                        >
                           <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                            setting.enabled ? 'translate-x-7' : 'translate-x-1'
+                            appSettings[setting.key as keyof typeof appSettings] ? 'translate-x-7' : 'translate-x-1'
                           }`}></div>
-                        </div>
+                        </button>
                       </div>
                     ))}
                   </div>
+                  
+
                 </div>
+
+                {/* GPS Tracking Test */}
+
 
                 {/* Work Schedule */}
                 <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100">

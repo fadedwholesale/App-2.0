@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev:user": "cd user-app && npm run dev",
-    "dev:driver": "cd driver-app && npm run dev", 
+    "dev:driver": "cd driver-app && npm run dev",
     "dev:admin": "cd admin-app && npm run dev",
     "dev:backend": "cd backend && npm run dev",
     "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:user\" \"npm run dev:driver\" \"npm run dev:admin\"",
@@ -24,10 +24,19 @@
     "sync:admin": "cd admin-app && npx cap sync",
     "sync:all": "npm run sync:user && npm run sync:driver && npm run sync:admin"
   },
-  "keywords": ["cannabis", "delivery", "react", "capacitor", "supabase"],
+  "keywords": [
+    "cannabis",
+    "delivery",
+    "react",
+    "capacitor",
+    "supabase"
+  ],
   "author": "Faded Skies",
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.55.0"
   }
 }

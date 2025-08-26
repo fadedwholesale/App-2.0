@@ -69,3 +69,4 @@ Once deployed, you can:
 ---
 
 **Your admin app is ready! Just follow the steps above to get it live on the web! 🌐✨**
+

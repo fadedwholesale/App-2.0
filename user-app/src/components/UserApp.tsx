@@ -24,6 +24,9 @@ import {
 // Import real-time service
 import realTimeService, { Order as RealTimeOrder, Product as RealTimeProduct } from '../services/real-time-service';
 import { supabase } from '../lib/supabase';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
+import StripePayment from './StripePayment';
 
 // TypeScript interfaces
 interface Product {
@@ -190,9 +193,14 @@ const ProductCard = React.memo(({ product, addToCart, addingToCart }: {
 ));
 
 const FadedSkiesApp = () => {
+  // Initialize Stripe for test mode
+  const stripePromise = loadStripe('pk_test_51S06B0RrDiazxIUvu0HeQXVHvLss5BT8sb0K98q4yagKmWUUzOkA9ZYe2pxVsVueZSoNud3FRjVE6mOkE8uTJKTf00MOofPfc1');
+  
   const [currentView, setCurrentView] = useState<string>('auth');
   const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [showPayment, setShowPayment] = useState<boolean>(false);
+  const [paymentAmount, setPaymentAmount] = useState<number>(0);
   // const [idVerified] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [authForm, setAuthForm] = useState({
@@ -205,11 +213,11 @@ const FadedSkiesApp = () => {
   });
   const [cart, setCart] = useState<CartItem[]>([]);
   const [user, setUser] = useState<User>({
-    name: 'Alex Chen',
-    email: 'alex@example.com',
-    address: '123 Main St, Austin, TX',
-    rewards: 1250,
-    age: 25,
+    name: '',
+    email: '',
+    address: '',
+    rewards: 0,
+    age: 0,
     idVerified: false
   });
   const [orders, setOrders] = useState<Order[]>([]);
@@ -223,6 +231,13 @@ const FadedSkiesApp = () => {
   const [trackingModal, setTrackingModal] = useState<{ isOpen: boolean; order: Order | null }>({ isOpen: false, order: null });
   const [mapModal, setMapModal] = useState<{ isOpen: boolean; order: Order | null }>({ isOpen: false, order: null });
   const [profileModal, setProfileModal] = useState<{ isOpen: boolean; type: string | null }>({ isOpen: false, type: null });
+  const [editProfileData, setEditProfileData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    age: 0,
+    address: ''
+  });
   const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number; heading: number; speed: number }>({
     lat: 30.2672,
     lng: -97.7431,
@@ -274,6 +289,17 @@ const FadedSkiesApp = () => {
     name: ''
   });
 
+  // Initialize edit profile data when user changes
+  useEffect(() => {
+    setEditProfileData({
+      name: user.name,
+      email: user.email,
+      phone: user.phone || '',
+      age: user.age,
+      address: user.address || ''
+    });
+  }, [user]);
+
   // Load real-time data and set up connections
   useEffect(() => {
     const loadData = async () => {
@@ -321,6 +347,20 @@ const FadedSkiesApp = () => {
               ? { ...o, status: order.status }
               : o
           ));
+        });
+
+        // Listen for order cancellations
+        realTimeService.onOrderCancelled((order: RealTimeOrder) => {
+          // Update order status in the list
+          setOrders(prev => prev.map(o => 
+            o.id === order.order_id 
+              ? { ...o, status: 'cancelled' }
+              : o
+          ));
+          
+          // Show cancellation notification to user
+          setToastMessage(`Order ${order.order_id} has been cancelled by admin.`);
+          setShowToast(true);
         });
         
         // realTimeService.onOrderAssigned((order: RealTimeOrder) => {
@@ -377,11 +417,9 @@ const FadedSkiesApp = () => {
     ));
   }, [user.rewards]);
 
-  // Delivery addresses state
+  // Delivery addresses state - start with just the user's main address
   const [deliveryAddresses, setDeliveryAddresses] = useState([
-    { id: 1, name: 'Home', address: user.address, primary: true, type: 'home', instructions: '' },
-    { id: 2, name: 'Work', address: '789 Business Ave, Austin, TX 78701', primary: false, type: 'work', instructions: 'Use side entrance' },
-    { id: 3, name: 'Friend\'s Place', address: '456 Party St, Austin, TX 78704', primary: false, type: 'other', instructions: 'Ring doorbell twice' }
+    { id: 1, name: 'Home', address: user.address || '', primary: true, type: 'home', instructions: '' }
   ]);
   const [showAddAddress, setShowAddAddress] = useState(false);
   const [editingAddress, setEditingAddress] = useState(null);
@@ -395,14 +433,66 @@ const FadedSkiesApp = () => {
     instructions: ''
   });
 
-  // Update addresses when user's main address changes
+  // Load user addresses from database and update when user changes
   useEffect(() => {
-    setDeliveryAddresses(prev => prev.map(addr => 
-      addr.type === 'home' && addr.primary
-        ? { ...addr, address: user.address }
-        : addr
-    ));
-  }, [user.address]);
+    const loadUserAddresses = async () => {
+      if (!isAuthenticated || !user.email) return;
+      
+      try {
+        // Get current authenticated user
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        
+        if (!authUser) return;
+        
+        // Load addresses from database
+        const { data: addressesData, error: addressesError } = await supabase
+          .from('addresses')
+          .select('*')
+          .eq('user_id', authUser.id)
+          .order('is_default', { ascending: false })
+          .order('created_at', { ascending: true });
+        
+        if (addressesError) {
+          console.error('Failed to load user addresses:', addressesError);
+          // Fallback to just the main address
+          setDeliveryAddresses([
+            { id: 1, name: 'Home', address: user.address || '', primary: true, type: 'home', instructions: '' }
+          ]);
+          return;
+        }
+        
+        if (addressesData && addressesData.length > 0) {
+          console.log('✅ User addresses loaded:', addressesData);
+          // Convert database addresses to app format
+          const formattedAddresses = addressesData.map((addr) => ({
+            id: addr.id,
+            name: addr.label,
+            address: `${addr.street}, ${addr.city}, ${addr.state} ${addr.zip_code}`,
+            primary: addr.is_default,
+            type: addr.label.toLowerCase() === 'home' ? 'home' : 
+                  addr.label.toLowerCase() === 'work' ? 'work' : 'other',
+            instructions: ''
+          }));
+          
+          setDeliveryAddresses(formattedAddresses);
+        } else {
+          console.log('No saved addresses found, using main address');
+          // No saved addresses, use main user address
+          setDeliveryAddresses([
+            { id: 1, name: 'Home', address: user.address || '', primary: true, type: 'home', instructions: '' }
+          ]);
+        }
+      } catch (error) {
+        console.error('Error loading user addresses:', error);
+        // Fallback to just the main address
+        setDeliveryAddresses([
+          { id: 1, name: 'Home', address: user.address || '', primary: true, type: 'home', instructions: '' }
+        ]);
+      }
+    };
+    
+    loadUserAddresses();
+  }, [isAuthenticated, user.email, user.address]);
 
   // Live chat state
   const [liveChatModal, setLiveChatModal] = useState({ isOpen: false });
@@ -791,13 +881,91 @@ const FadedSkiesApp = () => {
           }
 
           console.log('✅ Login successful:', data);
+          
+          // Load full user profile from database
+          try {
+            console.log('🔍 Loading user profile for auth user ID:', data.user.id);
+            console.log('🔍 Auth user email:', data.user.email);
+            
+            // First try to find user by auth ID
+            let { data: userProfile, error: profileError } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', data.user.id)
+              .single();
+            
+            if (profileError) {
+              console.log('⚠️ User profile not found by auth ID, trying by email...');
+              // If not found by ID, try to find by email
+              const { data: userByEmail, error: emailError } = await supabase
+                .from('users')
+                .select('*')
+                .eq('email', data.user.email)
+                .single();
+              
+              if (emailError) {
+                console.error('❌ User profile not found by email either:', emailError);
+                console.log('💡 Creating user profile in database...');
+                
+                // Create user profile in database
+                const { data: newUserProfile, error: createError } = await supabase
+                  .from('users')
+                  .insert([{
+                    id: data.user.id,
+                    email: data.user.email,
+                    name: data.user?.user_metadata?.name || authForm.name || 'User',
+                    phone: data.user?.user_metadata?.phone || '',
+                    is_verified: true
+                  }])
+                  .select()
+                  .single();
+                
+                if (createError) {
+                  console.error('❌ Failed to create user profile:', createError);
+                  // Fallback to auth data
+                  setUser(prev => ({ 
+                    ...prev, 
+                    email: authForm.email, 
+                    name: data.user?.user_metadata?.name || authForm.name || 'User'
+                  }));
+                } else {
+                  console.log('✅ User profile created:', newUserProfile);
+                  userProfile = newUserProfile;
+                }
+              } else {
+                console.log('✅ User profile found by email:', userByEmail);
+                userProfile = userByEmail;
+              }
+            } else {
+              console.log('✅ User profile found by auth ID:', userProfile);
+            }
+            
+            if (userProfile) {
+              console.log('✅ Setting user data from profile:', userProfile);
+              // Set user data from database
+              setUser(prev => ({ 
+                ...prev, 
+                email: userProfile.email,
+                name: userProfile.name,
+                phone: userProfile.phone || '',
+                age: userProfile.age || 0,
+                address: userProfile.address || '',
+                rewards: userProfile.loyalty_points || 0,
+                idVerified: userProfile.is_verified || false
+              }));
+            }
+          } catch (profileError) {
+            console.error('❌ Error loading user profile:', profileError);
+            // Fallback to auth data
+            setUser(prev => ({ 
+              ...prev, 
+              email: authForm.email, 
+              name: data.user?.user_metadata?.name || authForm.name || 'User'
+            }));
+          }
+          
           setIsAuthenticated(true);
           setCurrentView('home');
-          setUser(prev => ({ 
-            ...prev, 
-            email: authForm.email, 
-            name: data.user?.user_metadata?.name || authForm.name || 'User'
-          }));
           setToastMessage('Successfully logged in!');
           setShowToast(true);
         } catch (error) {
@@ -900,81 +1068,7 @@ const FadedSkiesApp = () => {
     }
   }, [authMode, authForm]);
 
-  const quickLogin = useCallback(async () => {
-    try {
-      // Use actual form data for authentication
-      const email = authForm.email || 'demo@fadedskies.com';
-      const password = authForm.password || 'demo123';
-      
-      console.log('🔐 Attempting authentication with:', email);
-      
-      // Use Supabase authentication
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: password
-      });
 
-      if (error) {
-        console.log('Login failed:', error.message);
-        
-        // Check if it's a credentials error
-        if (error.message.includes('Invalid login credentials')) {
-          setToastMessage('Invalid email or password. Please check your credentials or create a new account.');
-          setShowToast(true);
-          return;
-        }
-        
-        // For other errors, try to create account
-        console.log('Attempting to create new account...');
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: email,
-          password: password,
-          options: {
-            data: {
-              name: authForm.name || 'User',
-              phone: authForm.phone || '+1234567890',
-              address: '123 Main St, Austin, TX'
-            }
-          }
-        });
-
-        if (signUpError) {
-          console.error('Sign up error:', signUpError);
-          setToastMessage('Account creation failed. Please try again.');
-          setShowToast(true);
-          return;
-        }
-        
-        console.log('✅ New user created:', signUpData);
-        
-        // Check if email confirmation is required
-        if (signUpData.user && !signUpData.user.email_confirmed_at) {
-          setToastMessage('Account created! Please check your email to confirm before logging in.');
-          setShowToast(true);
-          return;
-        }
-      } else {
-        console.log('✅ User authenticated:', data);
-      }
-
-      setIsAuthenticated(true);
-      setCurrentView('home');
-      setUser(prev => ({ 
-        ...prev, 
-        email: email, 
-        name: authForm.name || data?.user?.user_metadata?.name || 'User',
-        phone: authForm.phone || data?.user?.user_metadata?.phone || '+1234567890',
-        address: data?.user?.user_metadata?.address || '123 Main St, Austin, TX'
-      }));
-      
-      setToastMessage('Successfully authenticated!');
-      setShowToast(true);
-    } catch (error) {
-      console.error('Login error:', error);
-      setToastMessage('Authentication failed. Please try again.');
-      setShowToast(true);
-    }
-  }, [authForm]);
 
   const handleLogout = useCallback(() => {
     setIsAuthenticated(false);
@@ -1013,48 +1107,72 @@ const FadedSkiesApp = () => {
     if (!user.idVerified) {
       setCurrentView('id-verification');
     } else {
-      try {
-        // Create order through real-time service
-        const orderData = {
-          user_id: user.email,
-          customer_name: user.name,
-          customer_phone: user.phone || '+1234567890',
-          address: user.address,
-          items: cart.map(item => ({
-            name: item.name,
-            quantity: item.quantity,
-            price: item.price
-          })),
-          total: cartTotal + (cartTotal >= 100 ? 0 : 5)
-        };
-
-        const newOrder = await realTimeService.createOrder(orderData);
-        
-        // Add to local orders
-        const localOrder: Order = {
-          id: newOrder.order_id,
-          status: newOrder.status,
-          items: cart.map(item => item.name),
-          total: newOrder.total,
-          date: newOrder.created_at,
-          estimatedDelivery: '1-2 hours',
-          driver: 'Driver Assigned',
-          vehicle: 'Vehicle Info'
-        };
-        
-        setOrders(prev => [localOrder, ...prev]);
-        setCart([]);
-        setCurrentView('orders');
-        
-        setToastMessage('Order placed successfully!');
-        setShowToast(true);
-      } catch (error) {
-        console.error('Failed to create order:', error);
-        setToastMessage('Failed to place order. Please try again.');
-        setShowToast(true);
-      }
+      // Show payment form instead of creating order directly
+      setPaymentAmount(cartTotal + (cartTotal >= 100 ? 0 : 5));
+      setShowPayment(true);
     }
-  }, [user.idVerified, user.email, user.name, user.phone, user.address, cart, cartTotal]);
+  }, [user.idVerified, cartTotal]);
+
+  const handlePaymentSuccess = useCallback(async (paymentIntent: any) => {
+    try {
+      // Get the authenticated user's UUID
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser?.id) {
+        throw new Error('User not authenticated');
+      }
+
+      // Create order through real-time service after successful payment
+      const orderData = {
+        user_id: authUser.id, // Use UUID instead of email
+        customer_name: user.name,
+        customer_phone: user.phone || '+1234567890',
+        address: user.address,
+        items: cart.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price
+        })),
+        total: paymentAmount,
+        payment_intent_id: paymentIntent.id
+      };
+
+      const newOrder = await realTimeService.createOrder(orderData);
+      
+      // Add to local orders
+      const localOrder: Order = {
+        id: newOrder.order_id,
+        status: newOrder.status,
+        items: cart.map(item => item.name),
+        total: newOrder.total,
+        date: newOrder.created_at,
+        estimatedDelivery: '1-2 hours',
+        driver: 'Driver Assigned',
+        vehicle: 'Vehicle Info'
+      };
+      
+      setOrders(prev => [localOrder, ...prev]);
+      setCart([]);
+      setShowPayment(false);
+      setCurrentView('orders');
+      
+      setToastMessage('Payment successful! Order placed successfully!');
+      setShowToast(true);
+    } catch (error) {
+      console.error('Failed to create order after payment:', error);
+      setToastMessage('Payment successful but failed to create order. Please contact support.');
+      setShowToast(true);
+    }
+  }, [user.name, user.phone, user.address, cart, paymentAmount]);
+
+  const handlePaymentError = useCallback((error: string) => {
+    console.error('Payment failed:', error);
+    setToastMessage(`Payment failed: ${error}`);
+    setShowToast(true);
+  }, []);
+
+  const handlePaymentCancel = useCallback(() => {
+    setShowPayment(false);
+  }, []);
 
   // Simulate live driver location updates
   useEffect(() => {
@@ -1084,8 +1202,23 @@ const FadedSkiesApp = () => {
   }, [chatMessages, agentTyping, liveChatModal.isOpen]);
 
   return (
-    <div className="max-w-md mx-auto bg-gray-50 min-h-screen">
-      <Toast showToast={showToast} toastMessage={toastMessage} />
+    <Elements stripe={stripePromise}>
+      <div className="max-w-md mx-auto bg-gray-50 min-h-screen">
+        <Toast showToast={showToast} toastMessage={toastMessage} />
+        
+        {/* Payment Modal */}
+        {showPayment && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="w-full max-w-md">
+              <StripePayment
+                amount={paymentAmount}
+                onPaymentSuccess={handlePaymentSuccess}
+                onPaymentError={handlePaymentError}
+                onCancel={handlePaymentCancel}
+              />
+            </div>
+          </div>
+        )}
       
       {!isAuthenticated ? (
         <div className="min-h-screen bg-gradient-to-br from-emerald-600 via-green-600 to-teal-700 flex items-center justify-center p-4">
@@ -1262,17 +1395,8 @@ const FadedSkiesApp = () => {
             </div>
 
             {authMode === 'login' && (
-              <div className="mt-6 space-y-3">
-                <div className="text-xs text-gray-500 text-center bg-gray-50 p-4 rounded-xl">
-                  <strong>Demo Mode:</strong> Enter any email and password to continue
-                </div>
-                <button
-                  type="button"
-                  onClick={quickLogin}
-                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-xl font-bold hover:from-blue-700 hover:to-blue-800 transition-all"
-                >
-                  Quick Demo Login
-                </button>
+              <div className="mt-6 text-xs text-gray-500 text-center bg-gray-50 p-4 rounded-xl">
+                Secure login powered by Supabase. Your data is protected.
               </div>
             )}
 
@@ -1622,7 +1746,7 @@ const FadedSkiesApp = () => {
                         onClick={handleIdVerification}
                         className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 text-white py-4 rounded-2xl font-bold hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl"
                       >
-                        Verify ID (Demo)
+                        Verify ID
                       </button>
                     </div>
                   </div>
@@ -1650,9 +1774,13 @@ const FadedSkiesApp = () => {
                       <div className={`px-4 py-2 rounded-full text-sm font-bold ${
                         order.status === 'delivered' 
                           ? 'bg-green-100 text-green-800'
+                          : order.status === 'cancelled'
+                          ? 'bg-red-100 text-red-800'
                           : 'bg-blue-100 text-blue-800'
                       }`}>
-                        {order.status === 'delivered' ? '✅ Delivered' : '🚚 In Transit'}
+                        {order.status === 'delivered' ? '✅ Delivered' : 
+                         order.status === 'cancelled' ? '❌ Cancelled' : 
+                         '🚚 In Transit'}
                       </div>
                     </div>
                     <div className="mb-4">
@@ -2126,14 +2254,34 @@ const FadedSkiesApp = () => {
                 <span className={`px-3 py-1 rounded-full text-sm font-bold ${
                   trackingModal.order.status === 'delivered' 
                     ? 'bg-green-600 text-white' 
+                    : trackingModal.order.status === 'cancelled'
+                    ? 'bg-red-600 text-white'
                     : 'bg-blue-600 text-white'
                 }`}>
-                  {trackingModal.order.status === 'delivered' ? '✅ Delivered' : '🚚 In Transit'}
+                  {trackingModal.order.status === 'delivered' ? '✅ Delivered' : 
+                   trackingModal.order.status === 'cancelled' ? '❌ Cancelled' : 
+                   '🚚 In Transit'}
                 </span>
               </div>
             </div>
 
             <div className="p-6 max-h-96 overflow-y-auto">
+              {/* Cancelled Order Message */}
+              {trackingModal.order.status === 'cancelled' && (
+                <div className="bg-gradient-to-r from-red-50 to-pink-50 rounded-2xl p-6 mb-6 border border-red-100">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center">
+                      <X className="w-8 h-8 text-white" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-lg text-gray-900">Order Cancelled</h4>
+                      <p className="text-red-600 font-semibold">This order has been cancelled by admin</p>
+                      <p className="text-sm text-gray-600 mt-2">If you have any questions, please contact support</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Driver Info for In-Transit Orders */}
               {trackingModal.order.status === 'in-transit' && (
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 mb-6 border border-blue-100">
@@ -2345,7 +2493,8 @@ const FadedSkiesApp = () => {
                               <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
                               <input
                                 type="text"
-                                defaultValue={user.name}
+                                value={editProfileData.name}
+                                onChange={(e) => setEditProfileData({...editProfileData, name: e.target.value})}
                                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                               />
                             </div>
@@ -2353,7 +2502,8 @@ const FadedSkiesApp = () => {
                               <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
                               <input
                                 type="email"
-                                defaultValue={user.email}
+                                value={editProfileData.email}
+                                onChange={(e) => setEditProfileData({...editProfileData, email: e.target.value})}
                                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                               />
                             </div>
@@ -2361,21 +2511,89 @@ const FadedSkiesApp = () => {
                               <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
                               <input
                                 type="tel"
-                                defaultValue="(512) 555-0123"
+                                value={editProfileData.phone}
+                                onChange={(e) => setEditProfileData({...editProfileData, phone: e.target.value})}
                                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                                placeholder="(555) 123-4567"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-2">Date of Birth</label>
+                              <label className="block text-sm font-semibold text-gray-700 mb-2">Age</label>
                               <input
-                                type="date"
-                                defaultValue="1998-03-15"
+                                type="number"
+                                value={editProfileData.age || ''}
+                                onChange={(e) => setEditProfileData({...editProfileData, age: parseInt(e.target.value) || 0})}
                                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                                placeholder="Enter your age"
+                                min="21"
+                                max="120"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-2">Address</label>
+                              <input
+                                type="text"
+                                value={editProfileData.address}
+                                onChange={(e) => setEditProfileData({...editProfileData, address: e.target.value})}
+                                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                                placeholder="Enter your delivery address"
                               />
                             </div>
                           </div>
                           
-                          <button type="button" className="w-full bg-gradient-to-r from-emerald-600 to-green-600 text-white py-4 rounded-2xl font-bold hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg">
+                          <button 
+                            type="button" 
+                            onClick={async () => {
+                              try {
+                                // Get current authenticated user
+                                const { data: { user: authUser } } = await supabase.auth.getUser();
+                                
+                                if (!authUser) {
+                                  setToastMessage('Not authenticated. Please log in again.');
+                                  setShowToast(true);
+                                  return;
+                                }
+                                
+                                // Update user profile in database
+                                const { error: updateError } = await supabase
+                                  .from('users')
+                                  .update({
+                                    name: editProfileData.name,
+                                    email: editProfileData.email,
+                                    phone: editProfileData.phone,
+                                    age: editProfileData.age,
+                                    address: editProfileData.address
+                                  })
+                                  .eq('id', authUser.id);
+                                
+                                if (updateError) {
+                                  console.error('Failed to update profile:', updateError);
+                                  setToastMessage('Failed to update profile. Please try again.');
+                                  setShowToast(true);
+                                  return;
+                                }
+                                
+                                // Update local user state
+                                setUser(prev => ({
+                                  ...prev,
+                                  name: editProfileData.name,
+                                  email: editProfileData.email,
+                                  phone: editProfileData.phone,
+                                  age: editProfileData.age,
+                                  address: editProfileData.address
+                                }));
+                                
+                                setProfileModal({ isOpen: false, type: null });
+                                setToastMessage('Profile updated successfully!');
+                                setShowToast(true);
+                              } catch (error) {
+                                console.error('Profile update error:', error);
+                                setToastMessage('Failed to update profile. Please try again.');
+                                setShowToast(true);
+                              }
+                            }}
+                            className="w-full bg-gradient-to-r from-emerald-600 to-green-600 text-white py-4 rounded-2xl font-bold hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg"
+                          >
                             Save Changes
                           </button>
                         </div>
@@ -2749,7 +2967,7 @@ const FadedSkiesApp = () => {
                                   value={newAddressForm.address}
                                   onChange={(e) => setNewAddressForm(prev => ({ ...prev, address: e.target.value }))}
                                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
-                                  placeholder="123 Main Street, Apt 4B"
+                                  placeholder="Enter your delivery address"
                                 />
                               </div>
 
@@ -3677,7 +3895,8 @@ const FadedSkiesApp = () => {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </Elements>
   );
 };
 

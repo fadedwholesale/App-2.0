@@ -142,3 +142,4 @@ Once deployed, your admin app will be available at:
 - **Vercel Docs**: [vercel.com/docs](https://vercel.com/docs)
 - **Supabase Docs**: [supabase.com/docs](https://supabase.com/docs)
 - **Vite Docs**: [vitejs.dev](https://vitejs.dev)
+

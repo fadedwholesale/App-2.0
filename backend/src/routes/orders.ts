@@ -487,9 +487,34 @@ router.patch('/:orderId/status', [
 
     // Handle driver earnings for delivered orders
     if (status === 'DELIVERED' && userRole === 'DRIVER') {
-      const basePay = 6.00;
-      const mileageRate = 0.50;
-      const distance = 5; // Calculate actual distance
+      const basePay = 2.00; // Updated to $2.00 base pay
+      const mileageRate = 0.70; // Updated to $0.70 per mile
+      
+      // Calculate actual distance from driver location to delivery address
+      let distance = 5; // Default fallback
+      
+      if (order.deliveryLat && order.deliveryLng) {
+        // Get driver's current location from the drivers table
+        const driver = await prisma.driver.findUnique({
+          where: { id: order.driverId! },
+          select: { currentLat: true, currentLng: true }
+        });
+        
+        if (driver?.currentLat && driver?.currentLng) {
+          // Calculate distance using Haversine formula
+          const R = 3959; // Earth's radius in miles
+          const dLat = (order.deliveryLat - driver.currentLat) * Math.PI / 180;
+          const dLng = (order.deliveryLng - driver.currentLng) * Math.PI / 180;
+          const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                    Math.cos(driver.currentLat * Math.PI / 180) * Math.cos(order.deliveryLat * Math.PI / 180) *
+                    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+          distance = Math.round(R * c * 100) / 100; // Round to 2 decimal places
+          
+          console.log(`Distance calculated: ${distance} miles from driver (${driver.currentLat}, ${driver.currentLng}) to delivery (${order.deliveryLat}, ${order.deliveryLng})`);
+        }
+      }
+      
       const mileagePay = distance * mileageRate;
       const totalEarnings = basePay + mileagePay + (order.tip || 0);
 

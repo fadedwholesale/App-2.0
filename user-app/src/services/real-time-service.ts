@@ -33,6 +33,7 @@ class RealTimeService {
 
   // Event callbacks
   private orderUpdateCallbacks: ((order: Order) => void)[] = [];
+  private orderCancelledCallbacks: ((order: Order) => void)[] = [];
   // private orderAssignedCallbacks: ((order: Order) => void)[] = [];
   // private orderDeliveredCallbacks: ((order: Order) => void)[] = [];
   private connectionCallbacks: ((connected: boolean) => void)[] = [];
@@ -54,6 +55,12 @@ class RealTimeService {
             
             if (payload.eventType === 'UPDATE') {
               this.notifyOrderUpdateCallbacks(order);
+              
+              // Check if order was cancelled
+              if (order.status === 'cancelled') {
+                console.log('❌ Order cancelled:', order);
+                this.notifyOrderCancelledCallbacks(order);
+              }
             } else if (payload.eventType === 'INSERT') {
               // New order created
               console.log('🆕 New order created:', order);
@@ -118,6 +125,10 @@ class RealTimeService {
     this.connectionCallbacks.push(callback);
   }
 
+  onOrderCancelled(callback: (order: Order) => void) {
+    this.orderCancelledCallbacks.push(callback);
+  }
+
   // Notify callbacks
   private notifyOrderUpdateCallbacks(order: Order) {
     this.orderUpdateCallbacks.forEach(callback => callback(order));
@@ -130,6 +141,10 @@ class RealTimeService {
   // private notifyOrderDeliveredCallbacks(order: Order) {
   //   this.orderDeliveredCallbacks.forEach(callback => callback(order));
   // }
+
+  private notifyOrderCancelledCallbacks(order: Order) {
+    this.orderCancelledCallbacks.forEach(callback => callback(order));
+  }
 
   private notifyConnectionCallbacks(connected: boolean) {
     this.connectionCallbacks.forEach(callback => callback(connected));
@@ -193,12 +208,19 @@ class RealTimeService {
     }
   }
 
-  async getOrders(userId: string): Promise<Order[]> {
+  async getOrders(_userId: string): Promise<Order[]> {
     try {
+      // Get the authenticated user's UUID first
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.id) {
+        console.error('No authenticated user found');
+        return [];
+      }
+
       const { data, error } = await supabase
         .from('orders')
         .select('*')
-        .eq('user_id', userId)
+        .eq('user_id', user.id) // Use UUID instead of email
         .order('created_at', { ascending: false });
 
       if (error) throw error;
