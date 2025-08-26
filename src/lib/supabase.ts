@@ -19,8 +19,12 @@ export interface Database {
           email: string
           name: string
           phone: string
-          date_of_birth: string
+          address: string
+          role: string
+          is_admin: boolean
+          is_driver: boolean
           is_verified: boolean
+          date_of_birth: string
           created_at: string
           updated_at: string
         }
@@ -29,8 +33,12 @@ export interface Database {
           email: string
           name: string
           phone: string
-          date_of_birth: string
+          address?: string
+          role?: string
+          is_admin?: boolean
+          is_driver?: boolean
           is_verified?: boolean
+          date_of_birth: string
           created_at?: string
           updated_at?: string
         }
@@ -39,8 +47,12 @@ export interface Database {
           email?: string
           name?: string
           phone?: string
-          date_of_birth?: string
+          address?: string
+          role?: string
+          is_admin?: boolean
+          is_driver?: boolean
           is_verified?: boolean
+          date_of_birth?: string
           created_at?: string
           updated_at?: string
         }

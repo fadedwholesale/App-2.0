@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
-// Set your Mapbox access token
-mapboxgl.accessToken = 'pk.eyJ1IjoiZmFkZWRza2llcyIsImEiOiJjbTZ0Z2Z0Z2Z0Z2Z0In0.example'; // Replace with your actual token
+// Set your Mapbox access token from environment variable
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || 'pk.eyJ1IjoiZmFkZWRza2llczU3IiwiYSI6ImNtZW00dHRyajBod3IyeHEyZHdnYm1yeW0ifQ.P4RajEEKqe1dBpyehD-iAA';
 
 interface Driver {
   id: string;
@@ -37,36 +37,69 @@ const AdminMapComponent: React.FC<AdminMapComponentProps> = ({
   onDeliverySelect,
   className = "w-full h-96 rounded-lg"
 }) => {
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  const [lng, setLng] = useState(-70.9);
-  const [lat, setLat] = useState(42.35);
-  const [zoom, setZoom] = useState(9);
+  const [lng, setLng] = useState(-97.7431); // Austin, TX longitude
+  const [lat, setLat] = useState(30.2672);  // Austin, TX latitude
+  const [zoom, setZoom] = useState(12);     // Closer zoom for city view
 
   useEffect(() => {
     if (map.current) return; // initialize map only once
     if (!mapContainer.current) return;
 
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
-      center: [lng, lat],
-      zoom: zoom
-    });
+    console.log('🗺️ Initializing Mapbox map...');
+    console.log('📍 Mapbox token:', import.meta.env.VITE_MAPBOX_ACCESS_TOKEN ? 'Present' : 'Missing');
+    console.log('📍 Token value:', import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || 'Using fallback');
+    console.log('📍 Container:', mapContainer.current);
+    console.log('📍 Container dimensions:', mapContainer.current?.offsetWidth, 'x', mapContainer.current?.offsetHeight);
 
-    map.current.on('move', () => {
+    try {
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: 'mapbox://styles/mapbox/light-v11',
+        center: [lng, lat],
+        zoom: zoom,
+        attributionControl: true,
+        preserveDrawingBuffer: true
+      });
+
+      console.log('✅ Mapbox map initialized successfully');
+      
+      // Add event listeners and controls only if map was created successfully
       if (map.current) {
-        setLng(parseFloat(map.current.getCenter().lng.toFixed(4)));
-        setLat(parseFloat(map.current.getCenter().lat.toFixed(4)));
-        setZoom(parseFloat(map.current.getZoom().toFixed(2)));
+        // Listen for map load events
+        map.current.on('load', () => {
+          console.log('🗺️ Map style loaded successfully');
+          setIsLoading(false);
+        });
+
+        map.current.on('error', (e) => {
+          console.error('🗺️ Map error:', e);
+          setMapError(`Map error: ${e.error?.message || 'Unknown error'}`);
+          setIsLoading(false);
+        });
+
+        map.current.on('move', () => {
+          if (map.current) {
+            setLng(parseFloat(map.current.getCenter().lng.toFixed(4)));
+            setLat(parseFloat(map.current.getCenter().lat.toFixed(4)));
+            setZoom(parseFloat(map.current.getZoom().toFixed(2)));
+          }
+        });
+
+        // Add navigation controls
+        map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+        // Add fullscreen control
+        map.current.addControl(new mapboxgl.FullscreenControl(), 'top-right');
       }
-    });
-
-    // Add navigation controls
-    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
-
-    // Add fullscreen control
-    map.current.addControl(new mapboxgl.FullscreenControl(), 'top-right');
+    } catch (error) {
+      console.error('❌ Failed to initialize Mapbox map:', error);
+      setMapError(`Failed to load map: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setIsLoading(false);
+    }
 
   }, [lng, lat, zoom]);
 
@@ -131,10 +164,31 @@ const AdminMapComponent: React.FC<AdminMapComponentProps> = ({
 
   return (
     <div className={className}>
-      <div ref={mapContainer} className="w-full h-full rounded-lg" />
-      <div className="absolute top-2 left-2 bg-white p-2 rounded shadow text-xs">
-        Longitude: {lng} | Latitude: {lat} | Zoom: {zoom}
-      </div>
+      {isLoading && !mapError ? (
+        <div className="w-full h-full rounded-lg bg-gray-100 flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-blue-600 text-lg font-semibold mb-2">🗺️ Loading Map...</div>
+            <div className="text-gray-600">Initializing Mapbox</div>
+          </div>
+        </div>
+      ) : mapError ? (
+        <div className="w-full h-full rounded-lg bg-gray-100 flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-red-600 text-lg font-semibold mb-2">🗺️ Map Loading Error</div>
+            <div className="text-gray-600 mb-4">{mapError}</div>
+            <div className="text-sm text-gray-500">
+              Please check your Mapbox access token in Vercel environment variables.
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div ref={mapContainer} className="w-full h-full rounded-lg" />
+          <div className="absolute top-2 left-2 bg-white p-2 rounded shadow text-xs">
+            Longitude: {lng} | Latitude: {lat} | Zoom: {zoom}
+          </div>
+        </>
+      )}
       
       {/* Legend */}
       <div className="absolute bottom-2 left-2 bg-white p-3 rounded shadow text-xs">
