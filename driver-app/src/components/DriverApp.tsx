@@ -1295,6 +1295,14 @@ const FadedSkiesDriverApp = () => {
         let calculatedMileagePay = order.driver_mileage_pay || (calculatedDistance * 0.70);
         let calculatedTotalPay = order.driver_total_pay || (2.00 + calculatedMileagePay + (order.tip || 0));
         
+        // Debug: Log order coordinates
+        console.log(`🔍 Order ${order.id} coordinates:`, {
+          delivery_lat: order.delivery_lat,
+          delivery_lng: order.delivery_lng,
+          currentGPSLocation: currentGPSLocation,
+          hasGPS: currentGPSLocation && currentGPSLocation.lat !== 0 && currentGPSLocation.lng !== 0
+        });
+        
         // If we have delivery coordinates and current GPS location, calculate real distance
         if (order.delivery_lat && order.delivery_lng && currentGPSLocation && 
             currentGPSLocation.lat !== 0 && currentGPSLocation.lng !== 0) {
@@ -1332,7 +1340,27 @@ const FadedSkiesDriverApp = () => {
             console.error('❌ Error updating order pay:', updateError);
           }
         } else {
-          console.log(`⚠️ Using default distance for order ${order.id}: ${calculatedDistance} miles (no GPS or delivery coordinates)`);
+          console.log(`⚠️ Using default distance for order ${order.id}: ${calculatedDistance} miles`);
+          console.log(`⚠️ Missing: delivery_lat=${order.delivery_lat}, delivery_lng=${order.delivery_lng}, GPS=${currentGPSLocation ? 'available' : 'unavailable'}`);
+          
+          // If we have GPS but no delivery coordinates, use a default location for testing
+          if (currentGPSLocation && currentGPSLocation.lat !== 0 && currentGPSLocation.lng !== 0) {
+            // Use a default delivery location (Austin downtown) for testing
+            const defaultDeliveryLat = 30.2672;
+            const defaultDeliveryLng = -97.7431;
+            
+            calculatedDistance = calculateDistanceInMiles(
+              currentGPSLocation.lat, 
+              currentGPSLocation.lng, 
+              defaultDeliveryLat, 
+              defaultDeliveryLng
+            );
+            calculatedMileagePay = calculatedDistance * 0.70;
+            calculatedTotalPay = 2.00 + calculatedMileagePay + (order.tip || 0);
+            
+            console.log(`📍 Using default delivery location for order ${order.id}: ${calculatedDistance} miles`);
+            console.log(`💰 Calculated pay: Base=$2.00 + Mileage=$${calculatedMileagePay.toFixed(2)} + Tip=$${order.tip || 0} = $${calculatedTotalPay.toFixed(2)}`);
+          }
         }
         
         return {
