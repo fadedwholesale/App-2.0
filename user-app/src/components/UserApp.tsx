@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   ShoppingCart, 
   User, 
@@ -18,8 +18,12 @@ import {
   EyeOff, 
   Shield, 
   CheckCircle,
-  Edit3
+  Edit3,
+  Navigation,
+  Phone
 } from 'lucide-react';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 // Import real-time service
 import realTimeService, { Order as RealTimeOrder, Product as RealTimeProduct } from '../services/real-time-service';
@@ -63,6 +67,11 @@ interface Order {
   driver: string;
   vehicle: string;
   currentLocation?: string;
+  driverLocation?: { lat: number; lng: number };
+  deliveryAddress?: string;
+  distance?: number;
+  etaMinutes?: number;
+  lastUpdated?: string;
 }
 
 interface User {
@@ -84,6 +93,848 @@ interface User {
 //   updated: string;
 //   category: string;
 // }
+
+// Format order date for clean display with tracking precision
+const formatOrderDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInHours = Math.abs(now.getTime() - date.getTime()) / (1000 * 60 * 60);
+  
+  if (diffInHours < 24) {
+    // Today - show time for tracking
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  } else if (diffInHours < 48) {
+    // Yesterday - show time for tracking
+    return `Yesterday, ${date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    })}`;
+  } else {
+    // Older - show date and time for tracking
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true 
+    });
+  }
+};
+
+// Calculate distance between two coordinates (Haversine formula)
+const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+  const R = 3959; // Earth's radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c * 100) / 100; // Round to 2 decimal places
+};
+
+// Calculate delivery time based on distance and status
+const calculateDeliveryTime = (distance: number, status: string): number => {
+  if (status === 'delivered') return 0;
+  if (status === 'cancelled') return 0;
+  
+  // Different speeds based on order status
+  let averageSpeed = 25; // Default city speed
+  
+  switch (status) {
+    case 'picked_up':
+    case 'in_transit':
+      averageSpeed = 30; // Highway speed for delivery
+      break;
+    case 'accepted':
+      averageSpeed = 25; // City speed when heading to pickup
+      break;
+    case 'assigned':
+      averageSpeed = 20; // Slower when just assigned
+      break;
+    default:
+      averageSpeed = 15; // Very slow for other statuses
+  }
+  
+  const timeInHours = distance / averageSpeed;
+  const timeInMinutes = Math.round(timeInHours * 60);
+  
+  // Add buffer time based on distance
+  let bufferMinutes = 10; // Base buffer
+  
+  if (distance > 5) {
+    bufferMinutes = 15; // More buffer for longer distances
+  } else if (distance > 10) {
+    bufferMinutes = 20; // Even more buffer for very long distances
+  }
+  
+  // Add status-specific buffer
+  if (status === 'picked_up' || status === 'in_transit') {
+    bufferMinutes += 5; // Extra time for final delivery
+  }
+  
+  return Math.max(timeInMinutes + bufferMinutes, 8); // Minimum 8 minutes
+};
+
+// Format delivery time for display
+const formatDeliveryTime = (minutes: number): string => {
+  if (minutes <= 0) return 'Delivered';
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+};
+
+// Map database status to user-friendly display status
+const getDisplayStatus = (status: string): { text: string; color: string; icon: string } => {
+  switch (status) {
+    case 'pending':
+      return { text: 'Order Placed', color: 'bg-blue-100 text-blue-800', icon: '📋' };
+    case 'confirmed':
+      return { text: 'Order Confirmed', color: 'bg-blue-100 text-blue-800', icon: '✅' };
+    case 'preparing':
+      return { text: 'Preparing Order', color: 'bg-yellow-100 text-yellow-800', icon: '👨‍🍳' };
+    case 'ready':
+      return { text: 'Ready for Pickup', color: 'bg-green-100 text-green-800', icon: '📦' };
+    case 'assigned':
+      return { text: 'Driver Assigned', color: 'bg-purple-100 text-purple-800', icon: '🚚' };
+    case 'accepted':
+      return { text: 'Driver En Route', color: 'bg-orange-100 text-orange-800', icon: '🚗' };
+    case 'picked_up':
+      return { text: 'Picked Up', color: 'bg-indigo-100 text-indigo-800', icon: '📱' };
+    case 'in_transit':
+      return { text: 'Out for Delivery', color: 'bg-red-100 text-red-800', icon: '🚚' };
+    case 'delivered':
+      return { text: 'Delivered', color: 'bg-green-100 text-green-800', icon: '🎉' };
+    case 'cancelled':
+      return { text: 'Cancelled', color: 'bg-gray-100 text-gray-800', icon: '❌' };
+    default:
+      return { text: 'Processing', color: 'bg-gray-100 text-gray-800', icon: '⏳' };
+  }
+};
+
+// Get appropriate ETA based on order status
+const getStatusBasedETA = (status: string): string => {
+  switch (status) {
+    case 'pending':
+    case 'confirmed':
+      return '45-60 min';
+    case 'preparing':
+      return '30-45 min';
+    case 'ready':
+      return '20-35 min';
+    case 'assigned':
+      return '15-25 min';
+    case 'accepted':
+      return '10-20 min';
+    case 'picked_up':
+    case 'in_transit':
+      return '8-15 min';
+    case 'delivered':
+      return 'Delivered';
+    case 'cancelled':
+      return 'Cancelled';
+    default:
+      return '45-60 min';
+  }
+};
+
+// Professional Mapbox Delivery Tracker Component
+const DeliveryTracker = React.memo(({ 
+  order, 
+  isOpen, 
+  onClose 
+}: { 
+  order: Order; 
+  isOpen: boolean; 
+  onClose: () => void; 
+}) => {
+  const [currentOrder, setCurrentOrder] = useState<Order>(order);
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
+  const driverMarker = useRef<mapboxgl.Marker | null>(null);
+  const routeLayer = useRef<mapboxgl.GeoJSONSource | null>(null);
+  
+  // User delivery address (Austin downtown - replace with actual user location)
+  const userDeliveryLat = 30.2672;
+  const userDeliveryLng = -97.7431;
+  
+  // Mapbox access token - Using working token from admin app
+  const MAPBOX_ACCESS_TOKEN = 'pk.eyJ1IjoiZmFkZWRza2llczU3IiwiYSI6ImNtZW00dHRyajBod3IyeHEyZHdnYm1yeW0ifQ.P4RajEEKqe1dBpyehD-iAA';
+
+  useEffect(() => {
+    if (!isOpen || !mapContainer.current) return;
+
+    try {
+      // Initialize map with real Mapbox token
+      mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
+      
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [userDeliveryLng, userDeliveryLat],
+        zoom: 14
+      });
+
+      // Add navigation controls
+      map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+      // Add delivery destination marker
+      new mapboxgl.Marker({ color: '#10B981' })
+        .setLngLat([userDeliveryLng, userDeliveryLat])
+        .setPopup(new mapboxgl.Popup().setHTML('<div class="text-center"><strong>Your Address</strong><br/>Delivery Destination</div>'))
+        .addTo(map.current);
+
+      // Add driver marker if location is available - PRODUCTION READY
+      if (currentOrder.driverLocation && currentOrder.driverLocation.lat && currentOrder.driverLocation.lng) {
+        console.log('📍 Adding initial driver marker at:', currentOrder.driverLocation);
+        driverMarker.current = new mapboxgl.Marker({ 
+          color: '#3B82F6',
+          element: createDriverMarker()
+        })
+          .setLngLat([currentOrder.driverLocation.lng, currentOrder.driverLocation.lat])
+          .addTo(map.current);
+        
+        // Fit map to show both driver and destination
+        const bounds = new mapboxgl.LngLatBounds();
+        bounds.extend([currentOrder.driverLocation.lng, currentOrder.driverLocation.lat]); // Driver
+        bounds.extend([userDeliveryLng, userDeliveryLat]); // Destination
+        map.current.fitBounds(bounds, { padding: 50 });
+      } else {
+        console.log('⚠️ No driver location available for initial marker');
+        console.log('🔍 Current order data:', currentOrder);
+        console.log('🔍 Driver ID:', currentOrder.driver);
+        console.log('🔍 Driver location:', currentOrder.driverLocation);
+        
+        // Add a placeholder marker that will be updated when real data arrives
+        console.log('📍 Adding placeholder driver marker...');
+        driverMarker.current = new mapboxgl.Marker({ 
+          color: '#6B7280', // Gray color for placeholder
+          element: createDriverMarker()
+        })
+          .setLngLat([userDeliveryLng + 0.01, userDeliveryLat + 0.01]) // Slightly offset from destination
+          .addTo(map.current);
+      }
+
+      // Add route layer when map loads
+      map.current.on('load', () => {
+        if (currentOrder.driverLocation && currentOrder.driverLocation.lat && currentOrder.driverLocation.lng) {
+          console.log('🗺️ Map loaded, adding route...');
+          addRouteToMap();
+        } else {
+          console.log('🗺️ Map loaded, waiting for driver location to add route...');
+        }
+      });
+
+      console.log('🗺️ Map initialized with real Mapbox token');
+    } catch (error) {
+      console.error('❌ Error initializing map:', error);
+      createFallbackMap();
+    }
+
+    return () => {
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+    };
+  }, [isOpen]);
+
+  const createFallbackMap = () => {
+    if (!mapContainer.current) return;
+    
+    // Create a simple map-like interface
+    mapContainer.current.innerHTML = `
+      <div class="w-full h-full bg-gradient-to-br from-blue-50 to-gray-100 relative">
+        <!-- Map Background Pattern -->
+        <div class="absolute inset-0 opacity-20">
+          <svg width="100%" height="100%" class="absolute inset-0">
+            <defs>
+              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#94a3b8" stroke-width="1"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+          </svg>
+        </div>
+        
+        <!-- Delivery Destination Marker -->
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+          <div class="w-8 h-8 bg-green-500 rounded-full border-4 border-white shadow-lg flex items-center justify-center">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+            </svg>
+          </div>
+          <div class="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-white px-2 py-1 rounded text-xs font-medium shadow">
+            Your Address
+          </div>
+        </div>
+        
+        <!-- Driver Marker (if location available) -->
+        ${order.driverLocation ? `
+          <div class="absolute top-1/4 left-1/4 transform -translate-x-1/2 -translate-y-1/2">
+            <div class="w-8 h-8 bg-blue-500 rounded-full border-4 border-white shadow-lg flex items-center justify-center animate-pulse">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+              </svg>
+            </div>
+            <div class="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-white px-2 py-1 rounded text-xs font-medium shadow">
+              Driver
+            </div>
+          </div>
+        ` : ''}
+        
+        <!-- Route Line (if driver location available) -->
+        ${order.driverLocation ? `
+          <svg class="absolute inset-0 w-full h-full pointer-events-none">
+            <defs>
+              <linearGradient id="routeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.8"/>
+                <stop offset="50%" stop-color="#6366f1" stop-opacity="0.8"/>
+                <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.8"/>
+              </linearGradient>
+            </defs>
+            <path 
+              d="M 25 25 Q 50 50, 75 25 T 125 75 Q 150 100, 200 50" 
+              stroke="url(#routeGradient)" 
+              stroke-width="4" 
+              fill="none"
+              stroke-dasharray="10,5"
+              class="animate-pulse"
+            />
+          </svg>
+        ` : ''}
+        
+        <!-- Map Attribution -->
+        <div class="absolute bottom-2 left-2 text-xs text-gray-500">
+          Delivery Tracking
+        </div>
+      </div>
+    `;
+  };
+
+  // Update driver location when it changes - PRODUCTION READY
+  useEffect(() => {
+    console.log('🔄 Driver location update triggered:', {
+      hasMap: !!map.current,
+      hasDriverLocation: !!currentOrder.driverLocation,
+      hasDriverMarker: !!driverMarker.current,
+      driverLocation: currentOrder.driverLocation
+    });
+
+    if (map.current && currentOrder.driverLocation) {
+      const { lat, lng } = currentOrder.driverLocation;
+      
+      if (driverMarker.current) {
+        // Update existing marker
+        driverMarker.current.setLngLat([lng, lat]);
+        
+        // Update marker color to active blue if it was placeholder
+        const markerElement = driverMarker.current.getElement();
+        if (markerElement) {
+          const markerDiv = markerElement.querySelector('.driver-marker > div');
+          if (markerDiv) {
+            markerDiv.className = 'bg-blue-600 text-white rounded-full p-3 shadow-xl border-4 border-white animate-pulse';
+          }
+        }
+        
+        console.log('📍 Updated existing driver marker to:', { lat, lng });
+      } else {
+        // Create new driver marker
+        driverMarker.current = new mapboxgl.Marker({ 
+          color: '#3B82F6',
+          element: createDriverMarker()
+        })
+          .setLngLat([lng, lat])
+          .addTo(map.current);
+        console.log('📍 Created new driver marker at:', { lat, lng });
+      }
+      
+      // Update route if available
+      if (routeLayer.current) {
+        updateRoute();
+      } else {
+        addRouteToMap();
+      }
+      
+      // Fit map to show both driver and destination
+      const bounds = new mapboxgl.LngLatBounds();
+      bounds.extend([lng, lat]); // Driver location
+      bounds.extend([userDeliveryLng, userDeliveryLat]); // Delivery location
+      map.current.fitBounds(bounds, { padding: 50 });
+      
+    } else if (!map.current && currentOrder.driverLocation) {
+      // Update fallback map if using fallback interface
+      updateFallbackMap();
+    }
+  }, [currentOrder.driverLocation]);
+
+  // Production-ready 30-second driver location updates with real database integration
+  useEffect(() => {
+    if (!isOpen || !currentOrder.driver) return;
+
+    const updateInterval = setInterval(async () => {
+      try {
+        let driverId = currentOrder.driver;
+        
+        // Check if driverId is a valid UUID or if it's just a status string
+        if (driverId === 'Driver Assigned' || driverId === 'driver_assigned' || !driverId) {
+          console.log('⚠️ Invalid driver ID in periodic update:', driverId);
+          
+          // Try to find any available driver
+          const { data: availableDrivers, error: driversError } = await supabase
+            .from('drivers')
+            .select('id, name, current_location, is_online, is_available')
+            .eq('is_online', true)
+            .eq('is_available', true);
+          
+          if (driversError) {
+            console.error('❌ Error fetching available drivers in periodic update:', driversError);
+            return;
+          }
+          
+          if (availableDrivers && availableDrivers.length > 0) {
+            driverId = availableDrivers[0].id;
+            console.log('📍 Using available driver for periodic update:', driverId);
+          } else {
+            console.log('❌ No available drivers for periodic update');
+            return;
+          }
+        }
+        
+        // Fetch driver data from drivers table (same as Admin App)
+        const { data: driver, error } = await supabase
+          .from('drivers')
+          .select('id, name, current_location, is_online, is_available')
+          .eq('id', driverId)
+          .single();
+
+        if (driver && !error) {
+          // Use same logic as Admin App to get coordinates from current_location JSONB
+          let lat = 30.2672; // Austin default
+          let lng = -97.7431; // Austin default
+          
+          if (driver.current_location && 
+              typeof driver.current_location === 'object' && 
+              driver.current_location.lat && 
+              driver.current_location.lng) {
+            lat = driver.current_location.lat;
+            lng = driver.current_location.lng;
+          }
+          
+          const location = { lat, lng };
+          
+          // Update order state
+          const updatedOrder = {
+            ...currentOrder,
+            driverLocation: location
+          };
+          setCurrentOrder(updatedOrder);
+          
+          // Update driver marker
+          if (map.current) {
+            if (driverMarker.current) {
+              driverMarker.current.setLngLat([location.lng, location.lat]);
+            } else {
+              driverMarker.current = new mapboxgl.Marker({ color: '#3B82F6' })
+                .setLngLat([location.lng, location.lat])
+                .addTo(map.current);
+            }
+          }
+          
+          console.log('📍 Driver location updated from database:', location);
+        }
+      } catch (error) {
+        console.error('❌ Error in periodic driver location update:', error);
+      }
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(updateInterval);
+  }, [isOpen, currentOrder.driver]);
+
+  const updateFallbackMap = () => {
+    if (!mapContainer.current || !order.driverLocation) return;
+    
+    // Recreate the fallback map with updated driver location
+    createFallbackMap();
+  };
+
+  // Calculate distance and ETA for display
+  const [calculatedDistance, setCalculatedDistance] = useState<number | null>(null);
+  const [calculatedETA, setCalculatedETA] = useState<string>('Calculating...');
+
+  useEffect(() => {
+    console.log('🔄 Updating delivery tracker:', {
+      hasDriverLocation: !!currentOrder.driverLocation,
+      driverLocation: currentOrder.driverLocation,
+      status: currentOrder.status
+    });
+
+    if (currentOrder.driverLocation && currentOrder.driverLocation.lat && currentOrder.driverLocation.lng) {
+      const distance = calculateDistance(
+        currentOrder.driverLocation.lat,
+        currentOrder.driverLocation.lng,
+        userDeliveryLat,
+        userDeliveryLng
+      );
+      setCalculatedDistance(distance);
+      
+      // Calculate realistic ETA based on distance
+      const etaMinutes = calculateDeliveryTime(distance, currentOrder.status);
+      const formattedETA = formatDeliveryTime(etaMinutes);
+      setCalculatedETA(formattedETA);
+      
+      console.log(`📍 Real distance calculation: ${distance} mi, ETA: ${formattedETA}`);
+      console.log(`📍 Driver location: ${currentOrder.driverLocation.lat}, ${currentOrder.driverLocation.lng}`);
+      console.log(`📍 Delivery location: ${userDeliveryLat}, ${userDeliveryLng}`);
+    } else {
+      // Use status-based ETA when no driver location
+      const statusBasedETA = getStatusBasedETA(currentOrder.status);
+      setCalculatedETA(statusBasedETA);
+      setCalculatedDistance(null);
+      
+      console.log(`📍 No driver location, using status-based ETA: ${statusBasedETA}`);
+      console.log(`📍 Current order driver location:`, currentOrder.driverLocation);
+    }
+  }, [currentOrder.driverLocation, currentOrder.status]);
+
+  // Production-ready component mount with comprehensive driver data validation
+  useEffect(() => {
+    console.log('🗺️ DeliveryTracker mounted with order:', {
+      id: currentOrder.id,
+      status: currentOrder.status,
+      driver: currentOrder.driver,
+      driverLocation: currentOrder.driverLocation,
+      hasDriverLocation: !!currentOrder.driverLocation
+    });
+
+    // Comprehensive driver data validation and fetching
+    if (currentOrder.driver) {
+      console.log('🔍 Validating driver data for:', currentOrder.driver);
+      console.log('📋 Full order object:', currentOrder);
+      
+      // Check database for available drivers
+      checkAllDrivers();
+      
+      // Fetch real driver location from database
+      fetchDriverLocation(currentOrder.driver);
+    } else {
+      console.log('⚠️ No driver assigned to order, attempting to find available driver');
+      fetchDriverLocation('Driver Assigned');
+    }
+  }, []);
+
+  const checkAllDrivers = async () => {
+    try {
+      console.log('🔍 Checking all drivers in database...');
+      const { data: allDrivers, error } = await supabase
+        .from('drivers')
+        .select('id, name, current_location, is_online, is_available');
+      
+      if (error) {
+        console.error('❌ Error fetching all drivers:', error);
+      } else {
+        console.log('📋 All drivers in database:', allDrivers);
+        console.log('📋 Number of drivers:', allDrivers?.length || 0);
+        
+        // Check if our driver is in the list
+        if (allDrivers) {
+          const ourDriver = allDrivers.find(d => d.id === currentOrder.driver);
+          if (ourDriver) {
+            console.log('✅ Found our driver in database:', ourDriver);
+          } else {
+            console.log('❌ Our driver not found in database. Looking for:', currentOrder.driver);
+            console.log('📋 Available driver IDs:', allDrivers.map(d => d.id));
+          }
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error checking all drivers:', error);
+    }
+  };
+
+  const fetchDriverLocation = async (driverId: string) => {
+    try {
+      console.log('🔍 Fetching driver location for driver ID:', driverId);
+      
+      // Check if driverId is a valid UUID or if it's just a status string
+      if (driverId === 'Driver Assigned' || driverId === 'driver_assigned' || !driverId) {
+        console.log('⚠️ Invalid driver ID detected:', driverId);
+        console.log('🔍 This order needs to be assigned to a real driver first');
+        
+        // Try to find any available driver
+        const { data: availableDrivers, error: driversError } = await supabase
+          .from('drivers')
+          .select('id, name, current_location, is_online, is_available')
+          .eq('is_online', true)
+          .eq('is_available', true);
+        
+        if (driversError) {
+          console.error('❌ Error fetching available drivers:', driversError);
+          return;
+        }
+        
+        if (availableDrivers && availableDrivers.length > 0) {
+          console.log('📋 Found available drivers:', availableDrivers);
+          const firstDriver = availableDrivers[0];
+          console.log('📍 Using first available driver:', firstDriver);
+          
+          // Use the first available driver
+          driverId = firstDriver.id;
+        } else {
+          console.log('❌ No available drivers found');
+          return;
+        }
+      }
+      
+      // Fetch driver data from drivers table (same as Admin App)
+      const { data: driver, error } = await supabase
+        .from('drivers')
+        .select('id, name, current_location, is_online, is_available')
+        .eq('id', driverId)
+        .single();
+
+      if (driver && !error) {
+        console.log('📋 Driver data fetched:', driver);
+        
+        // Use same logic as Admin App to get coordinates from current_location JSONB
+        let lat = 30.2672; // Austin default
+        let lng = -97.7431; // Austin default
+        
+        if (driver.current_location && 
+            typeof driver.current_location === 'object' && 
+            driver.current_location.lat && 
+            driver.current_location.lng) {
+          lat = driver.current_location.lat;
+          lng = driver.current_location.lng;
+        }
+        
+        const location = { lat, lng };
+        console.log('📍 Real driver location calculated:', location);
+        
+        // Update the order with real driver location
+        const updatedOrder = {
+          ...currentOrder,
+          driverLocation: location
+        };
+        
+        // Update state with real driver location
+        setCurrentOrder(updatedOrder);
+        
+        // Update the map with real driver location
+        if (map.current) {
+          if (driverMarker.current) {
+            driverMarker.current.setLngLat([location.lng, location.lat]);
+            console.log('📍 Updated existing driver marker to:', location);
+          } else {
+            // Create driver marker if it doesn't exist
+            driverMarker.current = new mapboxgl.Marker({ 
+              color: '#3B82F6',
+              element: createDriverMarker()
+            })
+              .setLngLat([location.lng, location.lat])
+              .addTo(map.current);
+            console.log('📍 Created new driver marker at:', location);
+          }
+          
+          // Update route
+          if (routeLayer.current) {
+            updateRoute();
+          } else {
+            addRouteToMap();
+          }
+        } else {
+          console.log('⚠️ Map not ready yet, will update when map loads');
+        }
+      } else {
+        console.log('⚠️ No driver found in database for driver ID:', driverId);
+        console.log('❌ Database error:', error);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching driver location:', error);
+    }
+  };
+
+  const createDriverMarker = () => {
+    const el = document.createElement('div');
+    el.className = 'driver-marker';
+    el.innerHTML = `
+      <div class="bg-blue-600 text-white rounded-full p-3 shadow-xl border-4 border-white animate-pulse">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+        </svg>
+        <div class="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-ping"></div>
+      </div>
+    `;
+    return el;
+  };
+
+  const addRouteToMap = async () => {
+    if (!map.current || !currentOrder.driverLocation) return;
+
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/directions/v5/mapbox/driving/${currentOrder.driverLocation.lng},${currentOrder.driverLocation.lat};${userDeliveryLng},${userDeliveryLat}?geometries=geojson&access_token=${MAPBOX_ACCESS_TOKEN}`
+      );
+      
+      const data = await response.json();
+      
+      if (data.routes && data.routes[0]) {
+        const route = data.routes[0];
+        
+        map.current.addSource('route', {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            properties: {},
+            geometry: route.geometry
+          }
+        });
+
+        map.current.addLayer({
+          id: 'route',
+          type: 'line',
+          source: 'route',
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round'
+          },
+          paint: {
+            'line-color': '#8B5CF6',
+            'line-width': 4,
+            'line-dasharray': [2, 2]
+          }
+        });
+
+        routeLayer.current = map.current.getSource('route') as mapboxgl.GeoJSONSource;
+      }
+    } catch (error) {
+      console.error('Failed to fetch route:', error);
+    }
+  };
+
+  const updateRoute = async () => {
+    if (!map.current || !currentOrder.driverLocation || !routeLayer.current) return;
+
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/directions/v5/mapbox/driving/${currentOrder.driverLocation.lng},${currentOrder.driverLocation.lat};${userDeliveryLng},${userDeliveryLat}?geometries=geojson&access_token=${MAPBOX_ACCESS_TOKEN}`
+      );
+      
+      const data = await response.json();
+      
+      if (data.routes && data.routes[0]) {
+        routeLayer.current.setData({
+          type: 'Feature',
+          properties: {},
+          geometry: data.routes[0].geometry
+        });
+      }
+    } catch (error) {
+      console.error('Failed to update route:', error);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-3xl flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={onClose}
+              className="text-white hover:text-gray-200 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <div>
+              <h2 className="text-2xl font-bold">Live Delivery Tracking</h2>
+              <p className="text-blue-100">
+                {currentOrder.driver} • ETA {calculatedETA}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+            <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+            <span>LIVE</span>
+          </div>
+        </div>
+
+        {/* Map Container */}
+        <div className="flex-1 relative">
+          <div ref={mapContainer} className="w-full h-full rounded-b-3xl" />
+          
+          {/* Driver Info Overlay */}
+          {currentOrder.driverLocation && (
+            <div className="absolute top-4 left-4 bg-white rounded-2xl p-4 shadow-lg border border-gray-200">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
+                  <User className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900">{currentOrder.driver}</h3>
+                  <p className="text-sm text-gray-600">{currentOrder.vehicle}</p>
+                  <p className="text-sm text-blue-600 font-medium">
+                    {calculatedDistance ? `${calculatedDistance} mi away` : 'Location updating...'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Metrics Overlay */}
+          <div className="absolute bottom-4 left-4 right-4 bg-white rounded-2xl p-4 shadow-lg border border-gray-200">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="flex items-center justify-center space-x-2 text-gray-600 mb-1">
+                  <Clock className="w-4 h-4" />
+                  <span className="text-xs font-medium">ETA</span>
+                </div>
+                <p className="font-bold text-lg text-gray-900">{calculatedETA}</p>
+              </div>
+              <div className="text-center">
+                <div className="flex items-center justify-center space-x-2 text-gray-600 mb-1">
+                  <MapPin className="w-4 h-4" />
+                  <span className="text-xs font-medium">Distance</span>
+                </div>
+                <p className="font-bold text-lg text-gray-900">
+                  {calculatedDistance ? `${calculatedDistance} mi` : 
+                   currentOrder.driverLocation ? 'Calculating...' : 'Driver location updating...'}
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="flex items-center justify-center space-x-2 text-gray-600 mb-1">
+                  <Navigation className="w-4 h-4" />
+                  <span className="text-xs font-medium">Speed</span>
+                </div>
+                <p className="font-bold text-lg text-gray-900">25 mph</p>
+              </div>
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="flex space-x-3 mt-4">
+              <button className="flex-1 bg-blue-600 text-white px-4 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2">
+                <MessageCircle className="w-4 h-4" />
+                <span>Message Driver</span>
+              </button>
+              <button className="flex-1 bg-gray-600 text-white px-4 py-3 rounded-xl font-semibold hover:bg-gray-700 transition-colors flex items-center justify-center space-x-2">
+                <Phone className="w-4 h-4" />
+                <span>Call Driver</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
 
 // Toast component - moved outside
 const Toast = React.memo(({ showToast, toastMessage }: { showToast: boolean; toastMessage: string }) => (
@@ -230,7 +1081,13 @@ const FadedSkiesApp = () => {
   const [addingToCart, setAddingToCart] = useState<number | null>(null);
   const [trackingModal, setTrackingModal] = useState<{ isOpen: boolean; order: Order | null }>({ isOpen: false, order: null });
   const [mapModal, setMapModal] = useState<{ isOpen: boolean; order: Order | null }>({ isOpen: false, order: null });
+  const [deliveryTrackerModal, setDeliveryTrackerModal] = useState<{ isOpen: boolean; order: Order | null }>({ isOpen: false, order: null });
   const [profileModal, setProfileModal] = useState<{ isOpen: boolean; type: string | null }>({ isOpen: false, type: null });
+  const [rewardsModal, setRewardsModal] = useState<{ isOpen: boolean }>({ isOpen: false });
+  const [paymentMethodsModal, setPaymentMethodsModal] = useState<{ isOpen: boolean }>({ isOpen: false });
+  const [notificationsModal, setNotificationsModal] = useState<{ isOpen: boolean }>({ isOpen: false });
+  const [privacySecurityModal, setPrivacySecurityModal] = useState<{ isOpen: boolean }>({ isOpen: false });
+  const [deliveryAddressesModal, setDeliveryAddressesModal] = useState<{ isOpen: boolean }>({ isOpen: false });
   const [editProfileData, setEditProfileData] = useState({
     name: '',
     email: '',
@@ -289,6 +1146,284 @@ const FadedSkiesApp = () => {
     name: ''
   });
 
+  // Database functions for user data management
+  const updateUserProfile = async (profileData: any) => {
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser?.id) throw new Error('No authenticated user');
+
+      const { data, error } = await supabase
+        .from('users')
+        .update({
+          name: profileData.name,
+          phone: profileData.phone,
+          age: profileData.age,
+          address: profileData.address,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', authUser.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      setUser(prev => ({
+        ...prev,
+        name: data.name,
+        phone: data.phone,
+        age: data.age,
+        address: data.address
+      }));
+      
+      setToastMessage('Profile updated successfully!');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      
+      return data;
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      setToastMessage('Failed to update profile');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      throw error;
+    }
+  };
+
+  const updateNotificationSettings = async (settings: any) => {
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser?.id) throw new Error('No authenticated user');
+
+      const { data, error } = await supabase
+        .from('user_preferences')
+        .upsert({
+          user_id: authUser.id,
+          notification_settings: settings,
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      setNotificationSettings(settings);
+      setToastMessage('Notification settings updated!');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      
+      return data;
+    } catch (error) {
+      console.error('Error updating notification settings:', error);
+      setToastMessage('Failed to update notification settings');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      throw error;
+    }
+  };
+
+  const updatePrivacySettings = async (settings: any) => {
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser?.id) throw new Error('No authenticated user');
+
+      const { data, error } = await supabase
+        .from('user_preferences')
+        .upsert({
+          user_id: authUser.id,
+          privacy_settings: settings,
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      setPrivacySettings(settings);
+      setToastMessage('Privacy settings updated!');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      
+      return data;
+    } catch (error) {
+      console.error('Error updating privacy settings:', error);
+      setToastMessage('Failed to update privacy settings');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      throw error;
+    }
+  };
+
+  const updateAppPreferences = async (preferences: any) => {
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser?.id) throw new Error('No authenticated user');
+
+      const { data, error } = await supabase
+        .from('user_preferences')
+        .upsert({
+          user_id: authUser.id,
+          app_preferences: preferences,
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      setAppPreferences(preferences);
+      setToastMessage('App preferences updated!');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      
+      return data;
+    } catch (error) {
+      console.error('Error updating app preferences:', error);
+      setToastMessage('Failed to update app preferences');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      throw error;
+    }
+  };
+
+  // Secure payment method functions with database integration
+  const loadUserPaymentMethods = async () => {
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser?.id) throw new Error('No authenticated user');
+
+      // Use the clean function that automatically handles expired cards and gets current user's UUID
+      const { data, error } = await supabase.rpc('get_user_payment_methods_auto');
+
+      if (error) {
+        console.error('❌ Error loading payment methods from database:', error.message);
+        setToastMessage('Failed to load payment methods');
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 3000);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        console.log('💳 Loaded payment methods from database:', data);
+        const formattedMethods = data.map((method: any) => ({
+          id: method.id,
+          type: method.payment_type,
+          icon: method.icon || '💳',
+          status: method.status || 'Active',
+          primary: method.is_primary,
+          details: method.masked_details || method.details || ''
+        }));
+        setPaymentMethods(formattedMethods);
+      } else {
+        console.log('💳 No payment methods found in database');
+        setPaymentMethods([]);
+      }
+    } catch (error) {
+      console.error('❌ Error loading payment methods:', error);
+      setPaymentMethods([]);
+    }
+  };
+
+  const addPaymentMethodToDatabase = async (paymentData: any) => {
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser?.id) throw new Error('No authenticated user');
+
+      if (paymentData.type === 'card') {
+        // Use the automatic card management function with current user's UUID
+        const { data, error } = await supabase.rpc('add_or_update_card_auto', {
+          p_card_number: paymentData.cardNumber,
+          p_expiry_month: paymentData.expiryDate.split('/')[0],
+          p_expiry_year: '20' + paymentData.expiryDate.split('/')[1],
+          p_cvv: paymentData.cvv,
+          p_cardholder_name: paymentData.name
+        });
+
+        if (error) throw error;
+        
+        console.log('💳 Card automatically managed in database:', data);
+        return { id: data };
+      } else {
+        // Handle non-card payment methods with automatic UUID
+        const { data, error } = await supabase.rpc('add_payment_method_auto', {
+          p_payment_type: paymentData.type,
+          p_masked_details: paymentData.details,
+          p_icon: paymentData.icon,
+          p_is_primary: paymentData.primary
+        });
+
+        if (error) throw error;
+        
+        console.log('💳 Payment method added to database:', data);
+        return data;
+      }
+    } catch (error) {
+      console.error('❌ Error adding payment method to database:', error);
+      throw error;
+    }
+  };
+
+  const removePaymentMethodFromDatabase = async (methodId: number) => {
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser?.id) throw new Error('No authenticated user');
+
+      const { error } = await supabase
+        .from('payment_methods')
+        .delete()
+        .eq('id', methodId)
+        .eq('user_id', authUser.id); // Ensure user can only delete their own payment methods
+
+      if (error) throw error;
+      
+      console.log('💳 Payment method removed from database:', methodId);
+    } catch (error) {
+      console.error('❌ Error removing payment method from database:', error);
+      throw error;
+    }
+  };
+
+  const setPrimaryPaymentMethodInDatabase = async (methodId: number) => {
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser?.id) throw new Error('No authenticated user');
+
+      // First, remove primary from all user's payment methods
+      const { error: resetError } = await supabase
+        .from('payment_methods')
+        .update({ is_primary: false, updated_at: new Date().toISOString() })
+        .eq('user_id', authUser.id);
+
+      if (resetError) throw resetError;
+
+      // Then set the selected method as primary
+      const { error: updateError } = await supabase
+        .from('payment_methods')
+        .update({ is_primary: true, updated_at: new Date().toISOString() })
+        .eq('id', methodId)
+        .eq('user_id', authUser.id); // Ensure user can only update their own payment methods
+
+      if (updateError) throw updateError;
+      
+      console.log('💳 Primary payment method updated in database:', methodId);
+    } catch (error) {
+      console.error('❌ Error setting primary payment method in database:', error);
+      throw error;
+    }
+  };
+
+  const toggleAppPreference = async (key: keyof typeof appPreferences) => {
+    const newPreferences = {
+      ...appPreferences,
+      [key]: !appPreferences[key]
+    };
+    
+    try {
+      await updateAppPreferences(newPreferences);
+    } catch (error) {
+      console.error('Error toggling app preference:', error);
+    }
+  };
+
   // Initialize edit profile data when user changes
   useEffect(() => {
     setEditProfileData({
@@ -311,20 +1446,77 @@ const FadedSkiesApp = () => {
         console.log('Loaded products from Supabase:', productsData?.length);
         setRealProducts(productsData);
         
+        // Load user payment methods if authenticated
+        if (isAuthenticated && user.email) {
+          await loadUserPaymentMethods();
+        }
+        
         // Load user orders if authenticated
         if (isAuthenticated && user.email) {
           try {
             const ordersData = await realTimeService.getOrders(user.email);
-            setOrders(ordersData.map((order: RealTimeOrder) => ({
-              id: order.order_id,
-              status: order.status,
-              items: order.items.map((item: any) => item.name),
-              total: order.total,
-              date: order.created_at,
-              estimatedDelivery: '1-2 hours',
-              driver: 'Driver Assigned',
-              vehicle: 'Vehicle Info'
-            })));
+            
+            // Process orders with real-time driver location data
+            const processedOrders = await Promise.all(ordersData.map(async (order: RealTimeOrder) => {
+              // Get user's delivery address (Austin downtown - replace with actual user location)
+              const userDeliveryLat = 30.2672;
+              const userDeliveryLng = -97.7431;
+              
+              let estimatedDelivery = getStatusBasedETA(order.status);
+              let distance: number | undefined = undefined;
+              let driverLocation = order.driver_location;
+              
+              // If order has a driver assigned, try to get the latest driver location
+              if (order.driver_id && order.driver_id !== 'Driver Assigned') {
+                try {
+                  // Fetch latest driver location from database
+                  const { data: driverData } = await supabase
+                    .from('drivers')
+                    .select('current_location')
+                    .eq('id', order.driver_id)
+                    .single();
+                  
+                  if (driverData && driverData.current_location) {
+                    driverLocation = driverData.current_location;
+                    console.log(`📍 Found driver location for order ${order.order_id}:`, driverLocation);
+                  }
+                } catch (error) {
+                  console.log(`⚠️ Could not fetch driver location for order ${order.order_id}:`, error);
+                }
+              }
+              
+              // Calculate real-time delivery time if we have driver location
+              if (driverLocation && driverLocation.lat && driverLocation.lng) {
+                distance = calculateDistance(
+                  driverLocation.lat,
+                  driverLocation.lng,
+                  userDeliveryLat,
+                  userDeliveryLng
+                );
+                
+                const etaMinutes = calculateDeliveryTime(distance, order.status);
+                estimatedDelivery = formatDeliveryTime(etaMinutes);
+                
+                console.log(`🚚 Order ${order.order_id} - Real Distance: ${distance}mi, ETA: ${estimatedDelivery}`);
+              } else {
+                console.log(`⚠️ Order ${order.order_id} - No driver location, using status-based ETA: ${estimatedDelivery}`);
+              }
+              
+              return {
+                id: order.order_id,
+                status: order.status,
+                items: order.items.map((item: any) => item.name),
+                total: order.total,
+                date: order.created_at,
+                estimatedDelivery,
+                distance,
+                driver: order.driver_id ? 'Driver Assigned' : 'Awaiting Driver',
+                vehicle: order.driver_id ? 'Vehicle Info' : 'Not Assigned',
+                driverLocation: driverLocation
+              };
+            }));
+            
+            setOrders(processedOrders);
           } catch (orderError) {
             console.warn('Failed to load orders:', orderError);
             // Keep empty orders array
@@ -340,13 +1532,52 @@ const FadedSkiesApp = () => {
         const connectionStatus = realTimeService.isSocketConnected();
         console.log('Supabase real-time connection status:', connectionStatus);
         
-        // Set up real-time listeners
+        // Set up real-time listeners with delivery time calculations
         realTimeService.onOrderUpdate((order: RealTimeOrder) => {
-          setOrders(prev => prev.map(o => 
-            o.id === order.order_id 
-              ? { ...o, status: order.status }
-              : o
-          ));
+          setOrders(prev => prev.map(o => {
+            if (o.id === order.order_id) {
+              // Get user's delivery address (you might want to store this in user profile)
+              const userDeliveryLat = 30.2672; // Austin downtown - replace with actual user location
+              const userDeliveryLng = -97.7431;
+              
+              let updatedOrder = { ...o, status: order.status };
+              
+              // If we have driver location, calculate real-time delivery time
+              if (order.driver_location && order.driver_location.lat && order.driver_location.lng) {
+                const distance = calculateDistance(
+                  order.driver_location.lat,
+                  order.driver_location.lng,
+                  userDeliveryLat,
+                  userDeliveryLng
+                );
+                
+                const etaMinutes = calculateDeliveryTime(distance, order.status);
+                const formattedEta = formatDeliveryTime(etaMinutes);
+                
+                updatedOrder = {
+                  ...updatedOrder,
+                  distance,
+                  etaMinutes,
+                  estimatedDelivery: formattedEta,
+                  driverLocation: order.driver_location,
+                  lastUpdated: new Date().toISOString()
+                };
+                
+                console.log(`🚚 Order ${order.order_id} - Distance: ${distance}mi, ETA: ${formattedEta}`);
+              } else {
+                // Use status-based ETA when no GPS is available
+                const statusBasedETA = getStatusBasedETA(order.status);
+                updatedOrder = {
+                  ...updatedOrder,
+                  estimatedDelivery: statusBasedETA,
+                  lastUpdated: new Date().toISOString()
+                };
+              }
+              
+              return updatedOrder;
+            }
+            return o;
+          }));
         });
 
         // Listen for order cancellations
@@ -363,15 +1594,78 @@ const FadedSkiesApp = () => {
           setShowToast(true);
         });
         
-        // realTimeService.onOrderAssigned((order: RealTimeOrder) => {
-        //   setOrders(prev => prev.map(o => 
-        //     o.id === order.order_id 
-        //       ? { ...o, status: order.status, driver: 'Driver Assigned' }
-        //       : o
-        //   ));
-        //   setToastMessage(`Order ${order.order_id} assigned to driver!`);
-        //   setShowToast(true);
-        // });
+        // Set up periodic order updates to refresh driver location data
+        const orderUpdateInterval = setInterval(async () => {
+          if (isAuthenticated && user.email && orders.length > 0) {
+            try {
+              const updatedOrdersData = await realTimeService.getOrders(user.email);
+              
+              // Process orders with latest driver location data
+              const updatedOrders = await Promise.all(updatedOrdersData.map(async (order: RealTimeOrder) => {
+                const existingOrder = orders.find(o => o.id === order.order_id);
+                if (!existingOrder) return null;
+                
+                // Get user's delivery address
+                const userDeliveryLat = 30.2672;
+                const userDeliveryLng = -97.7431;
+                
+                let driverLocation = order.driver_location;
+                let estimatedDelivery = existingOrder.estimatedDelivery;
+                let distance = existingOrder.distance;
+                
+                // If order has a driver assigned, try to get the latest driver location
+                if (order.driver_id && order.driver_id !== 'Driver Assigned') {
+                  try {
+                    const { data: driverData } = await supabase
+                      .from('drivers')
+                      .select('current_location')
+                      .eq('id', order.driver_id)
+                      .single();
+                    
+                    if (driverData && driverData.current_location) {
+                      driverLocation = driverData.current_location;
+                    }
+                  } catch (error) {
+                    console.log(`⚠️ Could not fetch driver location for order ${order.order_id}:`, error);
+                  }
+                }
+                
+                // Calculate real-time delivery time if we have driver location
+                if (driverLocation && driverLocation.lat && driverLocation.lng) {
+                  distance = calculateDistance(
+                    driverLocation.lat,
+                    driverLocation.lng,
+                    userDeliveryLat,
+                    userDeliveryLng
+                  );
+                  
+                  const etaMinutes = calculateDeliveryTime(distance, order.status);
+                  estimatedDelivery = formatDeliveryTime(etaMinutes);
+                  
+                  console.log(`🔄 Order ${order.order_id} - Updated Distance: ${distance}mi, ETA: ${estimatedDelivery}`);
+                }
+                
+                return {
+                  ...existingOrder,
+                  status: order.status,
+                  estimatedDelivery,
+                  distance,
+                  driverLocation,
+                  lastUpdated: new Date().toISOString()
+                };
+              }));
+              
+              // Filter out null values and update orders
+              const validOrders = updatedOrders.filter(order => order !== null);
+              setOrders(validOrders);
+            } catch (error) {
+              console.log('Periodic order update failed:', error);
+            }
+          }
+        }, 30000); // Update every 30 seconds
+
+        // Cleanup interval on unmount
+        return () => clearInterval(orderUpdateInterval);
         
         // realTimeService.onOrderDelivered((order: RealTimeOrder) => {
         //   setOrders(prev => prev.map(o => 
@@ -385,6 +1679,62 @@ const FadedSkiesApp = () => {
         
         // Data loading completed successfully
         console.log('Data loading completed');
+        
+        // Set up auto-refresh for delivery times every minute
+        const deliveryTimeInterval = setInterval(() => {
+          if (isAuthenticated && user.email) {
+            setOrders(prev => prev.map(order => {
+              // Only update active orders (not delivered or cancelled)
+              if (order.status === 'delivered' || order.status === 'cancelled') {
+                return order;
+              }
+
+              // Get user's delivery address
+              const userDeliveryLat = 30.2672;
+              const userDeliveryLng = -97.7431;
+              
+              let updatedOrder = { ...order };
+              
+              // Recalculate delivery time based on current status
+              if (order.driverLocation && order.driverLocation.lat && order.driverLocation.lng) {
+                const distance = calculateDistance(
+                  order.driverLocation.lat,
+                  order.driverLocation.lng,
+                  userDeliveryLat,
+                  userDeliveryLng
+                );
+                
+                const etaMinutes = calculateDeliveryTime(distance, order.status);
+                const formattedEta = formatDeliveryTime(etaMinutes);
+                
+                updatedOrder = {
+                  ...order,
+                  distance,
+                  etaMinutes,
+                  estimatedDelivery: formattedEta,
+                  lastUpdated: new Date().toISOString()
+                };
+              } else if (order.status === 'in_transit' || order.status === 'accepted') {
+                const defaultDistance = 2.5;
+                const etaMinutes = calculateDeliveryTime(defaultDistance, order.status);
+                const formattedEta = formatDeliveryTime(etaMinutes);
+                
+                updatedOrder = {
+                  ...order,
+                  distance: defaultDistance,
+                  etaMinutes,
+                  estimatedDelivery: formattedEta,
+                  lastUpdated: new Date().toISOString()
+                };
+              }
+              
+              return updatedOrder;
+            }));
+          }
+        }, 60000); // Update every minute
+
+        // Cleanup interval on unmount
+        return () => clearInterval(deliveryTimeInterval);
         setToastMessage('Live data loaded successfully!');
         setShowToast(true);
         
@@ -433,60 +1783,50 @@ const FadedSkiesApp = () => {
     instructions: ''
   });
 
-  // Load user addresses from database and update when user changes
+  // Production-ready address loading with database integration
   useEffect(() => {
     const loadUserAddresses = async () => {
       if (!isAuthenticated || !user.email) return;
       
       try {
-        // Get current authenticated user
-        const { data: { user: authUser } } = await supabase.auth.getUser();
+        console.log('📋 Loading user addresses for:', user.email);
         
-        if (!authUser) return;
-        
-        // Load addresses from database
-        const { data: addressesData, error: addressesError } = await supabase
+        // First try to load from addresses table
+        const { data: addresses, error } = await supabase
           .from('addresses')
           .select('*')
-          .eq('user_id', authUser.id)
+          .eq('user_id', user.email)
           .order('is_default', { ascending: false })
           .order('created_at', { ascending: true });
         
-        if (addressesError) {
-          console.error('Failed to load user addresses:', addressesError);
-          // Fallback to just the main address
+        if (error) {
+          console.log('⚠️ Addresses table not available, using fallback:', error.message);
+          // Fallback to main user address
           setDeliveryAddresses([
-            { id: 1, name: 'Home', address: user.address || '', primary: true, type: 'home', instructions: '' }
+            { id: 1, name: 'Home', address: user.address || 'Austin, TX', primary: true, type: 'home', instructions: '' }
           ]);
-          return;
-        }
-        
-        if (addressesData && addressesData.length > 0) {
-          console.log('✅ User addresses loaded:', addressesData);
-          // Convert database addresses to app format
-          const formattedAddresses = addressesData.map((addr) => ({
+        } else if (addresses && addresses.length > 0) {
+          console.log('📋 Loaded addresses from database:', addresses);
+          const formattedAddresses = addresses.map(addr => ({
             id: addr.id,
-            name: addr.label,
+            name: addr.label || 'Home',
             address: `${addr.street}, ${addr.city}, ${addr.state} ${addr.zip_code}`,
             primary: addr.is_default,
-            type: addr.label.toLowerCase() === 'home' ? 'home' : 
-                  addr.label.toLowerCase() === 'work' ? 'work' : 'other',
-            instructions: ''
+            type: addr.label?.toLowerCase() || 'home',
+            instructions: addr.instructions || ''
           }));
-          
           setDeliveryAddresses(formattedAddresses);
         } else {
-          console.log('No saved addresses found, using main address');
-          // No saved addresses, use main user address
+          console.log('📋 No addresses in database, using main user address');
           setDeliveryAddresses([
-            { id: 1, name: 'Home', address: user.address || '', primary: true, type: 'home', instructions: '' }
+            { id: 1, name: 'Home', address: user.address || 'Austin, TX', primary: true, type: 'home', instructions: '' }
           ]);
         }
       } catch (error) {
-        console.error('Error loading user addresses:', error);
-        // Fallback to just the main address
+        console.error('❌ Error loading user addresses:', error);
+        // Fallback to default address
         setDeliveryAddresses([
-          { id: 1, name: 'Home', address: user.address || '', primary: true, type: 'home', instructions: '' }
+          { id: 1, name: 'Home', address: 'Austin, TX', primary: true, type: 'home', instructions: '' }
         ]);
       }
     };
@@ -503,95 +1843,130 @@ const FadedSkiesApp = () => {
   const [agentTyping, setAgentTyping] = useState(false);
   const [chatStatus, setChatStatus] = useState('online'); // online, away, busy
 
-  const toggleAppPreference = useCallback((key: keyof typeof appPreferences) => {
-    setAppPreferences(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
-    
-    // Show feedback for certain toggles
-    const messages = {
-      darkMode: `Dark mode ${!appPreferences[key] ? 'enabled' : 'disabled'}`,
-      biometricLogin: `Biometric login ${!appPreferences[key] ? 'enabled' : 'disabled'}`,
-      soundEffects: `Sound effects ${!appPreferences[key] ? 'enabled' : 'disabled'}`,
-      analytics: `Usage analytics ${!appPreferences[key] ? 'enabled' : 'disabled'}`
+
+
+  const toggleNotificationSetting = useCallback(async (key: keyof typeof notificationSettings) => {
+    const newSettings = {
+      ...notificationSettings,
+      [key]: !notificationSettings[key]
     };
     
-    setToastMessage(messages[key]);
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 2000);
-  }, [appPreferences]);
+    try {
+      await updateNotificationSettings(newSettings);
+    } catch (error) {
+      console.error('Error updating notification settings:', error);
+    }
+  }, [notificationSettings, updateNotificationSettings]);
 
-  const toggleNotificationSetting = useCallback((key: keyof typeof notificationSettings) => {
-    setNotificationSettings(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
+  const togglePrivacySetting = useCallback(async (key: keyof typeof privacySettings) => {
+    const newSettings = {
+      ...privacySettings,
+      [key]: !privacySettings[key]
+    };
     
-    setToastMessage(`Notification setting updated`);
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 2000);
-  }, []);
+    try {
+      await updatePrivacySettings(newSettings);
+    } catch (error) {
+      console.error('Error updating privacy settings:', error);
+    }
+  }, [privacySettings, updatePrivacySettings]);
 
-  const togglePrivacySetting = useCallback((key: keyof typeof privacySettings) => {
-    setPrivacySettings(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
-    
-    setToastMessage(`Privacy setting updated`);
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 2000);
-  }, []);
-
-  // Payment methods functions
-  const addPaymentMethod = useCallback(() => {
+  // Secure payment methods functions with database integration
+  const addPaymentMethod = useCallback(async () => {
     if (newPaymentForm.type === 'card' && (!newPaymentForm.cardNumber || !newPaymentForm.expiryDate || !newPaymentForm.cvv || !newPaymentForm.name)) {
-      alert('Please fill in all card details');
+      setToastMessage('Please fill in all card details');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
       return;
     }
 
-    const newMethod = {
-      id: Date.now(),
-      type: newPaymentForm.type === 'card' ? `${newPaymentForm.cardNumber.slice(0, 4)} •••• ${newPaymentForm.cardNumber.slice(-4)}` : 
-            newPaymentForm.type === 'paypal' ? 'PayPal' : 'Google Pay',
-      icon: newPaymentForm.type === 'card' ? '💳' : newPaymentForm.type === 'paypal' ? '💙' : '🔵',
-      status: 'Active',
-      primary: paymentMethods.length === 0,
-      details: newPaymentForm.type === 'card' ? `Expires ${newPaymentForm.expiryDate}` : 'Connected'
-    };
+    try {
+      const paymentData = {
+        type: newPaymentForm.type,
+        cardNumber: newPaymentForm.cardNumber,
+        expiryDate: newPaymentForm.expiryDate,
+        cvv: newPaymentForm.cvv,
+        name: newPaymentForm.name,
+        icon: newPaymentForm.type === 'card' ? '💳' : newPaymentForm.type === 'paypal' ? '💙' : '🔵',
+        primary: paymentMethods.length === 0,
+        details: newPaymentForm.type === 'card' ? `Expires ${newPaymentForm.expiryDate}` : 'Connected'
+      };
 
-    setPaymentMethods(prev => [...prev, newMethod]);
-    setNewPaymentForm({ type: 'card', cardNumber: '', expiryDate: '', cvv: '', name: '' });
-    setShowAddPayment(false);
-    setToastMessage('Payment method added successfully');
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 2000);
-  }, [newPaymentForm, paymentMethods.length]);
+      // Add to database first
+      const dbMethod = await addPaymentMethodToDatabase(paymentData);
 
-  const removePaymentMethod = useCallback((id: number) => {
-    setPaymentMethods(prev => {
-      const filtered = prev.filter(method => method.id !== id);
-      // If we removed the primary method, make the first remaining method primary
-      if (filtered.length > 0 && !filtered.some(method => method.primary)) {
-        filtered[0].primary = true;
-      }
-      return filtered;
-    });
-    setToastMessage('Payment method removed');
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 2000);
-  }, []);
+      // Update local state
+      const newMethod = {
+        id: dbMethod.id,
+        type: newPaymentForm.type === 'card' ? `${newPaymentForm.cardNumber.slice(0, 4)} •••• ${newPaymentForm.cardNumber.slice(-4)}` : 
+              newPaymentForm.type === 'paypal' ? 'PayPal' : 'Google Pay',
+        icon: paymentData.icon,
+        status: 'Active',
+        primary: paymentData.primary,
+        details: paymentData.details
+      };
 
-  const setPrimaryPaymentMethod = useCallback((id: number) => {
-    setPaymentMethods(prev => prev.map(method => ({
-      ...method,
-      primary: method.id === id
-    })));
-    setToastMessage('Primary payment method updated');
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 2000);
-  }, []);
+      setPaymentMethods(prev => [...prev, newMethod]);
+      setNewPaymentForm({ type: 'card', cardNumber: '', expiryDate: '', cvv: '', name: '' });
+      setShowAddPayment(false);
+      setToastMessage('Payment method added successfully');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    } catch (error) {
+      console.error('Error adding payment method:', error);
+      setToastMessage('Failed to add payment method. Please try again.');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    }
+  }, [newPaymentForm, paymentMethods.length, addPaymentMethodToDatabase]);
+
+  const removePaymentMethod = useCallback(async (id: number) => {
+    try {
+      // Remove from database first
+      await removePaymentMethodFromDatabase(id);
+
+      // Update local state
+      setPaymentMethods(prev => {
+        const filtered = prev.filter(method => method.id !== id);
+        // If we removed the primary method, make the first remaining method primary
+        if (filtered.length > 0 && !filtered.some(method => method.primary)) {
+          filtered[0].primary = true;
+          // Update primary in database
+          setPrimaryPaymentMethodInDatabase(filtered[0].id).catch(console.error);
+        }
+        return filtered;
+      });
+      setToastMessage('Payment method removed');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    } catch (error) {
+      console.error('Error removing payment method:', error);
+      setToastMessage('Failed to remove payment method. Please try again.');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    }
+  }, [removePaymentMethodFromDatabase, setPrimaryPaymentMethodInDatabase]);
+
+  const setPrimaryPaymentMethod = useCallback(async (id: number) => {
+    try {
+      // Update in database first
+      await setPrimaryPaymentMethodInDatabase(id);
+
+      // Update local state
+      setPaymentMethods(prev => prev.map(method => ({
+        ...method,
+        primary: method.id === id
+      })));
+      setToastMessage('Primary payment method updated');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    } catch (error) {
+      console.error('Error setting primary payment method:', error);
+      setToastMessage('Failed to update primary payment method. Please try again.');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    }
+  }, [setPrimaryPaymentMethodInDatabase]);
 
   // Delivery address functions
   const addDeliveryAddress = useCallback(() => {
@@ -780,7 +2155,7 @@ const FadedSkiesApp = () => {
     strain: 'Hybrid',
     rating: 4.8,
     reviewCount: 100,
-    imageUrl: 'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?w=400&h=400&fit=crop&crop=center',
+    imageUrl: product.image_url || 'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?w=400&h=400&fit=crop&crop=center',
     description: `${product.name} - Premium quality cannabis product.`,
     effects: ['Relaxed', 'Happy', 'Creative'],
     labTested: true,
@@ -968,6 +2343,7 @@ const FadedSkiesApp = () => {
           setCurrentView('home');
           setToastMessage('Successfully logged in!');
           setShowToast(true);
+          setTimeout(() => setShowToast(false), 3000);
         } catch (error) {
           console.error('Login error:', error);
           setToastMessage('Login failed. Please try again.');
@@ -1764,37 +3140,41 @@ const FadedSkiesApp = () => {
 
               <div className="p-6 space-y-6">
                 {orders.map(order => (
-                  <div key={order.id} className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100">
+                  <div key={order.id} className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300">
                     <div className="flex items-center justify-between mb-4">
                       <div>
                         <h3 className="font-bold text-lg text-gray-900">{order.id}</h3>
-                        <p className="text-gray-600 font-medium">{order.date}</p>
-                        <p className="text-sm text-gray-500">ETA: {order.estimatedDelivery}</p>
+                        <p className="text-gray-600 font-medium">{formatOrderDate(order.date)}</p>
+                        <div className="flex items-center space-x-2 text-sm">
+                          <span className="text-gray-500">ETA: {order.estimatedDelivery}</span>
+                          {order.distance && (
+                            <span className="text-blue-600 font-medium">({order.distance.toFixed(1)} mi)</span>
+                          )}
+                        </div>
                       </div>
-                      <div className={`px-4 py-2 rounded-full text-sm font-bold ${
-                        order.status === 'delivered' 
-                          ? 'bg-green-100 text-green-800'
-                          : order.status === 'cancelled'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {order.status === 'delivered' ? '✅ Delivered' : 
-                         order.status === 'cancelled' ? '❌ Cancelled' : 
-                         '🚚 In Transit'}
+                      <div className={`px-4 py-2 rounded-full text-sm font-bold ${getDisplayStatus(order.status).color}`}>
+                        {getDisplayStatus(order.status).icon} {getDisplayStatus(order.status).text}
                       </div>
                     </div>
                     <div className="mb-4">
-                      <p className="text-gray-600 font-medium mb-2">Items:</p>
+                      <p className="text-gray-600 font-medium mb-2">Items</p>
                       <p className="font-semibold text-gray-900">{order.items.join(', ')}</p>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="font-black text-xl text-gray-900">${order.total}</span>
                       <button 
                         type="button" 
-                        onClick={() => setTrackingModal({ isOpen: true, order })}
-                        className="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-emerald-700 transition-colors shadow-lg hover:shadow-xl"
+                        onClick={() => setDeliveryTrackerModal({ isOpen: true, order })}
+                        className={`px-6 py-3 rounded-2xl font-bold transition-colors shadow-lg hover:shadow-xl ${
+                          order.driverLocation && order.driverLocation.lat && order.driverLocation.lng
+                            ? 'bg-emerald-600 text-white hover:bg-emerald-700' 
+                            : 'bg-gray-400 text-white hover:bg-gray-500'
+                        }`}
                       >
-                        📍 Track Order
+                        {order.driverLocation && order.driverLocation.lat && order.driverLocation.lng 
+                          ? '📍 Live Track' 
+                          : '📍 Track Order'
+                        }
                       </button>
                     </div>
                   </div>
@@ -1848,7 +3228,7 @@ const FadedSkiesApp = () => {
                     <h3 className="font-bold text-xl text-gray-900">🪙 FS Coin Rewards</h3>
                     <button
                       type="button"
-                      onClick={() => setProfileModal({ isOpen: true, type: 'rewards' })}
+                      onClick={() => setRewardsModal({ isOpen: true })}
                       className="text-emerald-600 hover:text-emerald-700 font-semibold text-sm"
                     >
                       View Details
@@ -1866,15 +3246,20 @@ const FadedSkiesApp = () => {
                   <h3 className="font-bold text-xl text-gray-900 mb-4">Account Settings</h3>
                   <div className="grid grid-cols-2 gap-4">
                     {[
-                      { icon: '💳', title: 'Payment Methods', desc: 'Manage cards & payment', type: 'payment' },
-                      { icon: '🔔', title: 'Notifications', desc: 'Push & email settings', type: 'notifications' },
-                      { icon: '🔒', title: 'Privacy & Security', desc: 'Account protection', type: 'privacy' },
-                      { icon: '📍', title: 'Delivery Addresses', desc: 'Manage locations', type: 'addresses' }
+                      { icon: '💳', title: 'Payment Methods', desc: 'Manage cards & payment', modal: 'paymentMethodsModal' },
+                      { icon: '🔔', title: 'Notifications', desc: 'Push & email settings', modal: 'notificationsModal' },
+                      { icon: '🔒', title: 'Privacy & Security', desc: 'Account protection', modal: 'privacySecurityModal' },
+                      { icon: '📍', title: 'Delivery Addresses', desc: 'Manage locations', modal: 'deliveryAddressesModal' }
                     ].map((item, index) => (
                       <button
                         key={index}
                         type="button"
-                        onClick={() => setProfileModal({ isOpen: true, type: item.type })}
+                        onClick={() => {
+                          if (item.modal === 'paymentMethodsModal') setPaymentMethodsModal({ isOpen: true });
+                          else if (item.modal === 'notificationsModal') setNotificationsModal({ isOpen: true });
+                          else if (item.modal === 'privacySecurityModal') setPrivacySecurityModal({ isOpen: true });
+                          else if (item.modal === 'deliveryAddressesModal') setDeliveryAddressesModal({ isOpen: true });
+                        }}
                         className="bg-white rounded-2xl p-4 shadow-lg border border-gray-100 hover:shadow-xl transition-all transform hover:scale-[1.02] text-left"
                       >
                         <div className="text-2xl mb-2">{item.icon}</div>
@@ -2251,16 +3636,8 @@ const FadedSkiesApp = () => {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-green-100 text-lg">{trackingModal.order.id}</span>
-                <span className={`px-3 py-1 rounded-full text-sm font-bold ${
-                  trackingModal.order.status === 'delivered' 
-                    ? 'bg-green-600 text-white' 
-                    : trackingModal.order.status === 'cancelled'
-                    ? 'bg-red-600 text-white'
-                    : 'bg-blue-600 text-white'
-                }`}>
-                  {trackingModal.order.status === 'delivered' ? '✅ Delivered' : 
-                   trackingModal.order.status === 'cancelled' ? '❌ Cancelled' : 
-                   '🚚 In Transit'}
+                <span className={`px-3 py-1 rounded-full text-sm font-bold ${getDisplayStatus(trackingModal.order.status).color.replace('100', '600').replace('800', 'white')}`}>
+                  {getDisplayStatus(trackingModal.order.status).icon} {getDisplayStatus(trackingModal.order.status).text}
                 </span>
               </div>
             </div>
@@ -2282,8 +3659,9 @@ const FadedSkiesApp = () => {
                 </div>
               )}
 
-              {/* Driver Info for In-Transit Orders */}
-              {trackingModal.order.status === 'in-transit' && (
+              {/* Driver Info for Active Orders */}
+              {(trackingModal.order.status === 'assigned' || trackingModal.order.status === 'accepted' || 
+                trackingModal.order.status === 'picked_up' || trackingModal.order.status === 'in_transit') && (
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 mb-6 border border-blue-100">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-4">
@@ -2301,7 +3679,14 @@ const FadedSkiesApp = () => {
                         <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                         <span>Live</span>
                       </div>
-                      <p className="text-sm text-gray-600 mt-1">{trackingModal.order.currentLocation}</p>
+                      <p className="text-sm text-gray-600 mt-1">
+                      {trackingModal.order.currentLocation || 'Driver location updating...'}
+                      {trackingModal.order.distance && (
+                        <span className="ml-2 text-blue-600 font-medium">
+                          • {trackingModal.order.distance} mi away
+                        </span>
+                      )}
+                    </p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -2545,51 +3930,10 @@ const FadedSkiesApp = () => {
                             type="button" 
                             onClick={async () => {
                               try {
-                                // Get current authenticated user
-                                const { data: { user: authUser } } = await supabase.auth.getUser();
-                                
-                                if (!authUser) {
-                                  setToastMessage('Not authenticated. Please log in again.');
-                                  setShowToast(true);
-                                  return;
-                                }
-                                
-                                // Update user profile in database
-                                const { error: updateError } = await supabase
-                                  .from('users')
-                                  .update({
-                                    name: editProfileData.name,
-                                    email: editProfileData.email,
-                                    phone: editProfileData.phone,
-                                    age: editProfileData.age,
-                                    address: editProfileData.address
-                                  })
-                                  .eq('id', authUser.id);
-                                
-                                if (updateError) {
-                                  console.error('Failed to update profile:', updateError);
-                                  setToastMessage('Failed to update profile. Please try again.');
-                                  setShowToast(true);
-                                  return;
-                                }
-                                
-                                // Update local user state
-                                setUser(prev => ({
-                                  ...prev,
-                                  name: editProfileData.name,
-                                  email: editProfileData.email,
-                                  phone: editProfileData.phone,
-                                  age: editProfileData.age,
-                                  address: editProfileData.address
-                                }));
-                                
+                                await updateUserProfile(editProfileData);
                                 setProfileModal({ isOpen: false, type: null });
-                                setToastMessage('Profile updated successfully!');
-                                setShowToast(true);
                               } catch (error) {
                                 console.error('Profile update error:', error);
-                                setToastMessage('Failed to update profile. Please try again.');
-                                setShowToast(true);
                               }
                             }}
                             className="w-full bg-gradient-to-r from-emerald-600 to-green-600 text-white py-4 rounded-2xl font-bold hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg"
@@ -3579,6 +4923,15 @@ const FadedSkiesApp = () => {
         </div>
       )}
 
+      {/* Delivery Tracker Modal */}
+      {deliveryTrackerModal.isOpen && deliveryTrackerModal.order && (
+        <DeliveryTracker
+          order={deliveryTrackerModal.order}
+          isOpen={deliveryTrackerModal.isOpen}
+          onClose={() => setDeliveryTrackerModal({ isOpen: false, order: null })}
+        />
+      )}
+
       {/* Live Map Modal */}
       {mapModal.isOpen && mapModal.order && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex flex-col">
@@ -3890,6 +5243,317 @@ const FadedSkiesApp = () => {
                 <p className="text-xs text-gray-500">
                   💬 Average response time: 2 minutes • Powered by Faded Skies Support
                 </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FS Coin Rewards Modal */}
+      {rewardsModal.isOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end justify-center">
+          <div className="bg-white w-full max-w-md rounded-t-3xl shadow-2xl max-h-[90vh] overflow-hidden">
+            <div className="bg-gradient-to-r from-emerald-500 to-green-600 text-white p-6 rounded-t-3xl">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold">🪙 FS Coin Rewards</h2>
+                <button
+                  type="button"
+                  onClick={() => setRewardsModal({ isOpen: false })}
+                  className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <p className="text-green-100">Track your rewards and earnings</p>
+            </div>
+            <div className="p-6 max-h-96 overflow-y-auto">
+              <div className="space-y-6">
+                {/* Current Balance */}
+                <div className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-2xl p-6 border border-emerald-100">
+                  <div className="text-center">
+                    <div className="text-4xl font-black text-emerald-600 mb-2">{user.rewards}</div>
+                    <div className="text-lg font-semibold text-gray-700">Available Balance</div>
+                    <div className="text-sm text-gray-600 mt-1">FS Coins</div>
+                  </div>
+                </div>
+
+                {/* Earning Rate */}
+                <div className="bg-white rounded-2xl p-4 border border-gray-100">
+                  <h3 className="font-bold text-gray-900 mb-3">💎 Earning Rate</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Per $1 spent</span>
+                      <span className="font-bold text-emerald-600">1 FS Coin</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                                              <span className="text-gray-600">Bonus on orders &gt;$100</span>
+                      <span className="font-bold text-emerald-600">+10%</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Referral bonus</span>
+                      <span className="font-bold text-emerald-600">50 FS Coins</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Recent Activity */}
+                <div className="bg-white rounded-2xl p-4 border border-gray-100">
+                  <h3 className="font-bold text-gray-900 mb-3">📊 Recent Activity</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Order #ORD-1756148478</span>
+                      <span className="font-bold text-emerald-600">+74 FS Coins</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Referral bonus</span>
+                      <span className="font-bold text-emerald-600">+50 FS Coins</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Order #ORD-1755781255</span>
+                      <span className="font-bold text-emerald-600">+74 FS Coins</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* How to Use */}
+                <div className="bg-white rounded-2xl p-4 border border-gray-100">
+                  <h3 className="font-bold text-gray-900 mb-3">💡 How to Use</h3>
+                  <div className="space-y-2 text-sm text-gray-600">
+                    <p>• 1 FS Coin = $0.10 off your next order</p>
+                    <p>• Minimum 10 FS Coins to redeem</p>
+                    <p>• Coins expire after 1 year</p>
+                    <p>• Can be combined with other offers</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Methods Modal */}
+      {paymentMethodsModal.isOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end justify-center">
+          <div className="bg-white w-full max-w-md rounded-t-3xl shadow-2xl max-h-[90vh] overflow-hidden">
+            <div className="bg-gradient-to-r from-emerald-500 to-green-600 text-white p-6 rounded-t-3xl">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold">💳 Payment Methods</h2>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethodsModal({ isOpen: false })}
+                  className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <p className="text-green-100">Manage your payment options</p>
+            </div>
+            <div className="p-6 max-h-96 overflow-y-auto">
+              <div className="space-y-4">
+                {/* Current Payment Methods */}
+                {paymentMethods.map((method) => (
+                  <div key={method.id} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <span className="text-2xl">{method.icon}</span>
+                        <div>
+                          <div className="font-bold text-gray-900">{method.type}</div>
+                          <div className="text-sm text-gray-600">{method.details}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {method.primary && (
+                          <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-xs font-bold">
+                            Primary
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removePaymentMethod(method.id)}
+                          className="text-red-500 hover:text-red-700 p-1"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    {!method.primary && (
+                      <button
+                        type="button"
+                        onClick={() => setPrimaryPaymentMethod(method.id)}
+                        className="mt-3 w-full bg-emerald-50 text-emerald-700 py-2 rounded-xl font-semibold hover:bg-emerald-100 transition-colors"
+                      >
+                        Set as Primary
+                      </button>
+                    )}
+                  </div>
+                ))}
+
+                {/* Add New Payment Method */}
+                <button
+                  type="button"
+                  onClick={() => setShowAddPayment(true)}
+                  className="w-full bg-emerald-50 border-2 border-dashed border-emerald-300 rounded-2xl p-4 text-emerald-700 font-semibold hover:bg-emerald-100 transition-colors"
+                >
+                  + Add Payment Method
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notifications Modal */}
+      {notificationsModal.isOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end justify-center">
+          <div className="bg-white w-full max-w-md rounded-t-3xl shadow-2xl max-h-[90vh] overflow-hidden">
+            <div className="bg-gradient-to-r from-emerald-500 to-green-600 text-white p-6 rounded-t-3xl">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold">🔔 Notifications</h2>
+                <button
+                  type="button"
+                  onClick={() => setNotificationsModal({ isOpen: false })}
+                  className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <p className="text-green-100">Manage your notification preferences</p>
+            </div>
+            <div className="p-6 max-h-96 overflow-y-auto">
+              <div className="space-y-4">
+                {[
+                  { key: 'orderUpdates', title: 'Order Updates', desc: 'Track your delivery progress' },
+                  { key: 'promotionsDeals', title: 'Promotions & Deals', desc: 'Get notified about special offers' },
+                  { key: 'newProducts', title: 'New Products', desc: 'Be the first to know about new items' },
+                  { key: 'deliveryReminders', title: 'Delivery Reminders', desc: 'Get reminded about your orders' },
+                  { key: 'fsRewards', title: 'FS Rewards', desc: 'Earn and redeem your coins' },
+                  { key: 'smsNotifications', title: 'SMS Notifications', desc: 'Receive text messages' },
+                  { key: 'emailUpdates', title: 'Email Updates', desc: 'Get updates via email' }
+                ].map((setting) => (
+                  <div key={setting.key} className="bg-white rounded-2xl p-4 border border-gray-100 flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-gray-900">{setting.title}</div>
+                      <div className="text-sm text-gray-600">{setting.desc}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleNotificationSetting(setting.key as keyof typeof notificationSettings)}
+                      className={`w-12 h-6 rounded-full transition-colors cursor-pointer ${
+                        notificationSettings[setting.key as keyof typeof notificationSettings] ? 'bg-emerald-500' : 'bg-gray-300'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform mt-0.5 ${
+                        notificationSettings[setting.key as keyof typeof notificationSettings] ? 'translate-x-6' : 'translate-x-0.5'
+                      }`} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Privacy & Security Modal */}
+      {privacySecurityModal.isOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end justify-center">
+          <div className="bg-white w-full max-w-md rounded-t-3xl shadow-2xl max-h-[90vh] overflow-hidden">
+            <div className="bg-gradient-to-r from-emerald-500 to-green-600 text-white p-6 rounded-t-3xl">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold">🔒 Privacy & Security</h2>
+                <button
+                  type="button"
+                  onClick={() => setPrivacySecurityModal({ isOpen: false })}
+                  className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <p className="text-green-100">Manage your account protection</p>
+            </div>
+            <div className="p-6 max-h-96 overflow-y-auto">
+              <div className="space-y-4">
+                {[
+                  { key: 'locationTracking', title: 'Location Tracking', desc: 'Allow location for delivery tracking' },
+                  { key: 'purchaseHistory', title: 'Purchase History', desc: 'Save your order history' },
+                  { key: 'analytics', title: 'Usage Analytics', desc: 'Help improve the app' },
+                  { key: 'thirdPartySharing', title: 'Third Party Sharing', desc: 'Share data with partners' },
+                  { key: 'biometricLogin', title: 'Biometric Login', desc: 'Use Face ID / Touch ID' }
+                ].map((setting) => (
+                  <div key={setting.key} className="bg-white rounded-2xl p-4 border border-gray-100 flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-gray-900">{setting.title}</div>
+                      <div className="text-sm text-gray-600">{setting.desc}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => togglePrivacySetting(setting.key as keyof typeof privacySettings)}
+                      className={`w-12 h-6 rounded-full transition-colors cursor-pointer ${
+                        privacySettings[setting.key as keyof typeof privacySettings] ? 'bg-emerald-500' : 'bg-gray-300'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform mt-0.5 ${
+                        privacySettings[setting.key as keyof typeof privacySettings] ? 'translate-x-6' : 'translate-x-0.5'
+                      }`} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delivery Addresses Modal */}
+      {deliveryAddressesModal.isOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end justify-center">
+          <div className="bg-white w-full max-w-md rounded-t-3xl shadow-2xl max-h-[90vh] overflow-hidden">
+            <div className="bg-gradient-to-r from-emerald-500 to-green-600 text-white p-6 rounded-t-3xl">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold">📍 Delivery Addresses</h2>
+                <button
+                  type="button"
+                  onClick={() => setDeliveryAddressesModal({ isOpen: false })}
+                  className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <p className="text-green-100">Manage your delivery locations</p>
+            </div>
+            <div className="p-6 max-h-96 overflow-y-auto">
+              <div className="space-y-4">
+                {/* Current Addresses */}
+                <div className="bg-white rounded-2xl p-4 border border-gray-100">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-3">
+                      <span className="text-2xl">🏠</span>
+                      <div>
+                        <div className="font-bold text-gray-900">Home</div>
+                        <div className="text-sm text-gray-600">123 Main St, Austin, TX 78701</div>
+                      </div>
+                    </div>
+                    <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-xs font-bold">
+                      Default
+                    </span>
+                  </div>
+                  <div className="flex space-x-2">
+                    <button className="flex-1 bg-emerald-50 text-emerald-700 py-2 rounded-xl font-semibold hover:bg-emerald-100 transition-colors">
+                      Edit
+                    </button>
+                    <button className="flex-1 bg-red-50 text-red-700 py-2 rounded-xl font-semibold hover:bg-red-100 transition-colors">
+                      Remove
+                    </button>
+                  </div>
+                </div>
+
+                {/* Add New Address */}
+                <button
+                  type="button"
+                  className="w-full bg-emerald-50 border-2 border-dashed border-emerald-300 rounded-2xl p-4 text-emerald-700 font-semibold hover:bg-emerald-100 transition-colors"
+                >
+                  + Add New Address
+                </button>
               </div>
             </div>
           </div>

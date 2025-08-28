@@ -11,7 +11,15 @@ export interface Order {
   total: number;
   status: 'pending' | 'assigned' | 'accepted' | 'picked_up' | 'in_transit' | 'delivered' | 'cancelled';
   driver_id?: string;
+  driver_location?: { lat: number; lng: number };
   created_at: string;
+  updated_at: string;
+}
+
+export interface DriverLocation {
+  driver_id: string;
+  latitude: number;
+  longitude: number;
   updated_at: string;
 }
 
@@ -25,6 +33,7 @@ export interface Product {
   cbd: string;
   supplier: string;
   status: string;
+  image_url?: string;
 }
 
 class RealTimeService {
@@ -49,11 +58,34 @@ class RealTimeService {
         .channel('orders')
         .on('postgres_changes', 
           { event: '*', schema: 'public', table: 'orders' },
-          (payload) => {
+          async (payload) => {
             console.log('📦 Order change:', payload);
             const order = payload.new as Order;
             
             if (payload.eventType === 'UPDATE') {
+              // Fetch driver location if order has a driver assigned
+              if (order.driver_id) {
+                try {
+                  const { data: driverLocation, error } = await supabase
+                    .from('driver_locations')
+                    .select('latitude, longitude, updated_at')
+                    .eq('driver_id', order.driver_id)
+                    .single();
+                  
+                  if (driverLocation && !error) {
+                    order.driver_location = {
+                      lat: driverLocation.latitude,
+                      lng: driverLocation.longitude
+                    };
+                    console.log('📍 Driver location fetched:', order.driver_location);
+                  } else {
+                    console.log('⚠️ No driver location found for driver:', order.driver_id);
+                  }
+                } catch (locationError) {
+                  console.error('❌ Error fetching driver location:', locationError);
+                }
+              }
+              
               this.notifyOrderUpdateCallbacks(order);
               
               // Check if order was cancelled
@@ -73,6 +105,45 @@ class RealTimeService {
           this.notifyConnectionCallbacks(this.isConnected);
         });
 
+      // Subscribe to driver_locations table changes
+      const driverLocationsSubscription = supabase
+        .channel('driver_locations')
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'driver_locations' },
+          async (payload) => {
+            console.log('📍 Driver location change:', payload);
+            const driverLocation = payload.new as DriverLocation;
+            
+            if (driverLocation && payload.eventType === 'UPDATE') {
+              // Find orders with this driver and update them
+              try {
+                const { data: orders, error } = await supabase
+                  .from('orders')
+                  .select('*')
+                  .eq('driver_id', driverLocation.driver_id)
+                  .in('status', ['assigned', 'accepted', 'picked_up', 'in_transit']);
+                
+                if (orders && !error) {
+                  orders.forEach(order => {
+                    const updatedOrder = {
+                      ...order,
+                      driver_location: {
+                        lat: driverLocation.latitude,
+                        lng: driverLocation.longitude
+                      }
+                    };
+                    console.log('📍 Updating order with new driver location:', updatedOrder.order_id);
+                    this.notifyOrderUpdateCallbacks(updatedOrder);
+                  });
+                }
+              } catch (orderError) {
+                console.error('❌ Error updating orders with driver location:', orderError);
+              }
+            }
+          }
+        )
+        .subscribe();
+
       // Subscribe to products table changes
       const productsSubscription = supabase
         .channel('products')
@@ -84,7 +155,7 @@ class RealTimeService {
         )
         .subscribe();
 
-      this.subscriptions.push(ordersSubscription, productsSubscription);
+      this.subscriptions.push(ordersSubscription, driverLocationsSubscription, productsSubscription);
     } catch (error) {
       console.error('Failed to initialize Supabase real-time:', error);
     }
@@ -156,7 +227,7 @@ class RealTimeService {
       console.log('🔍 Fetching products from Supabase...');
       const { data, error } = await supabase
         .from('products')
-        .select('*')
+        .select('*, image_url')
         .order('name');
 
       if (error) {
@@ -167,6 +238,7 @@ class RealTimeService {
       console.log('📦 Products fetched from Supabase:', data?.length || 0, 'products');
       if (data && data.length > 0) {
         console.log('Sample product:', data[0]);
+        console.log('🖼️ Product image URL:', data[0].image_url);
       }
       
       return data || [];
@@ -224,7 +296,35 @@ class RealTimeService {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data || [];
+
+      // Fetch driver locations for orders with assigned drivers
+      const ordersWithDriverLocation = await Promise.all((data || []).map(async (order) => {
+        if (order.driver_id) {
+          try {
+            const { data: driverLocation, error: locationError } = await supabase
+              .from('driver_locations')
+              .select('latitude, longitude, updated_at')
+              .eq('driver_id', order.driver_id)
+              .single();
+            
+            if (driverLocation && !locationError) {
+              order.driver_location = {
+                lat: driverLocation.latitude,
+                lng: driverLocation.longitude
+              };
+              console.log('📍 Driver location loaded for order:', order.order_id, order.driver_location);
+            } else {
+              console.log('⚠️ No driver location found for driver:', order.driver_id);
+            }
+          } catch (locationError) {
+            console.error('❌ Error fetching driver location for order:', order.order_id, locationError);
+          }
+        }
+        return order;
+      }));
+
+      console.log('📦 Orders loaded with driver locations:', ordersWithDriverLocation.length);
+      return ordersWithDriverLocation;
     } catch (error) {
       console.error('Failed to fetch orders:', error);
       throw error;
