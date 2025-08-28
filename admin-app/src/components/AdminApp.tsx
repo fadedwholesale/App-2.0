@@ -387,10 +387,10 @@ const FadedSkiesTrackingAdmin = () => {
         setLiveCustomers(usersData || []);
       }
 
-      // Fetch drivers
+      // Fetch drivers with explicit location fields
       const { data: driversData, error: driversError } = await supabaseService
         .from('drivers')
-        .select('*')
+        .select('*, current_location, location_updated_at')
         .order('created_at', { ascending: false });
       
       if (driversError) {
@@ -699,16 +699,22 @@ const FadedSkiesTrackingAdmin = () => {
         let lat = 30.2672; // Austin default
         let lng = -97.7431; // Austin default
         
-        if (driver.latest_lat && driver.latest_lng && 
-            driver.latest_lat !== 0 && driver.latest_lng !== 0) {
-          lat = driver.latest_lat;
-          lng = driver.latest_lng;
-        } else if (driver.current_location && 
+        // Check for current_location first (new format)
+        if (driver.current_location && 
             typeof driver.current_location === 'object' && 
             driver.current_location.lat && 
             driver.current_location.lng) {
           lat = driver.current_location.lat;
           lng = driver.current_location.lng;
+          console.log(`📍 Driver ${driver.name} location: ${lat}, ${lng}`);
+        } else if (driver.latest_lat && driver.latest_lng && 
+            driver.latest_lat !== 0 && driver.latest_lng !== 0) {
+          // Fallback to old format
+          lat = driver.latest_lat;
+          lng = driver.latest_lng;
+          console.log(`📍 Driver ${driver.name} location (legacy): ${lat}, ${lng}`);
+        } else {
+          console.log(`📍 Driver ${driver.name} using default location: ${lat}, ${lng}`);
         }
         
         return {

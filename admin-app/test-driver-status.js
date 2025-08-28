@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { createClient } from '@supabase/supabase-js';
+=======
+const { createClient } = require('@supabase/supabase-js');
+>>>>>>> 9c22fe638fbbada200c827e25f4147e4be401a30
 
 const supabaseUrl = 'https://hdqbnhtimuynuypwouwf.supabase.co';
 const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhkcWJuaHRpbXV5bnV5cHdvdXdmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTM5MTExMiwiZXhwIjoyMDcwOTY3MTEyfQ.-FMqyNZagI4H6srNWFK5VabSSl4FW0bidDrvl2v9CfQ';
@@ -41,3 +45,10 @@ async function checkDriverStatus() {
 }
 
 checkDriverStatus();
+<<<<<<< HEAD
+=======
+
+
+
+
+>>>>>>> 9c22fe638fbbada200c827e25f4147e4be401a30
