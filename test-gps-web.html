@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS Tracking Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .info { color: #17a2b8; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 GPS Tracking Test</h1>
+        <p>This page tests GPS tracking functionality in your browser.</p>
+        
+        <div>
+            <button onclick="testGPS()">📍 Test GPS</button>
+            <button onclick="startWatching()">👀 Start Watching</button>
+            <button onclick="stopWatching()">⏹️ Stop Watching</button>
+            <button onclick="clearLog()">🗑️ Clear Log</button>
+        </div>
+        
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        let watchId = null;
+        const log = document.getElementById('log');
+
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = type;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            log.appendChild(logEntry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function clearLog() {
+            log.innerHTML = '';
+        }
+
+        function testGPS() {
+            addLog('🧪 Testing GPS functionality...', 'info');
+            
+            if (!navigator.geolocation) {
+                addLog('❌ Geolocation API is not supported', 'error');
+                return;
+            }
+
+            addLog('✅ Geolocation API is available', 'success');
+            
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    addLog('✅ GPS Position received!', 'success');
+                    addLog(`📍 Latitude: ${position.coords.latitude}`, 'info');
+                    addLog(`📍 Longitude: ${position.coords.longitude}`, 'info');
+                    addLog(`📍 Accuracy: ${position.coords.accuracy} meters`, 'info');
+                    addLog(`📍 Timestamp: ${new Date(position.timestamp).toLocaleString()}`, 'info');
+                    
+                    addLog('✅ GPS coordinates received!', 'success');
+                },
+                (error) => {
+                    addLog(`❌ GPS Error: ${error.message}`, 'error');
+                    addLog(`❌ Error Code: ${error.code}`, 'error');
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        }
+
+        function startWatching() {
+            if (watchId) {
+                addLog('⚠️ Already watching GPS', 'info');
+                return;
+            }
+
+            addLog('👀 Starting GPS watching...', 'info');
+            
+            watchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    addLog('📍 GPS Update:', 'info');
+                    addLog(`   Lat: ${position.coords.latitude}`, 'info');
+                    addLog(`   Lng: ${position.coords.longitude}`, 'info');
+                    addLog(`   Accuracy: ${position.coords.accuracy}m`, 'info');
+                },
+                (error) => {
+                    addLog(`❌ GPS Watch Error: ${error.message}`, 'error');
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 5000,
+                    maximumAge: 1000
+                }
+            );
+            
+            addLog(`✅ GPS watching started with ID: ${watchId}`, 'success');
+        }
+
+        function stopWatching() {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                addLog(`⏹️ GPS watching stopped (ID: ${watchId})`, 'info');
+                watchId = null;
+            } else {
+                addLog('⚠️ No GPS watching active', 'info');
+            }
+        }
+
+        // Auto-test on page load
+        window.onload = function() {
+            addLog('🚀 GPS Test Page Loaded', 'info');
+            addLog('Click "Test GPS" to check GPS functionality', 'info');
+        };
+    </script>
+</body>
+</html>
+

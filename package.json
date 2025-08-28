@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
   "name": "faded-skies-admin-app",
   "version": "1.0.0",
   "description": "Faded Skies Cannabis Delivery - Admin App",
@@ -33,5 +34,46 @@
     "tailwindcss": "^3.3.6",
     "typescript": "^5.2.2",
     "vite": "^5.0.8"
+=======
+  "name": "faded-skies-apps",
+  "version": "1.0.0",
+  "description": "Faded Skies Cannabis Delivery Apps",
+  "main": "index.js",
+  "scripts": {
+    "dev:user": "cd user-app && npm run dev",
+    "dev:driver": "cd driver-app && npm run dev",
+    "dev:admin": "cd admin-app && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:user\" \"npm run dev:driver\" \"npm run dev:admin\"",
+    "build:user": "cd user-app && npm run build",
+    "build:driver": "cd driver-app && npm run build",
+    "build:admin": "cd admin-app && npm run build",
+    "build:all": "npm run build:user && npm run build:driver && npm run build:admin",
+    "ios:user": "cd user-app && npx cap run ios",
+    "ios:driver": "cd driver-app && npx cap run ios",
+    "ios:admin": "cd admin-app && npx cap run ios",
+    "android:user": "cd user-app && npx cap run android",
+    "android:driver": "cd driver-app && npx cap run android",
+    "android:admin": "cd admin-app && npx cap run android",
+    "sync:user": "cd user-app && npx cap sync",
+    "sync:driver": "cd driver-app && npx cap sync",
+    "sync:admin": "cd admin-app && npx cap sync",
+    "sync:all": "npm run sync:user && npm run sync:driver && npm run sync:admin"
+  },
+  "keywords": [
+    "cannabis",
+    "delivery",
+    "react",
+    "capacitor",
+    "supabase"
+  ],
+  "author": "Faded Skies",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.55.0"
+>>>>>>> 9c22fe638fbbada200c827e25f4147e4be401a30
   }
 }
