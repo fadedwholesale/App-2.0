@@ -704,6 +704,8 @@ const FadedSkiesDriverApp = () => {
         currentLocation: location
       }));
 
+
+
       // PRODUCTION: Refresh orders with new GPS location for accurate pay calculation
       if (driver.isOnline && driver.isAvailable) {
         console.log('📍 GPS location updated, refreshing orders with new pay calculation...');

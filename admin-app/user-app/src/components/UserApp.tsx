@@ -4021,182 +4021,20 @@ const FadedSkiesApp = () => {
 
                 case 'payment':
                   return (
-                    <>
-                      <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 rounded-t-3xl">
-                        <div className="flex items-center justify-between mb-4">
-                          <h2 className="text-2xl font-bold">💳 Payment Methods</h2>
-                          <button
-                            type="button"
-                            onClick={() => setProfileModal({ isOpen: false, type: null })}
-                            className="p-2 hover:bg-white/20 rounded-full transition-colors"
-                          >
-                            <X className="w-6 h-6" />
-                          </button>
-                        </div>
-                        <p className="text-blue-100">Manage your payment options</p>
-                      </div>
-                      <div className="p-6 max-h-96 overflow-y-auto">
-                        {!showAddPayment ? (
-                          <>
-                            <div className="space-y-4 mb-6">
-                              {paymentMethods.map((method) => (
-                                <div key={method.id} className="bg-white border-2 border-gray-100 rounded-2xl p-5 hover:border-blue-200 transition-colors">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center space-x-4">
-                                      <span className="text-2xl">{method.icon}</span>
-                                      <div>
-                                        <h4 className="font-bold text-gray-900">{method.type} {method.details}</h4>
-                                        <p className="text-sm text-gray-600">{method.status}</p>
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                      {method.primary && (
-                                        <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold">PRIMARY</span>
-                                      )}
-                                      {!method.primary && method.type !== 'FS Coin' && (
-                                        <button 
-                                          type="button" 
-                                          onClick={() => setPrimaryPaymentMethod(method.id)}
-                                          className="text-blue-600 hover:text-blue-700 text-xs font-semibold"
-                                        >
-                                          Set Primary
-                                        </button>
-                                      )}
-                                      {method.type !== 'FS Coin' && (
-                                        <button 
-                                          type="button" 
-                                          onClick={() => removePaymentMethod(method.id)}
-                                          className="text-red-500 hover:text-red-600"
-                                        >
-                                          <X className="w-4 h-4" />
-                                        </button>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                            <button 
-                              type="button" 
-                              onClick={() => setShowAddPayment(true)}
-                              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-2xl font-bold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg mb-4"
-                            >
-                              ➕ Add New Payment Method
-                            </button>
-                          </>
-                        ) : (
-                          <div className="space-y-6">
-                            <h3 className="font-bold text-xl text-gray-900">Add Payment Method</h3>
-                            
-                            <div className="space-y-4">
-                              <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Payment Type</label>
-                                <select
-                                  value={newPaymentForm.type}
-                                  onChange={(e) => setNewPaymentForm(prev => ({ ...prev, type: e.target.value }))}
-                                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                                >
-                                  <option value="card">Credit/Debit Card</option>
-                                  <option value="paypal">PayPal</option>
-                                  <option value="googlepay">Google Pay</option>
-                                </select>
-                              </div>
-
-                              {newPaymentForm.type === 'card' && (
-                                <>
-                                  <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Cardholder Name</label>
-                                    <input
-                                      type="text"
-                                      value={newPaymentForm.name}
-                                      onChange={(e) => setNewPaymentForm(prev => ({ ...prev, name: e.target.value }))}
-                                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                                      placeholder="John Doe"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Card Number</label>
-                                    <input
-                                      type="text"
-                                      value={newPaymentForm.cardNumber}
-                                      onChange={(e) => {
-                                        const value = e.target.value.replace(/\D/g, '').slice(0, 16);
-                                        setNewPaymentForm(prev => ({ ...prev, cardNumber: value }));
-                                      }}
-                                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                                      placeholder="1234 5678 9012 3456"
-                                    />
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                      <label className="block text-sm font-semibold text-gray-700 mb-2">Expiry Date</label>
-                                      <input
-                                        type="text"
-                                        value={newPaymentForm.expiryDate}
-                                        onChange={(e) => {
-                                          let value = e.target.value.replace(/\D/g, '');
-                                          if (value.length >= 2) {
-                                            value = value.slice(0, 2) + '/' + value.slice(2, 4);
-                                          }
-                                          setNewPaymentForm(prev => ({ ...prev, expiryDate: value }));
-                                        }}
-                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                                        placeholder="MM/YY"
-                                        maxLength={5}
-                                      />
-                                    </div>
-                                    <div>
-                                      <label className="block text-sm font-semibold text-gray-700 mb-2">CVV</label>
-                                      <input
-                                        type="text"
-                                        value={newPaymentForm.cvv}
-                                        onChange={(e) => {
-                                          const value = e.target.value.replace(/\D/g, '').slice(0, 3);
-                                          setNewPaymentForm(prev => ({ ...prev, cvv: value }));
-                                        }}
-                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                                        placeholder="123"
-                                      />
-                                    </div>
-                                  </div>
-                                </>
-                              )}
-
-                              {newPaymentForm.type !== 'card' && (
-                                <div className="bg-blue-50 rounded-xl p-4 text-center">
-                                  <p className="text-blue-800 font-semibold mb-2">
-                                    {newPaymentForm.type === 'paypal' ? '💙 PayPal' : '🔵 Google Pay'} Integration
-                                  </p>
-                                  <p className="text-blue-600 text-sm">
-                                    You'll be redirected to complete the setup
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="flex space-x-3">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setShowAddPayment(false);
-                                  setNewPaymentForm({ type: 'card', cardNumber: '', expiryDate: '', cvv: '', name: '' });
-                                }}
-                                className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                type="button"
-                                onClick={addPaymentMethod}
-                                className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-xl font-bold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg"
-                              >
-                                Add Method
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </>
+                    <div className="text-center py-8">
+                      <h3 className="text-xl font-bold text-gray-900 mb-4">💳 Payment Methods</h3>
+                      <p className="text-gray-600 mb-6">Use the dedicated Payment Methods section to manage your payment options.</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProfileModal({ isOpen: false, type: null });
+                          setPaymentMethodsModal({ isOpen: true });
+                        }}
+                        className="bg-gradient-to-r from-emerald-600 to-green-600 text-white px-6 py-3 rounded-xl font-bold hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg"
+                      >
+                        Open Payment Methods
+                      </button>
+                    </div>
                   );
 
                 case 'addresses':
@@ -5349,54 +5187,166 @@ const FadedSkiesApp = () => {
               <p className="text-green-100">Manage your payment options</p>
             </div>
             <div className="p-6 max-h-96 overflow-y-auto">
-              <div className="space-y-4">
-                {/* Current Payment Methods */}
-                {paymentMethods.map((method) => (
-                  <div key={method.id} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <span className="text-2xl">{method.icon}</span>
-                        <div>
-                          <div className="font-bold text-gray-900">{method.type}</div>
-                          <div className="text-sm text-gray-600">{method.details}</div>
+              {!showAddPayment ? (
+                <div className="space-y-4">
+                  {/* Current Payment Methods */}
+                  {paymentMethods.map((method) => (
+                    <div key={method.id} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <span className="text-2xl">{method.icon}</span>
+                          <div>
+                            <div className="font-bold text-gray-900">{method.type}</div>
+                            <div className="text-sm text-gray-600">{method.details}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          {method.primary && (
+                            <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-xs font-bold">
+                              Primary
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => removePaymentMethod(method.id)}
+                            className="text-red-500 hover:text-red-700 p-1"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        {method.primary && (
-                          <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-xs font-bold">
-                            Primary
-                          </span>
-                        )}
+                      {!method.primary && (
                         <button
                           type="button"
-                          onClick={() => removePaymentMethod(method.id)}
-                          className="text-red-500 hover:text-red-700 p-1"
+                          onClick={() => setPrimaryPaymentMethod(method.id)}
+                          className="mt-3 w-full bg-emerald-50 text-emerald-700 py-2 rounded-xl font-semibold hover:bg-emerald-100 transition-colors"
                         >
-                          <X className="w-4 h-4" />
+                          Set as Primary
                         </button>
-                      </div>
+                      )}
                     </div>
-                    {!method.primary && (
-                      <button
-                        type="button"
-                        onClick={() => setPrimaryPaymentMethod(method.id)}
-                        className="mt-3 w-full bg-emerald-50 text-emerald-700 py-2 rounded-xl font-semibold hover:bg-emerald-100 transition-colors"
+                  ))}
+
+                  {/* Add New Payment Method */}
+                  <button
+                    type="button"
+                    onClick={() => setShowAddPayment(true)}
+                    className="w-full bg-emerald-50 border-2 border-dashed border-emerald-300 rounded-2xl p-4 text-emerald-700 font-semibold hover:bg-emerald-100 transition-colors"
+                  >
+                    + Add Payment Method
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <h3 className="font-bold text-xl text-gray-900">Add Payment Method</h3>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Payment Type</label>
+                      <select
+                        value={newPaymentForm.type}
+                        onChange={(e) => setNewPaymentForm(prev => ({ ...prev, type: e.target.value }))}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                       >
-                        Set as Primary
-                      </button>
+                        <option value="card">Credit/Debit Card</option>
+                        <option value="paypal">PayPal</option>
+                        <option value="googlepay">Google Pay</option>
+                      </select>
+                    </div>
+
+                    {newPaymentForm.type === 'card' && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-2">Cardholder Name</label>
+                          <input
+                            type="text"
+                            value={newPaymentForm.name}
+                            onChange={(e) => setNewPaymentForm(prev => ({ ...prev, name: e.target.value }))}
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                            placeholder="John Doe"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-2">Card Number</label>
+                          <input
+                            type="text"
+                            value={newPaymentForm.cardNumber}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\D/g, '').slice(0, 16);
+                              setNewPaymentForm(prev => ({ ...prev, cardNumber: value }));
+                            }}
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                            placeholder="1234 5678 9012 3456"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Expiry Date</label>
+                            <input
+                              type="text"
+                              value={newPaymentForm.expiryDate}
+                              onChange={(e) => {
+                                let value = e.target.value.replace(/\D/g, '');
+                                if (value.length >= 2) {
+                                  value = value.slice(0, 2) + '/' + value.slice(2, 4);
+                                }
+                                setNewPaymentForm(prev => ({ ...prev, expiryDate: value }));
+                              }}
+                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                              placeholder="MM/YY"
+                              maxLength={5}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">CVV</label>
+                            <input
+                              type="text"
+                              value={newPaymentForm.cvv}
+                              onChange={(e) => {
+                                const value = e.target.value.replace(/\D/g, '').slice(0, 3);
+                                setNewPaymentForm(prev => ({ ...prev, cvv: value }));
+                              }}
+                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                              placeholder="123"
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {newPaymentForm.type !== 'card' && (
+                      <div className="bg-emerald-50 rounded-xl p-4 text-center">
+                        <p className="text-emerald-800 font-semibold mb-2">
+                          {newPaymentForm.type === 'paypal' ? '💙 PayPal' : '🔵 Google Pay'} Integration
+                        </p>
+                        <p className="text-emerald-600 text-sm">
+                          You'll be redirected to complete the setup
+                        </p>
+                      </div>
                     )}
                   </div>
-                ))}
 
-                {/* Add New Payment Method */}
-                <button
-                  type="button"
-                  onClick={() => setShowAddPayment(true)}
-                  className="w-full bg-emerald-50 border-2 border-dashed border-emerald-300 rounded-2xl p-4 text-emerald-700 font-semibold hover:bg-emerald-100 transition-colors"
-                >
-                  + Add Payment Method
-                </button>
-              </div>
+                  <div className="flex space-x-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAddPayment(false);
+                        setNewPaymentForm({ type: 'card', cardNumber: '', expiryDate: '', cvv: '', name: '' });
+                      }}
+                      className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={addPaymentMethod}
+                      className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 text-white py-3 rounded-xl font-bold hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg"
+                    >
+                      Add Method
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -214,7 +214,7 @@ const OrderCard = React.memo(({ order, onAccept, onDecline, onViewDetails, onUpd
         
         <div className="flex items-center space-x-3">
           <Package className="w-5 h-5 text-gray-400 flex-shrink-0" />
-          <p className="text-sm text-gray-700">{order.items.length} items: {order.items.slice(0, 2).join(', ')}{order.items.length > 2 ? '...' : ''}</p>
+          <p className="text-sm text-gray-700">{order.items.length} items</p>
         </div>
         
         <div className="flex items-center space-x-3">
@@ -1176,19 +1176,19 @@ const FadedSkiesDriverApp = () => {
       console.log('📍 Getting fresh GPS location for pay calculation...');
       try {
         const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          // First try with high accuracy
+          // Use low accuracy first (faster, more reliable)
           navigator.geolocation.getCurrentPosition(resolve, (_error) => {
-            console.log('📍 High accuracy GPS failed, trying low accuracy...');
-            // Fallback to low accuracy if high accuracy fails
+            console.log('📍 Low accuracy GPS failed, trying with cached location...');
+            // Fallback to any cached location
             navigator.geolocation.getCurrentPosition(resolve, reject, {
               enableHighAccuracy: false,
-              timeout: 15000,
-              maximumAge: 30000 // Allow cached position up to 30 seconds old
+              timeout: 5000, // Shorter timeout
+              maximumAge: 60000 // Allow cached position up to 1 minute old
             });
           }, {
-            enableHighAccuracy: true,
-            timeout: 20000, // 20 seconds for production reliability
-            maximumAge: 5000 // Allow cached location up to 5 seconds old
+            enableHighAccuracy: false, // Start with low accuracy
+            timeout: 8000, // Shorter timeout for faster response
+            maximumAge: 30000 // Allow cached location up to 30 seconds old
           });
         });
         
@@ -1230,14 +1230,15 @@ const FadedSkiesDriverApp = () => {
       } catch (gpsError) {
         console.error('❌ Failed to get fresh GPS location:', gpsError);
         
-        // Use existing location if available
+        // Use existing location if available (more reliable fallback)
         if (currentGPSLocation && currentGPSLocation.lat !== 0 && currentGPSLocation.lng !== 0) {
           console.log('📍 Using existing GPS location:', currentGPSLocation);
+        } else if (driverLocation && driverLocation.lat !== 0 && driverLocation.lng !== 0) {
+          console.log('📍 Using driver location state:', driverLocation);
+          currentGPSLocation = driverLocation;
         } else {
-          console.error('❌ No GPS location available for pay calculation!');
-          // Set default Austin location as fallback
+          console.log('📍 No GPS available, using default Austin location');
           currentGPSLocation = { lat: 30.2672, lng: -97.7431 };
-          console.log('📍 Using default Austin location as fallback');
         }
       }
       
@@ -1321,26 +1322,8 @@ const FadedSkiesDriverApp = () => {
           console.log(`📍 From driver location (${currentGPSLocation.lat}, ${currentGPSLocation.lng}) to delivery (${order.delivery_lat}, ${order.delivery_lng})`);
           console.log(`💰 Real pay calculated: Base=$2.00 + Mileage=$${calculatedMileagePay.toFixed(2)} + Tip=$${order.tip || 0} = $${calculatedTotalPay.toFixed(2)}`);
           
-          // PRODUCTION: Update database with real pay calculation
-          try {
-            const { error: updateError } = await supabase
-              .from('orders')
-              .update({
-                distance: calculatedDistance,
-                driver_mileage_pay: calculatedMileagePay,
-                driver_total_pay: calculatedTotalPay,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', order.id);
-            
-            if (updateError) {
-              console.error('❌ Failed to update order pay in database:', updateError);
-            } else {
-              console.log('✅ Order pay updated in database with real calculation');
-            }
-          } catch (updateError) {
-            console.error('❌ Error updating order pay:', updateError);
-          }
+                     // Note: Database update removed - distance column doesn't exist in orders table
+           console.log('✅ Real pay calculated for display (database update skipped)');
         } else {
           console.log(`⚠️ Using default distance for order ${order.id}: ${calculatedDistance} miles`);
           console.log(`⚠️ Missing: delivery_lat=${order.delivery_lat}, delivery_lng=${order.delivery_lng}, GPS=${currentGPSLocation ? 'available' : 'unavailable'}`);
@@ -1373,7 +1356,7 @@ const FadedSkiesDriverApp = () => {
           items: order.items || [],
           total: order.total || 0,
           distance: calculatedDistance,
-          estimatedTime: 15, // Default time - could be calculated
+          estimatedTime: Math.max(15, Math.round(calculatedDistance * 2)), // Realistic ETA: 2 minutes per mile minimum
           paymentMethod: 'Credit Card', // Default payment method
           priority: 'normal' as const,
           status: order.status as any,
@@ -3132,8 +3115,8 @@ const FadedSkiesDriverApp = () => {
                   </div>
                 </div>
 
-                {/* Active Order Status */}
-                {activeOrder && (
+                {/* Active Order Status - Only show if driver has accepted the order */}
+                {activeOrder && ['accepted', 'picked_up', 'in_transit', 'delivered'].includes(activeOrder.status) && (
                   <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-3xl p-6 mb-6 border border-blue-200 shadow-lg">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="font-bold text-xl text-blue-900">Active Delivery</h3>

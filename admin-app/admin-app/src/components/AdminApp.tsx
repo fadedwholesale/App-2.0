@@ -387,17 +387,44 @@ const FadedSkiesTrackingAdmin = () => {
         setLiveCustomers(usersData || []);
       }
 
-      // Fetch drivers
+      // Fetch drivers with explicit location fields
       const { data: driversData, error: driversError } = await supabaseService
         .from('drivers')
-        .select('*')
+        .select('*, current_location, location_updated_at')
         .order('created_at', { ascending: false });
+      
+      // Fetch latest locations from driver_locations table
+      const { data: latestLocations, error: locationsError } = await supabaseService
+        .from('driver_locations')
+        .select('driver_id, lat, lng, location_timestamp')
+        .order('location_timestamp', { ascending: false });
+      
+      if (locationsError) {
+        console.error('❌ Failed to fetch latest driver locations:', locationsError);
+      } else {
+        console.log('📍 Latest driver locations loaded:', latestLocations?.length || 0);
+      }
       
       if (driversError) {
         console.error('❌ Failed to fetch drivers:', driversError);
       } else {
         console.log('🚗 Drivers loaded:', driversData?.length || 0);
-        setLiveDrivers(driversData || []);
+        
+        // Merge driver data with latest locations
+        const driversWithLocations = driversData?.map(driver => {
+          const latestLocation = latestLocations?.find(loc => loc.driver_id === driver.id);
+          if (latestLocation) {
+            return {
+              ...driver,
+              current_location: { lat: latestLocation.lat, lng: latestLocation.lng },
+              location_updated_at: latestLocation.location_timestamp
+            };
+          }
+          return driver;
+        }) || [];
+        
+        console.log('🚗 Drivers with locations:', driversWithLocations.length);
+        setLiveDrivers(driversWithLocations);
       }
 
     } catch (error) {
@@ -438,35 +465,33 @@ const FadedSkiesTrackingAdmin = () => {
     try {
       console.log('📍 Smart refresh: Updating driver locations only...');
       
-      // Only fetch driver locations, not full data (to avoid map reset)
-      const { data: driversData, error: driversError } = await supabase
-        .from('drivers')
-        .select('id, name, current_location, location_updated_at, is_online, is_available')
-        .eq('is_online', true)
-        .order('location_updated_at', { ascending: false });
+      // Fetch latest locations from driver_locations table
+      const { data: latestLocations, error: locationsError } = await supabaseService
+        .from('driver_locations')
+        .select('driver_id, lat, lng, location_timestamp')
+        .order('location_timestamp', { ascending: false });
       
-      if (driversError) {
-        console.error('❌ Smart refresh failed to fetch driver locations:', driversError);
-      } else {
-        console.log('📍 Smart refresh: Driver locations updated:', driversData?.length || 0);
-        
-        // Update only location data in existing drivers without resetting map
-        setLiveDrivers(prev => {
-          return prev.map(existingDriver => {
-            const updatedDriver = driversData?.find(d => d.id === existingDriver.id);
-            if (updatedDriver) {
-              return {
-                ...existingDriver,
-                current_location: updatedDriver.current_location,
-                location_updated_at: updatedDriver.location_updated_at,
-                is_online: updatedDriver.is_online,
-                is_available: updatedDriver.is_available
-              };
-            }
-            return existingDriver;
-          });
-        });
+      if (locationsError) {
+        console.error('❌ Smart refresh failed to fetch latest driver locations:', locationsError);
+        return;
       }
+      
+      console.log('📍 Smart refresh: Latest locations loaded:', latestLocations?.length || 0);
+      
+      // Update only location data in existing drivers without resetting map
+      setLiveDrivers(prev => {
+        return prev.map(existingDriver => {
+          const latestLocation = latestLocations?.find(loc => loc.driver_id === existingDriver.id);
+          if (latestLocation) {
+            return {
+              ...existingDriver,
+              current_location: { lat: latestLocation.lat, lng: latestLocation.lng },
+              location_updated_at: latestLocation.location_timestamp
+            };
+          }
+          return existingDriver;
+        });
+      });
     } catch (error) {
       console.error('Smart driver location refresh error:', error);
     }
@@ -699,16 +724,22 @@ const FadedSkiesTrackingAdmin = () => {
         let lat = 30.2672; // Austin default
         let lng = -97.7431; // Austin default
         
-        if (driver.latest_lat && driver.latest_lng && 
-            driver.latest_lat !== 0 && driver.latest_lng !== 0) {
-          lat = driver.latest_lat;
-          lng = driver.latest_lng;
-        } else if (driver.current_location && 
+        // Check for current_location first (new format)
+        if (driver.current_location && 
             typeof driver.current_location === 'object' && 
             driver.current_location.lat && 
             driver.current_location.lng) {
           lat = driver.current_location.lat;
           lng = driver.current_location.lng;
+          console.log(`📍 Driver ${driver.name} location: ${lat}, ${lng}`);
+        } else if (driver.latest_lat && driver.latest_lng && 
+            driver.latest_lat !== 0 && driver.latest_lng !== 0) {
+          // Fallback to old format
+          lat = driver.latest_lat;
+          lng = driver.latest_lng;
+          console.log(`📍 Driver ${driver.name} location (legacy): ${lat}, ${lng}`);
+        } else {
+          console.log(`📍 Driver ${driver.name} using default location: ${lat}, ${lng}`);
         }
         
         return {

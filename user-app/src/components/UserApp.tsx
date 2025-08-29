@@ -143,42 +143,82 @@ const calculateDeliveryTime = (distance: number, status: string): number => {
   if (status === 'delivered') return 0;
   if (status === 'cancelled') return 0;
   
-  // Different speeds based on order status
-  let averageSpeed = 25; // Default city speed
+  // Realistic speed calculation based on distance and status
+  let averageSpeed = 35; // Default speed (mph)
+  let handlingTime = 10; // Base handling time (minutes)
   
-  switch (status) {
-    case 'picked_up':
-    case 'in_transit':
-      averageSpeed = 30; // Highway speed for delivery
-      break;
-    case 'accepted':
-      averageSpeed = 25; // City speed when heading to pickup
-      break;
-    case 'assigned':
-      averageSpeed = 20; // Slower when just assigned
-      break;
-    default:
-      averageSpeed = 15; // Very slow for other statuses
+  // Adjust speed based on distance and status
+  if (distance > 50) {
+    // Long distance: highway speeds
+    switch (status) {
+      case 'picked_up':
+      case 'in_transit':
+        averageSpeed = 65; // Highway speed for delivery
+        handlingTime = 15; // Extra handling for long distance
+        break;
+      case 'accepted':
+        averageSpeed = 55; // Mixed highway/city speed
+        handlingTime = 20; // Time to get to pickup location
+        break;
+      case 'assigned':
+        averageSpeed = 45; // Slower when just assigned
+        handlingTime = 25; // More time for driver to get ready
+        break;
+      default:
+        averageSpeed = 40; // Conservative speed
+        handlingTime = 30; // Extra buffer
+    }
+  } else if (distance > 20) {
+    // Medium distance: mixed speeds
+    switch (status) {
+      case 'picked_up':
+      case 'in_transit':
+        averageSpeed = 45; // Mixed highway/city
+        handlingTime = 12;
+        break;
+      case 'accepted':
+        averageSpeed = 40; // City/highway mix
+        handlingTime = 15;
+        break;
+      case 'assigned':
+        averageSpeed = 35; // Conservative
+        handlingTime = 18;
+        break;
+      default:
+        averageSpeed = 30;
+        handlingTime = 20;
+    }
+  } else {
+    // Short distance: city speeds
+    switch (status) {
+      case 'picked_up':
+      case 'in_transit':
+        averageSpeed = 25; // City delivery speed
+        handlingTime = 8;
+        break;
+      case 'accepted':
+        averageSpeed = 20; // City driving
+        handlingTime = 10;
+        break;
+      case 'assigned':
+        averageSpeed = 15; // Conservative city speed
+        handlingTime = 12;
+        break;
+      default:
+        averageSpeed = 20;
+        handlingTime = 15;
+    }
   }
   
-  const timeInHours = distance / averageSpeed;
-  const timeInMinutes = Math.round(timeInHours * 60);
+  // Calculate travel time
+  const travelTimeHours = distance / averageSpeed;
+  const travelTimeMinutes = Math.round(travelTimeHours * 60);
   
-  // Add buffer time based on distance
-  let bufferMinutes = 10; // Base buffer
+  // Add handling time and buffer
+  const totalMinutes = travelTimeMinutes + handlingTime;
   
-  if (distance > 5) {
-    bufferMinutes = 15; // More buffer for longer distances
-  } else if (distance > 10) {
-    bufferMinutes = 20; // Even more buffer for very long distances
-  }
-  
-  // Add status-specific buffer
-  if (status === 'picked_up' || status === 'in_transit') {
-    bufferMinutes += 5; // Extra time for final delivery
-  }
-  
-  return Math.max(timeInMinutes + bufferMinutes, 8); // Minimum 8 minutes
+  // Ensure minimum time
+  return Math.max(totalMinutes, 8);
 };
 
 // Format delivery time for display
@@ -218,30 +258,14 @@ const getDisplayStatus = (status: string): { text: string; color: string; icon: 
   }
 };
 
-// Get appropriate ETA based on order status
-const getStatusBasedETA = (status: string): string => {
-  switch (status) {
-    case 'pending':
-    case 'confirmed':
-      return '45-60 min';
-    case 'preparing':
-      return '30-45 min';
-    case 'ready':
-      return '20-35 min';
-    case 'assigned':
-      return '15-25 min';
-    case 'accepted':
-      return '10-20 min';
-    case 'picked_up':
-    case 'in_transit':
-      return '8-15 min';
-    case 'delivered':
-      return 'Delivered';
-    case 'cancelled':
-      return 'Cancelled';
-    default:
-      return '45-60 min';
-  }
+// Get appropriate ETA based on order status and distance
+const getStatusBasedETA = (status: string, distance: number = 0): string => {
+  if (status === 'delivered') return 'Delivered';
+  if (status === 'cancelled') return 'Cancelled';
+  
+  // Calculate realistic ETA based on distance and status
+  const etaMinutes = calculateDeliveryTime(distance, status);
+  return formatDeliveryTime(etaMinutes);
 };
 
 // Professional Mapbox Delivery Tracker Component
@@ -594,7 +618,7 @@ const DeliveryTracker = React.memo(({
       console.log(`📍 Delivery location: ${userDeliveryLat}, ${userDeliveryLng}`);
     } else {
       // Use status-based ETA when no driver location
-      const statusBasedETA = getStatusBasedETA(currentOrder.status);
+      const statusBasedETA = getStatusBasedETA(currentOrder.status, currentOrder.distance || 0);
       setCalculatedETA(statusBasedETA);
       setCalculatedDistance(null);
       
@@ -1130,12 +1154,15 @@ const FadedSkiesApp = () => {
     biometricLogin: true
   });
 
-  // Payment methods state
-  const [paymentMethods, setPaymentMethods] = useState([
-    { id: 1, type: 'Apple Pay', icon: '🍎', status: 'Connected', primary: true, details: '' },
-    { id: 2, type: 'Visa', icon: '💳', status: 'Active', primary: false, details: '•••• 4242' },
-    { id: 3, type: 'FS Coin', icon: '🪙', status: 'Available', primary: false, details: `${user.rewards} coins` }
-  ]);
+  // Payment methods state - start empty, will be loaded from database
+  const [paymentMethods, setPaymentMethods] = useState<Array<{
+    id: number;
+    type: string;
+    icon: string;
+    status: string;
+    primary: boolean;
+    details: string;
+  }>>([]);
   const [showAddPayment, setShowAddPayment] = useState(false);
   // const [editingPayment] = useState(null);
   const [newPaymentForm, setNewPaymentForm] = useState({
@@ -1462,7 +1489,7 @@ const FadedSkiesApp = () => {
               const userDeliveryLat = 30.2672;
               const userDeliveryLng = -97.7431;
               
-              let estimatedDelivery = getStatusBasedETA(order.status);
+              let estimatedDelivery = getStatusBasedETA(order.status, 0); // Will use default distance calculation
               let distance: number | undefined = undefined;
               let driverLocation = order.driver_location;
               
@@ -1566,7 +1593,7 @@ const FadedSkiesApp = () => {
                 console.log(`🚚 Order ${order.order_id} - Distance: ${distance}mi, ETA: ${formattedEta}`);
               } else {
                 // Use status-based ETA when no GPS is available
-                const statusBasedETA = getStatusBasedETA(order.status);
+                const statusBasedETA = getStatusBasedETA(order.status, 0); // Will use default distance calculation
                 updatedOrder = {
                   ...updatedOrder,
                   estimatedDelivery: statusBasedETA,
@@ -3255,7 +3282,11 @@ const FadedSkiesApp = () => {
                         key={index}
                         type="button"
                         onClick={() => {
-                          if (item.modal === 'paymentMethodsModal') setPaymentMethodsModal({ isOpen: true });
+                          if (item.modal === 'paymentMethodsModal') {
+          setPaymentMethodsModal({ isOpen: true });
+          setShowAddPayment(false); // Reset to show existing payment methods first
+          console.log('💳 Opening payment methods modal, current methods:', paymentMethods);
+        }
                           else if (item.modal === 'notificationsModal') setNotificationsModal({ isOpen: true });
                           else if (item.modal === 'privacySecurityModal') setPrivacySecurityModal({ isOpen: true });
                           else if (item.modal === 'deliveryAddressesModal') setDeliveryAddressesModal({ isOpen: true });
@@ -5190,7 +5221,14 @@ const FadedSkiesApp = () => {
               {!showAddPayment ? (
                 <div className="space-y-4">
                   {/* Current Payment Methods */}
-                  {paymentMethods.map((method) => (
+                  {paymentMethods.length === 0 ? (
+                    <div className="text-center py-8">
+                      <div className="text-4xl mb-4">💳</div>
+                      <h3 className="font-bold text-gray-900 mb-2">No Payment Methods</h3>
+                      <p className="text-gray-600 mb-4">Add a payment method to get started</p>
+                    </div>
+                  ) : (
+                    paymentMethods.map((method) => (
                     <div key={method.id} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
@@ -5225,7 +5263,8 @@ const FadedSkiesApp = () => {
                         </button>
                       )}
                     </div>
-                  ))}
+                  ))
+                  )}
 
                   {/* Add New Payment Method */}
                   <button
@@ -5488,10 +5527,18 @@ const FadedSkiesApp = () => {
                     </span>
                   </div>
                   <div className="flex space-x-2">
-                    <button className="flex-1 bg-emerald-50 text-emerald-700 py-2 rounded-xl font-semibold hover:bg-emerald-100 transition-colors">
+                    <button 
+                      type="button"
+                      onClick={() => editDeliveryAddress({ id: 1, name: 'Home', address: '123 Main St, Austin, TX 78701', primary: true })}
+                      className="flex-1 bg-emerald-50 text-emerald-700 py-2 rounded-xl font-semibold hover:bg-emerald-100 transition-colors"
+                    >
                       Edit
                     </button>
-                    <button className="flex-1 bg-red-50 text-red-700 py-2 rounded-xl font-semibold hover:bg-red-100 transition-colors">
+                    <button 
+                      type="button"
+                      onClick={() => removeDeliveryAddress(1)}
+                      className="flex-1 bg-red-50 text-red-700 py-2 rounded-xl font-semibold hover:bg-red-100 transition-colors"
+                    >
                       Remove
                     </button>
                   </div>
@@ -5500,10 +5547,287 @@ const FadedSkiesApp = () => {
                 {/* Add New Address */}
                 <button
                   type="button"
+                  onClick={() => {
+                    setNewAddressForm({ name: '', address: '', city: '', state: 'TX', zipCode: '', type: 'home', instructions: '' });
+                    setEditingAddress(null);
+                    setShowAddAddress(true);
+                  }}
                   className="w-full bg-emerald-50 border-2 border-dashed border-emerald-300 rounded-2xl p-4 text-emerald-700 font-semibold hover:bg-emerald-100 transition-colors"
                 >
                   + Add New Address
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Address Modal */}
+      {showAddAddress && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end justify-center">
+          <div className="bg-white w-full max-w-md rounded-t-3xl shadow-2xl max-h-[90vh] overflow-hidden">
+            <div className="bg-gradient-to-r from-emerald-500 to-green-600 text-white p-6 rounded-t-3xl">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold">
+                  {editingAddress ? '✏️ Edit Address' : '📍 Add New Address'}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddAddress(false);
+                    setEditingAddress(null);
+                    setNewAddressForm({ name: '', address: '', city: '', state: 'TX', zipCode: '', type: 'home', instructions: '' });
+                  }}
+                  className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <p className="text-green-100">
+                {editingAddress ? 'Update your delivery address' : 'Add a new delivery location'}
+              </p>
+            </div>
+            <div className="p-6 max-h-96 overflow-y-auto">
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Address Name *</label>
+                    <input
+                      type="text"
+                      value={newAddressForm.name}
+                      onChange={(e) => setNewAddressForm(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                      placeholder="Home, Work, etc."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Type</label>
+                    <select
+                      value={newAddressForm.type}
+                      onChange={(e) => setNewAddressForm(prev => ({ ...prev, type: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                    >
+                      <option value="home">🏠 Home</option>
+                      <option value="work">🏢 Work</option>
+                      <option value="other">📍 Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Street Address *</label>
+                  <input
+                    type="text"
+                    value={newAddressForm.address}
+                    onChange={(e) => setNewAddressForm(prev => ({ ...prev, address: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                    placeholder="Enter your delivery address"
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">City *</label>
+                    <input
+                      type="text"
+                      value={newAddressForm.city}
+                      onChange={(e) => setNewAddressForm(prev => ({ ...prev, city: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                      placeholder="Austin"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">State</label>
+                    <select
+                      value={newAddressForm.state}
+                      onChange={(e) => setNewAddressForm(prev => ({ ...prev, state: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                    >
+                      <option value="TX">TX</option>
+                      <option value="CA">CA</option>
+                      <option value="NY">NY</option>
+                      <option value="FL">FL</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">ZIP Code *</label>
+                    <input
+                      type="text"
+                      value={newAddressForm.zipCode}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 5);
+                        setNewAddressForm(prev => ({ ...prev, zipCode: value }));
+                      }}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                      placeholder="78701"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Delivery Instructions</label>
+                  <textarea
+                    value={newAddressForm.instructions}
+                    onChange={(e) => setNewAddressForm(prev => ({ ...prev, instructions: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                    placeholder="Gate code, apartment number, etc."
+                    rows={3}
+                  />
+                </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddAddress(false);
+                      setEditingAddress(null);
+                      setNewAddressForm({ name: '', address: '', city: '', state: 'TX', zipCode: '', type: 'home', instructions: '' });
+                    }}
+                    className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={editingAddress ? updateDeliveryAddress : addDeliveryAddress}
+                    className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-xl font-semibold hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg"
+                  >
+                    {editingAddress ? 'Update Address' : 'Add Address'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Address Modal */}
+      {showAddAddress && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end justify-center">
+          <div className="bg-white w-full max-w-md rounded-t-3xl shadow-2xl max-h-[90vh] overflow-hidden">
+            <div className="bg-gradient-to-r from-emerald-500 to-green-600 text-white p-6 rounded-t-3xl">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold">
+                  {editingAddress ? '✏️ Edit Address' : '📍 Add New Address'}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddAddress(false);
+                    setEditingAddress(null);
+                    setNewAddressForm({ name: '', address: '', city: '', state: 'TX', zipCode: '', type: 'home', instructions: '' });
+                  }}
+                  className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <p className="text-green-100">
+                {editingAddress ? 'Update your delivery address' : 'Add a new delivery location'}
+              </p>
+            </div>
+            <div className="p-6 max-h-96 overflow-y-auto">
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Address Name *</label>
+                    <input
+                      type="text"
+                      value={newAddressForm.name}
+                      onChange={(e) => setNewAddressForm(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                      placeholder="Home, Work, etc."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Type</label>
+                    <select
+                      value={newAddressForm.type}
+                      onChange={(e) => setNewAddressForm(prev => ({ ...prev, type: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                    >
+                      <option value="home">🏠 Home</option>
+                      <option value="work">🏢 Work</option>
+                      <option value="other">📍 Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Street Address *</label>
+                  <input
+                    type="text"
+                    value={newAddressForm.address}
+                    onChange={(e) => setNewAddressForm(prev => ({ ...prev, address: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                    placeholder="Enter your delivery address"
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">City *</label>
+                    <input
+                      type="text"
+                      value={newAddressForm.city}
+                      onChange={(e) => setNewAddressForm(prev => ({ ...prev, city: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                      placeholder="Austin"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">State</label>
+                    <input
+                      type="text"
+                      value={newAddressForm.state}
+                      onChange={(e) => setNewAddressForm(prev => ({ ...prev, state: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                      placeholder="TX"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">ZIP Code *</label>
+                    <input
+                      type="text"
+                      value={newAddressForm.zipCode}
+                      onChange={(e) => setNewAddressForm(prev => ({ ...prev, zipCode: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                      placeholder="78701"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Delivery Instructions</label>
+                  <textarea
+                    value={newAddressForm.instructions}
+                    onChange={(e) => setNewAddressForm(prev => ({ ...prev, instructions: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                    placeholder="Apartment number, gate code, etc."
+                    rows={3}
+                  />
+                </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddAddress(false);
+                      setEditingAddress(null);
+                      setNewAddressForm({ name: '', address: '', city: '', state: 'TX', zipCode: '', type: 'home', instructions: '' });
+                    }}
+                    className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={editingAddress ? updateDeliveryAddress : addDeliveryAddress}
+                    className="flex-1 bg-gradient-to-r from-emerald-500 to-green-600 text-white py-3 rounded-xl font-semibold hover:from-emerald-600 hover:to-green-700 transition-colors"
+                  >
+                    {editingAddress ? 'Update Address' : 'Add Address'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

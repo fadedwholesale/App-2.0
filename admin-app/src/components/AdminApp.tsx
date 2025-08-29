@@ -379,12 +379,35 @@ const FadedSkiesTrackingAdmin = () => {
         .select('id, email, name, phone, address, role, is_admin, is_driver, is_verified, created_at, updated_at')
         .order('created_at', { ascending: false });
       
+      // Fetch delivery addresses for all users
+      const { data: deliveryAddressesData, error: addressesError } = await supabase
+        .from('delivery_addresses')
+        .select('user_id, address, is_primary, name')
+        .eq('is_primary', true);
+      
+      if (addressesError) {
+        console.error('❌ Failed to fetch delivery addresses:', addressesError);
+      } else {
+        console.log('📍 Primary delivery addresses loaded:', deliveryAddressesData?.length || 0);
+      }
+      
       if (usersError) {
         console.error('❌ Failed to fetch users:', usersError);
         setLiveCustomers([]);
       } else {
         console.log('👥 Users loaded from database:', usersData?.length || 0);
-        setLiveCustomers(usersData || []);
+        
+        // Merge users with their primary delivery addresses
+        const usersWithAddresses = usersData?.map(user => {
+          const primaryAddress = deliveryAddressesData?.find(addr => addr.user_id === user.id);
+          return {
+            ...user,
+            primaryDeliveryAddress: primaryAddress?.address || user.address || null
+          };
+        }) || [];
+        
+        console.log('👥 Users with addresses:', usersWithAddresses.length);
+        setLiveCustomers(usersWithAddresses);
       }
 
       // Fetch drivers with explicit location fields
@@ -3810,7 +3833,7 @@ const FadedSkiesTrackingAdmin = () => {
                               {user.name || user.email?.split('@')[0] || 'Unknown'}
                             </h4>
                             <p className="text-sm text-gray-600">
-                              {user.address || 'No address provided'}
+                              {user.primaryDeliveryAddress || user.address || 'No address provided'}
                             </p>
                             {user.vehicle && (
                               <p className="text-xs text-blue-600">
